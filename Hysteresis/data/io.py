@@ -256,6 +256,15 @@ def save_to_file(selected_df, app_instance, save_window):
     Save the selected data to a new text file.
     If fewer columns than the 8 available are loaded,
     columns of zeros will be added to maintain compatibility.
+
+    Parameters
+    ----------
+    selected_df : StringVar
+        variable containing the name of the selected file
+    app_instance : MainApp object
+        instance of MainApp from main_window.py
+    save_window : Toplevel object
+        window to close after saving the data
     '''
 
     dataframes   = app_instance.dataframes

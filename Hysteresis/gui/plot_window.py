@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from tkinter import messagebox, Toplevel, StringVar, OptionMenu, DoubleVar
 
-from gui.command_window import open_command_window
-from data.processing import norm, close, inv_x, inv_y
+from Hysteresis.gui.command_window import open_command_window
+from Hysteresis.data.processing import norm, close, inv_x, inv_y
 
 #==============================================================================================#
 # Main function for managing the plot window                                                   #

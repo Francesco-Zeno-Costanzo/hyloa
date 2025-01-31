@@ -7,7 +7,7 @@ import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel, StringVar
 
-from data.show import loaded_files
+from Hysteresis.data.show import loaded_files
 
 #==============================================================================================#
 # File upload functions                                                                        #

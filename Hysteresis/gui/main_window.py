@@ -6,11 +6,11 @@ the analysis. From here the calls to the other functions branch out.
 """
 import tkinter as tk
 
-from data.io import load_files
-from data.show import loaded_files
-from data.io import save_modified_data
-from gui.plot_window import open_plot_window
-from utils.logging_setup import start_logging
+from Hysteresis.data.io import load_files
+from Hysteresis.data.show import loaded_files
+from Hysteresis.data.io import save_modified_data
+from Hysteresis.gui.plot_window import open_plot_window
+from Hysteresis.utils.logging_setup import start_logging
 
 class MainApp:
     

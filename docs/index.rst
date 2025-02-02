@@ -19,6 +19,11 @@ Benvenuto nella documentazione ufficiale di **Hysteresis Analysis**, un software
    :maxdepth: 2
    :caption: Contenuti
 
+   Hysteresis
+   Hysteresis.data
+   Hysteresis.gui
+   Hysteresis.utils
+
    installation
    usage
    api_reference
@@ -32,6 +37,7 @@ Benvenuto nella documentazione ufficiale di **Hysteresis Analysis**, un software
 `Hysteresis Analysis` è un pacchetto Python progettato per analizzare cicli di isteresi con un'interfaccia grafica intuitiva.
 
 📌 **Caratteristiche principali**:
+
 - 📊 **Visualizzazione dati**: Caricamento e visualizzazione dei cicli di isteresi.
 - 🔧 **Strumenti di analisi**: Filtri, normalizzazione, curve fitting e altro.
 - 🖥 **Interfaccia grafica user-friendly** basata su Tkinter.

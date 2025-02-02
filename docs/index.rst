@@ -19,6 +19,9 @@ Benvenuto nella documentazione ufficiale di **Hysteresis Analysis**, un software
    :maxdepth: 2
    :caption: Contenuti
 
+   installation
+   usage
+   modules
    Hysteresis
    Hysteresis.data
    Hysteresis.gui

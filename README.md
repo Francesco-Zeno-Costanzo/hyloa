@@ -1,4 +1,9 @@
 # **Hysteresis Analysis**
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Francesco-Zeno-Costanzo/Hysteresis/main/docs/_static/hysteresis_logo.png" alt="Hysteresis Logo" width="250">
+</p>
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Documentation Status](https://readthedocs.org/projects/hysteresisanalysis/badge/?version=latest)](https://hysteresisanalysis.readthedocs.io/en/latest/?badge=latest)
 
@@ -22,7 +27,7 @@ Hysteresis Analysis is a Python package that allows you to **load, analyze and v
 ---
 
 ## **Installation**  
-### **from  this repos**
+### **from  this repo**
 ```bash
 git clone https://github.com/Francesco-Zeno-Costanzo/Hysteresis.git
 cd Hysteresis

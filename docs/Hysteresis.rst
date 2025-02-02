@@ -1,16 +1,23 @@
 Hysteresis package
 ==================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   Hysteresis.data
+   Hysteresis.gui
+   Hysteresis.utils
+
 Submodules
 ----------
 
-Hysteresis.main module
-----------------------
+.. toctree::
+   :maxdepth: 4
 
-.. automodule:: Hysteresis.main
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   Hysteresis.main
 
 Module contents
 ---------------

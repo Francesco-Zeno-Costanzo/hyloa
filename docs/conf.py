@@ -8,7 +8,7 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath(".."))  # Permette di importare `Hysteresis/`
+sys.path.insert(0, os.path.abspath(".."))  # Allow import Hysteresis/
 
 project = 'HysteresisAnalysis'
 copyright = '2025, Francesco Zeno Costanzo'

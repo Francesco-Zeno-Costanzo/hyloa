@@ -33,7 +33,7 @@ Benvenuto nella documentazione ufficiale di **Hysteresis Analysis**, un software
 -----------------
 
 **Cos'è Hysteresis Analysis?**
------------------
+------------------------------
 `Hysteresis Analysis` è un pacchetto Python progettato per analizzare cicli di isteresi con un'interfaccia grafica intuitiva.
 
 📌 **Caratteristiche principali**:
@@ -84,7 +84,7 @@ Se trovi un bug o hai suggerimenti, apri un'issue su [GitHub](https://github.com
 -----------------
 
 **Indice e ricerca**
------------------
+--------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

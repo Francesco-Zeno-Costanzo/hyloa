@@ -4,20 +4,20 @@
    contain the root `toctree` directive.
 
 ========================================
-Hysteresis Analysis - Documentazione
+Hysteresis Analysis - Documentation
 ========================================
 
-Benvenuto nella documentazione ufficiale di **Hysteresis Analysis**, un software per l'analisi dei cicli di isteresi.
+Welcome to the official documentation of **Hysteresis Analysis**, a software for analyzing hysteresis loops.
 
 .. image:: _static/hysteresis_logo.png
    :alt: Logo di Hysteresis Analysis
    :align: center
 
-**Indice della documentazione:**
+**Documentation index:**
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contenuti
+   :caption: Contents
 
    installation
    usage
@@ -29,58 +29,50 @@ Benvenuto nella documentazione ufficiale di **Hysteresis Analysis**, un software
 
 -----------------
 
-**Cos'è Hysteresis Analysis?**
---------------------------------
-`Hysteresis Analysis` è un pacchetto Python progettato per analizzare cicli di isteresi con un'interfaccia grafica intuitiva.
+**What is Hysteresis Analysis?**
+----------------------------------
+`Hysteresis Analysis` is a Python package designed to analyze hysteresis loops with an intuitive graphical interface.
 
-📌 **Caratteristiche principali**:
+📌 **Main features**:
 
-- 📊 **Visualizzazione dati**: Caricamento e visualizzazione dei cicli di isteresi.
-- 🔧 **Strumenti di analisi**: Filtri, normalizzazione, curve fitting e altro.
-- 🖥 **Interfaccia grafica user-friendly** basata su Tkinter.
+- 📊 **Data display**: Loading and displaying hysteresis loops.
+- 🔧 **Analysis tools**: Filters, normalization, curve fitting and more.
+- 🖥 **User-friendly graphical interface** based on Tkinter.
 
 -----------------
 
-**Come iniziare?**
+**How to get started?**
 --------------------------------
-Per installare il pacchetto, usa:
+To install the package, use:
 
 .. code-block:: bash
 
-   pip install HysteresisAnalysis
+   "to do"
 
-Per avviare l'interfaccia grafica:
+Directly from the GitHub repository:
+
+.. code-block:: bash
+
+    git clone https://github.com/Francesco-Zeno-Costanzo/Hysteresis.git
+    cd Hysteresis
+    pip install -e .
+
+To launch the graphical interface:
 
 .. code-block:: bash
 
    hysteresis-analysis
 
-Per importarlo in uno script Python:
-
-.. code-block:: python
-
-   from Hysteresis.gui.main_window import main
-   main()
-
 -----------------
 
-**Navigazione**
------------------
-🔹 **[Installation](installation.html)** – Come installare il pacchetto  
-🔹 **[Usage](usage.html)** – Esempi pratici di utilizzo  
-🔹 **[API Reference](api_reference.html)** – Documentazione delle funzioni  
-🔹 **[Contributing](contributing.html)** – Come contribuire al progetto  
-🔹 **[License](license.html)** – Licenza GPL-3.0  
-
------------------
 
 **Feedback**
 -----------------
-Se trovi un bug o hai suggerimenti, apri un'issue su [GitHub](https://github.com/Francesco-Zeno-Costanzo/Hysteresis).
+If you find a bug or have suggestions, open an issue at [GitHub](https://github.com/Francesco-Zeno-Costanzo/Hysteresis).
 
 -----------------
 
-**Indice e ricerca**
+**Index and search**
 --------------------
 
 * :ref:`genindex`

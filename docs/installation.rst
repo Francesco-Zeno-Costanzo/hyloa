@@ -1,14 +1,14 @@
-=============================
-Installazione del pacchetto
-=============================
+==============================
+Installing the package
+==============================
 
-Per installare il pacchetto HysteresisAnalysis, puoi usare pip:
+To install the HysteresisAnalysis package, you can use pip:
 
 .. code-block:: bash
 
     "to do"
 
-Se vuoi installarlo direttamente dal repository GitHub:
+If you want to install it directly from the GitHub repository:
 
 .. code-block:: bash
 
@@ -16,7 +16,7 @@ Se vuoi installarlo direttamente dal repository GitHub:
     cd Hysteresis
     pip install -e .
 
-Se stai contribuendo al progetto, assicurati di installare anche le dipendenze di sviluppo:
+If you are contributing to the project, make sure to also install the development dependencies:
 
 .. code-block:: bash
 

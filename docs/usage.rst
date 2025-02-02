@@ -1,11 +1,11 @@
 ==========================
-Utilizzo del pacchetto
-==========================
+Using the package
+===========================
 
-Per avviare l'interfaccia grafica di analisi dei cicli di isteresi, usa il comando:
+To start the hysteresis loop analysis graphical interface, use the command:
 
 .. code-block:: bash
 
     hysteresis-analysis
 
-Questo aprirà l'interfaccia grafica, dove potrai caricare i dati, visualizzarli e analizzarli.
+This will open the graphical interface, where you can load the data, view it and analyze it.

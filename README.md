@@ -5,7 +5,7 @@
 **Simple program for an analysis of hysteresis loops.**
 ---
 
-## ** Introduction**  
+## **Introduction**  
 Hysteresis Analysis is a Python package that allows you to **load, analyze and visualize** hysteresis loops using a graphical interface.
 
 
@@ -22,7 +22,7 @@ Hysteresis Analysis is a Python package that allows you to **load, analyze and v
 ---
 
 ## **Installation**  
-### 1️⃣ **from  this repo **
+### **from  this repos**
 ```bash
 git clone https://github.com/Francesco-Zeno-Costanzo/Hysteresis.git
 cd Hysteresis

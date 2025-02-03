@@ -19,22 +19,20 @@ def load_files(app_instance):
     The code is currently designed to read data files created
     by labview that have the following structure:
 
-    FieldUp	UpRot	UpEllipt	IzeroUp	FieldDw	DwRot	DwEllipt	IzeroDw
-    MaxV 30.00	V_bias 0.00	Steps 180	Loops 10
-    Sen1(mV) 5.0E-1	Sen2(mV) 2.0E-2	TC(ms) 10	Scaling 0.0E+0	ThetaPol 5.0	Polarization s
-    Rot Ell Izero Parameters3.478239E-3	-1.249859E-2	3.036712E-1
+    ::
 
-    -2682.1	6.775420E-1	4.515580E-2	0.30287	-2665.8	6.798780E-1	4.842054E-2	0.30286
-    -2668.2	6.778833E-1	4.509845E-2	0.30275	-2635.3	6.794771E-1	4.826985E-2	0.30291
-    -2641.9	6.778411E-1	4.516041E-2	0.30290	-2605.8	6.798262E-1	4.843232E-2	0.30289
-        .       .           .          .       .        .           .          .
-        .       .           .          .       .        .           .          .
-        .       .           .          .       .        .           .          .
+        FieldUp	UpRot	UpEllipt	IzeroUp	FieldDw	DwRot	DwEllipt	IzeroDw
+        MaxV 30.00	V_bias 0.00	Steps 180	Loops 10
+        Sen1(mV) 5.0E-1	Sen2(mV) 2.0E-2	TC(ms) 10	Scaling 0.0E+0	ThetaPol 5.0	Polarization s
+        Rot Ell Izero Parameters3.478239E-3	-1.249859E-2	3.036712E-1
 
+        -2682.1	6.775420E-1	4.515580E-2	0.30287	-2665.8	6.798780E-1	4.842054E-2	0.30286
+        -2668.2	6.778833E-1	4.509845E-2	0.30275	-2635.3	6.794771E-1	4.826985E-2	0.30291
+        -2641.9	6.778411E-1	4.516041E-2	0.30290	-2605.8	6.798262E-1	4.843232E-2	0.30289
 
     This same structure will then be preserved when the data is saved
     to a new file, so that it can be reopened for further analysis.
-    
+
     Parameters
     ----------
     app_instance : instance of MainApp from main_window.py

@@ -13,6 +13,7 @@ def norm(plot_data, count_plot, selected_pairs, dataframes, plot_customizations,
     '''
     Cycle normalization function.
     For each cycle the procedure implemented is the following:
+
     1) Compute the initial and final average values of the first and last 5 points of each branch.
     2) Reconcile the average values to correct any inconsistencies in direction.
        If both branches grow or decrease in a coherent way, the averages of the same
@@ -91,6 +92,19 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
     '''
     Function to manage the window to select the specific cycle to close.
 
+    A gradual correction is applied to the data to reduce the misalignments
+    at the ends of the loop, caused precisely by instrumental drift.
+
+    For each loop the procedure is:
+    
+    1) Calculate the difference in absolute value between the initial and final values of the branches.
+    2) Determine which difference (initial or final) is dominant.
+    3) Apply a linear correction to reduce the misalignment:
+        This correction is applied only on the dominant difference and its intensity
+        decreases linearly while iterating on the points of the loop:
+        - The values of the increasing branch are incremented or decremented.
+        - The values of the decreasing branch are corrected symmetrically.
+
     Parameters
     ----------
     root : instance of TK class from tkinter
@@ -162,17 +176,6 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
     def apply_1():
         '''
         Function that corrects the effects of instrumental drift and closes the loop.
-        A gradual correction is applied to the data to reduce the misalignments
-        at the ends of the loop, caused precisely by instrumental drift.
-
-        For each loop the procedure is:
-        1) Calculate the difference in absolute value between the initial and final values of the branches.
-        2) Determine which difference (initial or final) is dominant.
-        3) Apply a linear correction to reduce the misalignment:
-            This correction is applied only on the dominant difference and its intensity
-            decreases linearly while iterating on the points of the loop:
-            - The values of the increasing branch are incremented or decremented.
-            - The values of the decreasing branch are corrected symmetrically.
         '''
         try:
             if not file_choice.get():

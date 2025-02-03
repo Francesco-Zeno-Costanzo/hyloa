@@ -10,6 +10,7 @@ Hysteresis Analysis - Documentation
 Welcome to the official documentation of **Hysteresis Analysis**, a software for analyzing hysteresis loops.
 
 .. image:: _static/hysteresis_logo.png
+   :scale: 30%
    :alt: Logo di Hysteresis Analysis
    :align: center
 

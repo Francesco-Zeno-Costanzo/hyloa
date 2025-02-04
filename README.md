@@ -32,3 +32,10 @@ Hysteresis Analysis is a Python package that allows you to **load, analyze and v
 git clone https://github.com/Francesco-Zeno-Costanzo/Hysteresis.git
 cd Hysteresis
 pip install -e .
+```
+
+## **Usage**  
+To start the graphical interface, use the command:
+```bash
+hysteresis-analysis
+```

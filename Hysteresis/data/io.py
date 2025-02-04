@@ -53,7 +53,7 @@ def load_files(app_instance):
     for file_path in file_paths:
         try:
             # Reads the file and displays a secondary window to select columns
-            with open(file_path, "r") as f:
+            with open(file_path, "r", encoding='utf-8') as f:
                 header = f.readline().strip().split("\t")  # Assumes that columns are separated by tabs
             app_instance.logger.info(f"Apertura file {file_path}.")
 
@@ -79,7 +79,7 @@ def show_column_selection(app_instance, root, file_path, header):
         first line of the file to select columns to read
     '''
     selection_window = tk.Toplevel(root)
-    selection_window.title(f"Seleziona Colonne: {file_path.split('/')[-1]}")
+    selection_window.title(f"Seleziona Colonne: {os.path.basename(file_path)}")
     selection_window.geometry("800x750")
 
     # Create a frame with a scrollbar for columns
@@ -114,7 +114,7 @@ def show_column_selection(app_instance, root, file_path, header):
             if selected_columns.get(i).get()
         ]
         custom_column_names = [
-            custom_names[i].get() or f"{file_path.split('/')[-1][:-4]}_{header[i]}"
+            custom_names[i].get() or f"{os.path.splitext(os.path.basename(file_path))[0]}_{header[i]}"
             for i in range(len(header))
             if selected_columns.get(i).get()
         ]
@@ -207,7 +207,7 @@ def save_header(app_instance, df, file_path):
         path of the file to save
     '''
     try:
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding='utf-8') as f:
             # Write the names of the columns
             f.write("\t".join(df.columns) + "\n")
             
@@ -306,7 +306,7 @@ def save_to_file(selected_df, app_instance, save_window):
 
         save_header(app_instance, header, file_path)
         # Save the data in the new file in text format
-        with open(file_path, "a") as f:
+        with open(file_path, "a", 'utf-8') as f:
 
             data = np.array(df)
             rows, cols = data.shape

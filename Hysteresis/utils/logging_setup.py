@@ -21,7 +21,7 @@ def setup_logging(log_file):
             datefmt="%Y-%m-%d %H:%M:%S"
         )
         logging.info("Inizio sessione di log.")
-        logging.info(f"Logging configurato: scrittura su {log_file}.log")
+        logging.info(f"Logging configurato: scrittura su {log_file}")
     
     except Exception as e:
         raise Exception(f"Errore durante la configurazione del logging: {e}")

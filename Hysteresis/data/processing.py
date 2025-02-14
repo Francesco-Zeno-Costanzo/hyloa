@@ -92,19 +92,6 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
     '''
     Function to manage the window to select the specific cycle to close.
 
-    A gradual correction is applied to the data to reduce the misalignments
-    at the ends of the loop, caused precisely by instrumental drift.
-
-    For each loop the procedure is:
-    
-    1) Calculate the difference in absolute value between the initial and final values of the branches.
-    2) Determine which difference (initial or final) is dominant.
-    3) Apply a linear correction to reduce the misalignment:
-        This correction is applied only on the dominant difference and its intensity
-        decreases linearly while iterating on the points of the loop:
-        - The values of the increasing branch are incremented or decremented.
-        - The values of the decreasing branch are corrected symmetrically.
-
     Parameters
     ----------
     root : instance of TK class from tkinter
@@ -173,73 +160,115 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
 
     file_choice.trace_add("write", update_column_selection)
 
-    def apply_1():
-        '''
-        Function that corrects the effects of instrumental drift and closes the loop.
-        '''
-        try:
-            if not file_choice.get():
-                messagebox.showerror("Errore", "Devi selezionare un file!")
-                return
+    tk.Button(operation_window, text="Applica",
+              command=lambda :apply_close(plot_data, file_choice, selected_columns, count_plot,
+                                          selected_pairs, dataframes, plot_customizations,
+                                          logger)
+            ).pack(pady=10)
+    
+    tk.Label(operation_window,
+             text="Selezionare la coppia (una alla volta) di curve da chiudere:"
+            ).pack(pady=5)
 
-            selected_idx = int(file_choice.get().split(" ")[1]) - 1
-            df = dataframes[selected_idx]  # The selected DataFrame
 
-            # Filter selected columns
-            selected_cols = [col for col, is_selected in selected_columns.items() if is_selected.get()]
-            if not selected_cols:
-                messagebox.showerror("Errore", "Devi selezionare la coppia di dati che crea il ciclo")
-                return
-            if len(selected_cols) == 1:
-                messagebox.showerror("Errore", "Devi selezionare la coppia di dati che crea il ciclo")
-                return
-            
-            # Close the loop
-            N_Y = []
-            for col1, col2 in zip(selected_cols[0::2], selected_cols[1::2]):
-                ell_up = df[col1].astype(float).values
-                ell_dw = df[col2].astype(float).values
+def apply_close(plot_data, file_choice, selected_columns, count_plot,
+                selected_pairs, dataframes, plot_customizations, logger):
+    '''
+    Function that corrects the effects of instrumental drift and closes the loop.
 
-                num = len(ell_up)
-                dy_start = abs(ell_up[0] - ell_dw[0])
-                dy_stop = abs(ell_up[-1] - ell_dw[-1])
+    A gradual correction is applied to the data to reduce the misalignments
+    at the ends of the loop, caused precisely by instrumental drift.
 
-                if dy_start > dy_stop:
-                    if ell_up[0] > ell_dw[0]:
-                        for i in range(num):
-                            ell_up[i] -= (0.5 * (num - 1 - i) * dy_start) / (num - 1)
-                            ell_dw[i] += (0.5 * (num - 1 - i) * dy_start) / (num - 1)
-                    else:
-                        for i in range(num):
-                            ell_up[i] += (0.5 * (num - 1 - i) * dy_start) / (num - 1)
-                            ell_dw[i] -= (0.5 * (num - 1 - i) * dy_start) / (num - 1)
+    For each loop the procedure is:
+    
+    1) Calculate the difference in absolute value between the initial and final values of the branches.
+    2) Determine which difference (initial or final) is dominant.
+    3) Apply a linear correction to reduce the misalignment:
+        This correction is applied only on the dominant difference and its intensity
+        decreases linearly while iterating on the points of the loop:
+        - The values of the increasing branch are incremented or decremented.
+        - The values of the decreasing branch are corrected symmetrically.
+    
+    Parameters
+    ----------
+    plot_data : callable
+        function to plot data called in order to
+        immediately make the plot after the changes made
+    file_choice : instance of tkinter.StringVar
+        variable to store the selected file
+    selected_columns : dict
+        coloumns , that form the loop, to close
+    count_plot : list
+        list of one element, a flag to update the same plot
+    selected_pairs : list
+        list of columns to plot
+    dataframes : list
+        list of loaded files, each file is a pandas dataframe
+    plot_customizations : dict
+        dictionary to save users customizations
+    logger : instance of logging.getLogger
+        logger of the app
+    '''
+    try:
+        if not file_choice.get():
+            messagebox.showerror("Errore", "Devi selezionare un file!")
+            return
 
-                if dy_start < dy_stop:
-                    if ell_up[-1] > ell_dw[-1]:
-                        for i in range(num - 1, -1, -1):
-                            ell_up[i] -= (0.5 * i * dy_stop) / (num - 1)
-                            ell_dw[i] += (0.5 * i * dy_stop) / (num - 1)
-                    else:
-                        for i in range(num - 1, -1, -1):
-                            ell_up[i] += (0.5 * i * dy_stop) / (num - 1)
-                            ell_dw[i] -= (0.5 * i * dy_stop) / (num - 1)
+        selected_idx = int(file_choice.get().split(" ")[1]) - 1
+        df = dataframes[selected_idx]  # The selected DataFrame
 
-                N_Y.append(ell_up)
-                N_Y.append(ell_dw)
+        # Filter selected columns
+        selected_cols = [col for col, is_selected in selected_columns.items() if is_selected.get()]
+        if not selected_cols:
+            messagebox.showerror("Errore", "Devi selezionare la coppia di dati che crea il ciclo")
+            return
+        if len(selected_cols) == 1:
+            messagebox.showerror("Errore", "Devi selezionare la coppia di dati che crea il ciclo")
+            return
+        
+        # Close the loop
+        N_Y = []
+        for col1, col2 in zip(selected_cols[0::2], selected_cols[1::2]):
+            ell_up = df[col1].astype(float).values
+            ell_dw = df[col2].astype(float).values
 
-            # Update normalized data in the selected DataFrame
-            for col, n_y in zip(selected_cols, N_Y):
-                df[col] = n_y
-                logger.info(f"Chiusura del ciclo applicata a {col}.")
+            num = len(ell_up)
+            dy_start = abs(ell_up[0] - ell_dw[0])
+            dy_stop = abs(ell_up[-1] - ell_dw[-1])
 
-            plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logger)
+            if dy_start > dy_stop:
+                if ell_up[0] > ell_dw[0]:
+                    for i in range(num):
+                        ell_up[i] -= (0.5 * (num - 1 - i) * dy_start) / (num - 1)
+                        ell_dw[i] += (0.5 * (num - 1 - i) * dy_start) / (num - 1)
+                else:
+                    for i in range(num):
+                        ell_up[i] += (0.5 * (num - 1 - i) * dy_start) / (num - 1)
+                        ell_dw[i] -= (0.5 * (num - 1 - i) * dy_start) / (num - 1)
 
-            messagebox.showinfo("Successo", f"Operazione applicata su File {selected_idx + 1}!")
-        except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante l'operazione: {e}")
+            if dy_start < dy_stop:
+                if ell_up[-1] > ell_dw[-1]:
+                    for i in range(num - 1, -1, -1):
+                        ell_up[i] -= (0.5 * i * dy_stop) / (num - 1)
+                        ell_dw[i] += (0.5 * i * dy_stop) / (num - 1)
+                else:
+                    for i in range(num - 1, -1, -1):
+                        ell_up[i] += (0.5 * i * dy_stop) / (num - 1)
+                        ell_dw[i] -= (0.5 * i * dy_stop) / (num - 1)
 
-    tk.Button(operation_window, text="Applica", command=apply_1).pack(pady=10)
-    tk.Label(operation_window, text="Selezionare la coppia (una alla volta) di curve da chiudere:").pack(pady=5)
+            N_Y.append(ell_up)
+            N_Y.append(ell_dw)
+
+        # Update normalized data in the selected DataFrame
+        for col, n_y in zip(selected_cols, N_Y):
+            df[col] = n_y
+            logger.info(f"Chiusura del ciclo applicata a {col}.")
+
+        plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logger)
+
+        messagebox.showinfo("Successo", f"Operazione applicata su File {selected_idx + 1}!")
+    except Exception as e:
+        messagebox.showerror("Errore", f"Errore durante l'operazione: {e}")
 
 #==============================================================================================#
 # Function to invert the x-axis to have aligned plots without phases                           #

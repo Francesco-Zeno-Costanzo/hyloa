@@ -12,7 +12,7 @@ from Hysteresis.data.io import *
 from Hysteresis.gui.main_window import MainApp
 
 #==============================================================================================#
-# File upload tests                                                                             #
+# File upload tests                                                                            #
 #==============================================================================================#
 
 class TestLoadFiles(unittest.TestCase):
@@ -357,6 +357,7 @@ class TestSaveModifiedData(unittest.TestCase):
         1) Destroys the Tkinter window.
         2) Removes any temporary files created.
         '''
+
         self.root.destroy() # Destroy Tkinter window
 
         # Remove the temporary file
@@ -436,9 +437,8 @@ class TestSaveModifiedData(unittest.TestCase):
             save_to_file(selected_df, self.app_instance, save_window)
 
             # Verify the message
-            if idx==1:
-                mock_showinfo.assert_called_once_with("Salvataggio completato",
-                f"Dati salvati in {os.path.basename(self.temp_file_path)}")
+            mock_showinfo.assert_any_call("Salvataggio completato",
+            f"Dati salvati in {os.path.basename(self.temp_file_path)}")
             
             # Verify the content of the saved file
             data = pd.read_csv(self.temp_file_path, sep="\t")
@@ -467,7 +467,7 @@ class TestSaveModifiedData(unittest.TestCase):
         selected_df = StringVar(value="File 1")
 
         # Simulate an exception during np.savetxt execution
-        with patch("data.io.np.savetxt", side_effect=Exception("Errore di test")):
+        with patch("Hysteresis.data.io.np.savetxt", side_effect=Exception("Errore di test")):
             save_to_file(selected_df, self.app_instance, self.root)
 
         # Verify the error message

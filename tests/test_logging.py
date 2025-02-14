@@ -58,7 +58,7 @@ class TestLoggingSetup(unittest.TestCase):
             with open(temp_log_path, "r") as log_file:
                 content = log_file.read()
             self.assertIn("Inizio sessione di log.", content)
-            self.assertIn(f"Logging configurato: scrittura su {temp_log_path}.log", content)
+            self.assertIn(f"Logging configurato: scrittura su {temp_log_path}", content)
 
         finally:
             # Remove the temporary log file

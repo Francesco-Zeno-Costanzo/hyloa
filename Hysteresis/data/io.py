@@ -306,7 +306,7 @@ def save_to_file(selected_df, app_instance, save_window):
 
         save_header(app_instance, header, file_path)
         # Save the data in the new file in text format
-        with open(file_path, "a", 'utf-8') as f:
+        with open(file_path, "a", encoding='utf-8') as f:
 
             data = np.array(df)
             rows, cols = data.shape

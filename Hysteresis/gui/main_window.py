@@ -5,7 +5,7 @@ everything that is done otherwise it is not possible to start
 the analysis. From here the calls to the other functions branch out.
 """
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from Hysteresis.data.io import load_files
 from Hysteresis.data.show import loaded_files
 from Hysteresis.data.io import save_modified_data
@@ -83,7 +83,17 @@ class MainApp:
         '''
         load_previous_session(self)
 
-    
+    def exit_app(self):
+        ''' Function to exit the application
+        '''
+        risposta = messagebox.askyesnocancel("Uscita", "Vuoi salvare la sessione prima di uscire?")
+        if risposta is True:
+            save_current_session(self)
+            self.root.quit()
+            self.root.destroy()
+        elif risposta is False:
+            self.root.quit()
+            self.root.destroy()
 
     def create_main_window(self):
         ''' Function to create the main window with improved layout and style '''
@@ -130,48 +140,4 @@ class MainApp:
                 ttk.Button(frame, text=label, command=command).pack(side=tk.LEFT, padx=10, pady=5, expand=True)
 
         # Exit Button
-        ttk.Button(self.root, text="Esci", command=self.root.quit).pack(pady=20)
-
-    """
-    def create_main_window(self):
-        ''' Function to create the main window
-        '''
-        
-        
-
-        # Using Message to automatically fit text
-        tk.Message(self.root, text=description, width=480).pack()
-
-        # Button to start logging
-        log_button = tk.Button(self.root, text="Avvia Logging",
-                               command=self.conf_logging)
-        log_button.pack(pady=20)
-
-        # Frame to organize buttons in rows
-        frame_top = tk.Frame(self.root)
-        frame_top.pack(pady=10)
-
-        frame_middle = tk.Frame(self.root)
-        frame_middle.pack(pady=10)
-
-        frame_middle_2 = tk.Frame(self.root)
-        frame_middle_2.pack(pady=10)
-
-        frame_bottom = tk.Frame(self.root)
-        frame_bottom.pack(pady=10)
-
-        # Main Buttons
-        # First line: Upload File and View Uploaded Files
-        tk.Button(frame_top, text="Carica File", command=self.load_data).pack(side=tk.LEFT, padx=5)
-        tk.Button(frame_top, text="Visualizza File Caricati", command=self.show_loaded_files).pack(side=tk.LEFT, padx=5)
-
-        # Second line: Create plot and Save Changed Data
-        tk.Button(frame_middle, text="Crea Grafico", command=self.plot).pack(side=tk.LEFT, padx=5)
-        tk.Button(frame_middle, text="Salva Dati Modificati", command=self.save).pack(side=tk.LEFT, padx=5)
-
-        # Third line: Save and Load Session
-        tk.Button(frame_middle_2, text="Salva Sessione", command=self.save_session).pack(side=tk.LEFT, padx=5)
-        tk.Button(frame_middle_2, text="Carica Sessione", command=self.load_session).pack(side=tk.LEFT, padx=5)
-
-        # Final line: Exit
-        tk.Button(frame_bottom, text="Esci", command=self.root.quit).pack()"""
+        ttk.Button(self.root, text="Esci", command=self.exit_app).pack(pady=20)

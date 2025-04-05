@@ -58,18 +58,12 @@ def load_previous_session(app_instance):
         app_instance.logger_path         = sessione.get("logger_path", None)
         app_instance.fit_results         = sessione.get("fit_results", {})
 
-        # Reconfigure logging if a logger path is provided
-        
+        # Reconfigure logging if a logger path is provided        
         setup_logging(app_instance.logger_path)
         app_instance.logger = logging.getLogger(__name__)
         app_instance.logger.info("Logger ripristinato da file di sessione.")
 
-
-
         messagebox.showinfo("Sessione Caricata", f"Sessione caricata dal file: {load_file}")
 
-        """# Chiama eventuali metodi per aggiornare l'interfaccia
-        app_instance.aggiorna_interfaccia()
-        """
     except Exception as e:
         messagebox.showerror("Errore", f"Errore durante il caricamento della sessione:\n{e}")

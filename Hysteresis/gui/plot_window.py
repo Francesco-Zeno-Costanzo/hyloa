@@ -6,7 +6,8 @@ import tkinter as tk
 from scipy.special import *
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from tkinter import messagebox, Toplevel, StringVar, OptionMenu, DoubleVar
+from tkinter import messagebox, Toplevel, StringVar, ttk, DoubleVar
+from matplotlib import markers, lines as mlines, colors as mcolors
 
 from Hysteresis.gui.command_window import open_command_window
 from Hysteresis.data.processing import norm, close, inv_x, inv_y
@@ -236,7 +237,7 @@ def plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logge
                 else:
                     line2, = plt.plot(x, y)
 
-                # Apply saved customizations
+                # Apply saved customization
                 customization = plot_customizations.get(i // 2, {})
                 line1.set_color(customization.get("color", line1.get_color()))
                 line1.set_marker(customization.get("marker", line1.get_marker()))
@@ -262,92 +263,66 @@ def plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logge
 
 def customize_plot_style(root, plot_customizations):
     ''' 
-    Opens a window to customize the color, marker and linestyle of a cycle.
-    Customizations will be saved for reuse.
-
-    Parameters
-    ----------
-    root : instance of TK class from tkinter
-        toplevel Tk widget, main window of the application
-    plot_customizations : dict
-        dictionary to save users customizations
+    Apre una finestra per personalizzare colore, marker e stile di linea di un ciclo del grafico.
+    Le personalizzazioni verranno salvate per riutilizzi futuri.
     '''
-
+    
     if not plt.get_fignums():
         messagebox.showerror("Errore", "Nessun grafico aperto! Crea prima un grafico.")
         return
 
-    style_window = Toplevel(root)
-    style_window.title("Personalizza Stile Grafico")
-    style_window.geometry("400x400")
-
-    # Retrieve graph lines
     fig = plt.gcf()
     ax = fig.gca()
     lines = ax.lines
     if not lines:
         messagebox.showerror("Errore", "Nessuna linea presente nel grafico!")
-        style_window.destroy()
         return
 
-    # Variables for selection and customization
-    cycle_var     = StringVar(value="Ciclo 1")
-    color_var     = StringVar(value="blue")
-    marker_var    = StringVar(value="o")
-    linestyle_var = StringVar(value="-")
+    style_window = Toplevel(root)
+    style_window.title("Personalizza Stile Grafico")
+    style_window.geometry("420x380")
+    style_window.resizable(False, False)
 
-    # Options available
-    colors     = ["blue", "red", "green", "black", "orange", "purple"]
-    markers    = ["o", "s", "^", "d", "*", "x"]
-    linestyles = ["-", "--", "-.", ":"]
-    cycles     = [f"Ciclo {i // 2 + 1}" for i in range(0, len(lines), 2)]
+    # All possible options
+    colors       = list(mcolors.TABLEAU_COLORS) + list(mcolors.CSS4_COLORS)
+    markers_list = [m for m in markers.MarkerStyle.markers.keys() if isinstance(m, str) and len(m) == 1]
+    linestyles   = list(mlines.Line2D.lineStyles.keys())
+    cycles       = [f"Ciclo {i // 2 + 1}" for i in range(0, len(lines), 2)]
 
-    # Dropdown to select cycle
-    tk.Label(style_window, text="Seleziona il ciclo da personalizzare:").pack(pady=5)
-    cycle_menu = OptionMenu(style_window, cycle_var, *cycles)
-    cycle_menu.pack(pady=5)
+    # Variables for selection
+    cycle_var     = StringVar(value=cycles[0])
+    color_var     = StringVar(value=colors[0])
+    marker_var    = StringVar(value=markers_list[0])
+    linestyle_var = StringVar(value='-')
 
-    # Dropdown to select color
-    tk.Label(style_window, text="Seleziona il colore:").pack(pady=5)
-    color_menu = OptionMenu(style_window, color_var, *colors)
-    color_menu.pack(pady=5)
+    def labeled_dropdown(parent, label, variable, options):
+        ttk.Label(parent, text=label).pack(pady=(10, 2))
+        ttk.Combobox(parent, textvariable=variable, values=options, state="readonly").pack(pady=(0, 5), fill='x', padx=40)
 
-    # Dropdown to select marker
-    tk.Label(style_window, text="Seleziona il marker:").pack(pady=5)
-    marker_menu = OptionMenu(style_window, marker_var, *markers)
-    marker_menu.pack(pady=5)
-
-    # Dropdown to select linestyle
-    tk.Label(style_window, text="Seleziona lo stile della linea:").pack(pady=5)
-    linestyle_menu = OptionMenu(style_window, linestyle_var, *linestyles)
-    linestyle_menu.pack(pady=5)
+    # Interface
+    ttk.Label(style_window, text="Personalizzazione Ciclo", font=("Helvetica", 14, "bold")).pack(pady=(15, 10))
+    labeled_dropdown(style_window, "Ciclo", cycle_var, cycles)
+    labeled_dropdown(style_window, "Colore", color_var, colors)
+    labeled_dropdown(style_window, "Marker", marker_var, markers_list)
+    labeled_dropdown(style_window, "Stile linea", linestyle_var, linestyles)
 
     def apply_style():
-        ''' Apply the selected style to the selected cycle.
-        '''
         try:
-            # Determines the index of the selected cycle
-            cycle_index = int(cycle_var.get().split(" ")[1]) - 1
-            line1 = lines[cycle_index * 2]      # go
-            line2 = lines[cycle_index * 2 + 1]  # return
+            idx = int(cycle_var.get().split(" ")[1]) - 1
+            line1 = lines[idx * 2]
+            line2 = lines[idx * 2 + 1]
 
-            # Apply the changes
-            line1.set_color(color_var.get())
-            line1.set_marker(marker_var.get())
-            line1.set_linestyle(linestyle_var.get())
+            # Applay the changes
+            for line in (line1, line2):
+                line.set_color(color_var.get())
+                line.set_marker(marker_var.get())
+                line.set_linestyle(linestyle_var.get())
 
-            line2.set_color(color_var.get())
-            line2.set_marker(marker_var.get())
-            line2.set_linestyle(linestyle_var.get())
+            line1.set_label(cycle_var.get())
+            line2.set_label("_nolegend_")
 
-            # Set a label only for the first line of the cycle
-            label = f"{cycle_var.get()}"
-            line1.set_label(label)
-            # Ignore this line in the legend because it would be 
-            line2.set_label("_nolegend_") # the second branch of the loop
-
-            # Save your changes
-            plot_customizations[cycle_index] = {
+            # Save the changes
+            plot_customizations[idx] = {
                 "color":     color_var.get(),
                 "marker":    marker_var.get(),
                 "linestyle": linestyle_var.get(),
@@ -356,12 +331,10 @@ def customize_plot_style(root, plot_customizations):
             ax.legend()
             plt.draw()
             style_window.destroy()
-
         except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante l'applicazione dello stile: {e}")
+            messagebox.showerror("Errore", f"Errore durante l'applicazione dello stile:\n{e}")
 
-    # Button to apply style
-    tk.Button(style_window, text="Applica", command=apply_style).pack(pady=20)
+    ttk.Button(style_window, text="Applica", command=apply_style).pack(pady=20)
 
 #==============================================================================================#
 # Curve fitting function                                                                       #
@@ -449,7 +422,6 @@ def open_curve_fitting_window(root, dataframes, fit_results, logger):
             selected_x_col.set(columns[0])
             selected_y_col.set(columns[0])
 
-            # Aggiorna i menu delle colonne
             x_menu["menu"].delete(0, "end")
             y_menu["menu"].delete(0, "end")
             for col in columns:
@@ -461,7 +433,7 @@ def open_curve_fitting_window(root, dataframes, fit_results, logger):
     selected_df.trace_add("write", update_columns)
     update_columns()  # Initialize with the first file
 
-    # Selection of range, parameters and fit function
+    # Selection of range, parameters, and fit function
     tk.Label(frame_parameters, text="Inserisci il range di fitting:").grid(row=0, column=0, columnspan=2, pady=5)
 
     tk.Label(frame_parameters, text="x_start:").grid(row=1, column=0, sticky="w", pady=2)
@@ -510,7 +482,7 @@ def open_curve_fitting_window(root, dataframes, fit_results, logger):
         # Define the fit function
         param_names = [p.strip() for p in param_names_var.get().split(",")]
         fit_func_code = f"lambda x, {', '.join(param_names)}: {function_var.get()}"            
-        part_after_colon = fit_func_code.split(":")[1].strip()  # Estrai la parte dopo il ":"
+        part_after_colon = fit_func_code.split(":")[1].strip()  # Extract the part after the colon
         logger.info(f"Si vuole usare come funzione di fit: {part_after_colon}.")
         fit_func = eval(fit_func_code)
 

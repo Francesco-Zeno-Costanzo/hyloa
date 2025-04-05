@@ -267,6 +267,7 @@ def save_modified_data(app_instance):
               command=lambda : loaded_files(app_instance)
              ).pack(pady=10)
 
+
 def save_to_file(selected_df, app_instance, save_window):
     '''
     Save the selected data to a new text file.

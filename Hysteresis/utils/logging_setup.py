@@ -50,6 +50,8 @@ def start_logging(app_instance):
         setup_logging(log_file)
         app_instance.logger = logging.getLogger(__name__)
         app_instance.logger.info("Logging configurato con successo.")
+        app_instance.logger_path = log_file
+
 
         # Show a confirmation message
         messagebox.showinfo("Logging Avviato", f"Il log sarà scritto nel file: {log_file}")

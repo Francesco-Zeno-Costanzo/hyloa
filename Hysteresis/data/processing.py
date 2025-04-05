@@ -146,7 +146,7 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
         elif num_cols == 4:
             x_columns = [df.columns[0], df.columns[2]]  # First and third column
         else:
-            pass#x_columns = [df.columns[0]]  # Se meno di 4 colonne, considera solo la prima
+            pass # The minimum value for a whole cycle is 4 columns
 
         # Create checkboxes for columns, excluding x-axis ones
         for col in df.columns:
@@ -161,9 +161,9 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
     file_choice.trace_add("write", update_column_selection)
 
     tk.Button(operation_window, text="Applica",
-              command=lambda :apply_close(plot_data, file_choice, selected_columns, count_plot,
-                                          selected_pairs, dataframes, plot_customizations,
-                                          logger)
+              command=lambda : apply_close(plot_data, file_choice, selected_columns, count_plot,
+                                           selected_pairs, dataframes, plot_customizations,
+                                           logger)
             ).pack(pady=10)
     
     tk.Label(operation_window,

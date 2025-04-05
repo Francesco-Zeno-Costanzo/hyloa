@@ -7,6 +7,9 @@ from unittest.mock import MagicMock, patch
 from Hysteresis.data.processing import *
 from Hysteresis.gui.main_window import MainApp
 
+#==============================================================================================#
+# Data processing tests                                                                        #
+#==============================================================================================#
 
 class TestNormalizationClose(unittest.TestCase):
 
@@ -27,14 +30,14 @@ class TestNormalizationClose(unittest.TestCase):
         self.app.logger = MagicMock()
 
         # Data simulation
-        x = np.linspace(-1, 1, 200)  # Magnetic fiedl
+        x = np.linspace(-1, 1, 200)  # Magnetic field
         np.random.seed(69420)        # For reproducibility
         noise = np.random.normal(0, 0.0005, size=x.shape)  # Gaussian error
 
-        # Creation of the two branches of the hysteresis loop
-        # The sigmoid function is used to simulate the hysteresis loop
-        # The noise is added to simulate the experimental error
-        # The last term is a linear trend to simulate a drift
+        # Creation of the two branches of the hysteresis loop.
+        # The sigmoid function is used to simulate the hysteresis loop.
+        # The noise is added to simulate the experimental error.
+        # The last term is a linear trend to simulate a drift.
         # The -0.003 is due to the fact that the loop is always closed at one of the extreme points.
         y_up = 0.025 + 0.015 * (1 / (1 + np.exp(-10 * (x-0.25)))) + noise + (0.003*x - 0.003)
         y_dw = 0.025 + 0.015 * (1 / (1 + np.exp( 10 * (x-0.25))))[::-1] + noise[::-1]
@@ -149,7 +152,7 @@ class TestNormalizationClose(unittest.TestCase):
                  self.app.logger)
         mock_showerror.assert_called_once_with("Errore", "Devi selezionare la coppia di dati che crea il ciclo")
     
-
+#==============================================================================================#
 
 class TestCloseFunction(unittest.TestCase):
 

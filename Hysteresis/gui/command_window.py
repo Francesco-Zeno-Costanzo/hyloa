@@ -154,22 +154,34 @@ def open_command_window(root, dataframes, fit_results, logger):
         global history_index
 
         if event.keysym == "Up":      # Navigate back in history
-            if history_index > 0:
-                history_index -= 1
-            elif history_index == -1 and command_history:  # Initial case
-                history_index = len(command_history) - 1
+            try :
+                if history_index > 0:
+                    history_index -= 1
+                elif history_index == -1 and command_history:  # Initial case
+                    history_index = len(command_history) - 1
+
+            except NameError:
+                pass
 
         elif event.keysym == "Down":  # Navigate forward in history
-            if history_index < len(command_history) - 1:
-                history_index += 1
-            elif history_index == len(command_history) - 1:
-                history_index = -1
+            try:
+                if history_index < len(command_history) - 1:
+                    history_index += 1
+                elif history_index == len(command_history) - 1:
+                    history_index = -1
+            
+            except NameError:
+                pass
 
         # Show the current command in the shell
-        if history_index >= 0:
-            command = command_history[history_index]
-        else:
-            command = ""
+        try :
+            if history_index >= 0:
+                command = command_history[history_index]
+            else:
+                command = ""
+        
+        except NameError:
+                command = ""
 
         # Replace the current command with the one in the history
         current_line_start = shell_text.index("insert linestart")

@@ -32,12 +32,12 @@ def open_plot_window(app_instance):
     plot_customizations = app_instance.plot_customizations
     fit_results         = app_instance.fit_results
     logger              = app_instance.logger
-
-    # count_plot is in a list because it needs to change as the various plots
-    # are updated, but it is an integer, so it is immutable; 
-    # so we put it in a mutable container, so we will not have problems
-    # when we make the closure for the function call
-
+    """
+    Count_plot is in a list because it needs to change as the various plots
+    are updated, but it is an integer, so it is immutable; 
+    so we put it in a mutable container, so we will not have problems
+    when we make the closure for the function call
+    """
     if not dataframes:
         messagebox.showerror("Errore", "Non ci sono dati caricati!")
         return

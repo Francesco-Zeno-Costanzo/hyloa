@@ -31,12 +31,13 @@ class MainApp:
         
         # Attributes to manage information and configuration
         self.dataframes           = []     # List to store loaded DataFrames
-        self.count_plot           = 0      # Counter to update the graphs
+        self.count_plot           = 0      # Counter to update the single plot
         self.plot_customizations  = {}     # Dictionary to save graphic's customization
         self.header_lines         = []     # List to store the initial lines of files
         self.logger               = None   # Logger for the entire application
         self.logger_path          = None   # Path to the log file
         self.fit_results          = {}     # Dictionary to save fitting results
+        self.number_plots         = 0      # Number of all created plots
 
         # Initialize main window
         self.root = root
@@ -70,6 +71,7 @@ class MainApp:
     def plot(self):
         ''' Call the function to create a graph.
         '''
+        self.number_plots += 1
         open_plot_window(self) # Pass the class instance as an argument
 
     

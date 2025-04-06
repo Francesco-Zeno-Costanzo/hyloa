@@ -9,7 +9,7 @@ from tkinter import messagebox
 # Function to normalize curves in the interval [-1, 1]                                         #
 #==============================================================================================#
 
-def norm(plot_data, count_plot, selected_pairs, dataframes, plot_customizations, logger):
+def norm(plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger):
     '''
     Cycle normalization function.
     For each cycle the procedure implemented is the following:
@@ -28,6 +28,8 @@ def norm(plot_data, count_plot, selected_pairs, dataframes, plot_customizations,
         immediately make the plot after the changes made
     count_plot : list
         list of one element, a flag to update the same plot
+    numer_plots : list
+        list of one element, index of the current plot
     selected_pairs : list
         list of columns to plot
     dataframes : list
@@ -81,14 +83,14 @@ def norm(plot_data, count_plot, selected_pairs, dataframes, plot_customizations,
         logger.info(f"Normalizzazione applicata alle colonne {y_col_name}.")
         dataframes[df_idx][y_col_name] = n_y
 
-    plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logger)
+    plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
 
 
 #==============================================================================================#
 # Function to close cycles                                                                     #
 #==============================================================================================#
 
-def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customizations, logger):
+def close(root, plot_data, number_plots, count_plot, selected_pairs, dataframes, plot_customizations, logger):
     '''
     Function to manage the window to select the specific cycle to close.
 
@@ -101,6 +103,8 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
         immediately make the plot after the changes made
     count_plot : list
         list of one element, a flag to update the same plot
+    number_plots : list
+        list of one element, index of the current plot
     selected_pairs : list
         list of columns to plot
     dataframes : list
@@ -163,7 +167,7 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
     tk.Button(operation_window, text="Applica",
               command=lambda : apply_close(plot_data, file_choice, selected_columns, count_plot,
                                            selected_pairs, dataframes, plot_customizations,
-                                           logger)
+                                           logger, number_plots)
             ).pack(pady=10)
     
     tk.Label(operation_window,
@@ -172,7 +176,8 @@ def close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
 
 
 def apply_close(plot_data, file_choice, selected_columns, count_plot,
-                selected_pairs, dataframes, plot_customizations, logger):
+                selected_pairs, dataframes, plot_customizations, logger,
+                number_plots):
     '''
     Function that corrects the effects of instrumental drift and closes the loop.
 
@@ -208,6 +213,8 @@ def apply_close(plot_data, file_choice, selected_columns, count_plot,
         dictionary to save users customizations
     logger : instance of logging.getLogger
         logger of the app
+    number_plots : list
+        list of one element, index of the current plot
     '''
     try:
         if not file_choice.get():
@@ -264,7 +271,7 @@ def apply_close(plot_data, file_choice, selected_columns, count_plot,
             df[col] = n_y
             logger.info(f"Chiusura del ciclo applicata a {col}.")
 
-        plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logger)
+        plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
 
         messagebox.showinfo("Successo", f"Operazione applicata su File {selected_idx + 1}!")
     except Exception as e:
@@ -274,7 +281,7 @@ def apply_close(plot_data, file_choice, selected_columns, count_plot,
 # Function to invert the x-axis to have aligned plots without phases                           #
 #==============================================================================================#
 
-def inv_x(root, plot_data, count_plot, selected_pairs, dataframes, plot_customizations, logger):
+def inv_x(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger):
     ''' 
     Window to select a file and invert the x-axis.
 
@@ -287,6 +294,8 @@ def inv_x(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
         immediately make the plot after the changes made
     count_plot : list
         list of one element, a flag to update the same plot
+    number_plots : list
+        list of one element, index of the current plot
     selected_pairs : list
         list of columns to plot
     dataframes : list
@@ -325,7 +334,7 @@ def inv_x(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
                     logger.info(f"Inversione dell'asse x -> colonna {x_col}.")
                     df[x_col] = df[x_col].astype(float) * -1   # Reverses column values
 
-            plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logger)
+            plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
             messagebox.showinfo("Successo", f"Inversione asse X applicata su File {selected_idx + 1}!")
         except Exception as e:
             messagebox.showerror("Errore", f"Errore durante l'operazione: {e}")
@@ -336,7 +345,7 @@ def inv_x(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
 # Function invert the y-axis (just for completeness)                                           #
 #==============================================================================================#
 
-def inv_y(root, plot_data, count_plot, selected_pairs, dataframes, plot_customizations, logger):
+def inv_y(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger):
     '''
     Window to select a file and invert the Y-axis.
 
@@ -349,6 +358,8 @@ def inv_y(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
         immediately make the plot after the changes made
     count_plot : list
         list of one element, a flag to update the same plot
+    number_plots : list
+        list of one element, index of the current plot
     selected_pairs : list
         list of columns to plot
     dataframes : list
@@ -387,7 +398,7 @@ def inv_y(root, plot_data, count_plot, selected_pairs, dataframes, plot_customiz
                     df[y_col] = df[y_col].astype(float) * -1  # Reverses column values 
                     logger.info(f"Inversione dell'asse y -> colonna {y_col}.")
 
-            plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logger)
+            plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
             messagebox.showinfo("Successo", f"Inversione asse Y applicata su File {selected_idx + 1}!")
         except Exception as e:
             messagebox.showerror("Errore", f"Errore durante l'operazione: {e}")

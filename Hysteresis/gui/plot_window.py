@@ -33,18 +33,20 @@ def open_plot_window(app_instance):
     plot_customizations = app_instance.plot_customizations
     fit_results         = app_instance.fit_results
     logger              = app_instance.logger
+    number_plots        = [app_instance.number_plots]
     """
     Count_plot is in a list because it needs to change as the various plots
     are updated, but it is an integer, so it is immutable; 
     so we put it in a mutable container, so we will not have problems
-    when we make the closure for the function call
+    when we make the closure for the function call.
+    Same for numebr_plots
     """
     if not dataframes:
         messagebox.showerror("Errore", "Non ci sono dati caricati!")
         return
 
     plot_window = tk.Toplevel(root)
-    plot_window.title("Crea Grafico con Coppie x-y")
+    plot_window.title(f"Pannello di controllo grafico figura {number_plots[0]}")
 
     selected_pairs = []  # List for selected pairs (file, x, y)
 
@@ -59,7 +61,7 @@ def open_plot_window(app_instance):
 
     # Button to create the plot
     tk.Button(button_frame_0, text="Crea Grafico",
-              command=lambda : plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logger)
+              command=lambda : plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
              ).pack(side="left", pady=5)
     
     # Button to customize the plot style
@@ -83,22 +85,22 @@ def open_plot_window(app_instance):
 
     # Button to normalize data
     tk.Button(button_frame_1, text="Normalize",
-              command=lambda : norm(plot_data, count_plot, selected_pairs, dataframes, plot_customizations, logger)
+              command=lambda : norm(plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
              ).pack(side="left", padx=5)
     
     # Button to close the loop
     tk.Button(button_frame_1, text="Close loop",
-              command=lambda : close(root, plot_data, count_plot, selected_pairs, dataframes, plot_customizations, logger)
+              command=lambda : close(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
              ).pack(side="left", padx=5)
     
     # Button to invert the fields
     tk.Button(button_frame_1, text="Inverti Campi", 
-              command=lambda : inv_x(root, plot_data, count_plot, selected_pairs, dataframes, plot_customizations, logger)
+              command=lambda : inv_x(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
              ).pack(side="left", padx=5)
     
     # Button to invert the y-axis
     tk.Button(button_frame_1, text="Inverti asse y",
-              command=lambda : inv_y(root, plot_data, count_plot, selected_pairs, dataframes, plot_customizations, logger)
+              command=lambda : inv_y(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
              ).pack(side="left", padx=5)
 
     # Label for selecting couples
@@ -180,7 +182,7 @@ def add_pair(plot_window, dataframes, selected_pairs):
 # Function that creates the plot with the chosen data                                          #
 #==============================================================================================#
 
-def plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logger):
+def plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger):
     '''
     Create the chart with the selected pairs.
     If there are customizations for a given file use those,
@@ -190,6 +192,8 @@ def plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logge
     ----------
     count_plot : list
         list of one element, a flag to update the same plot
+    numer_plots : list
+        list of one element, the number of the current plot
     selected_pairs : list
         list of columns to plot
     dataframes : list
@@ -200,11 +204,11 @@ def plot_data(count_plot, selected_pairs, dataframes, plot_customizations, logge
         logger of the app
     '''
 
-    if count_plot[0] >0:
+    if count_plot[0] >0 :
         plt.cla()
     try:
 
-        plt.figure(1, figsize=(10, 6))
+        plt.figure(number_plots[0], figsize=(10, 6))
         count_plot[0] += 1
 
         X = []
@@ -312,7 +316,7 @@ def customize_plot_style(root, plot_customizations):
             line1 = lines[idx * 2]
             line2 = lines[idx * 2 + 1]
 
-            # Applay the changes
+            # Apply the changes
             for line in (line1, line2):
                 line.set_color(color_var.get())
                 line.set_marker(marker_var.get())
@@ -340,7 +344,7 @@ def customize_plot_style(root, plot_customizations):
 # Curve fitting function                                                                       #
 #==============================================================================================#
 
-def open_curve_fitting_window(root, dataframes, fit_results, logger):
+def open_curve_fitting_window(root, dataframes, fit_results, number_plots, logger):
     '''
     Opens a window to configure the operations to be performed.
 
@@ -352,6 +356,8 @@ def open_curve_fitting_window(root, dataframes, fit_results, logger):
         list of loaded files, each file is a pandas dataframe
     fit_results : dict
         dictionary to store the results
+    number_plots : list
+        list of one element, the number of the current plot
     logger : instance of logging.getLogger
         logger of the app
     '''
@@ -495,7 +501,7 @@ def open_curve_fitting_window(root, dataframes, fit_results, logger):
             # Draw the fitted curve
             x_plot = np.linspace(x_start.get(), x_end.get(), 500)
             y_plot = fit_func(x_plot, *params)
-            plt.figure(1)
+            plt.figure(number_plots[0])
             plt.plot(x_plot, y_plot, label=f"Fit: {y_col} vs {x_col}", linestyle="--", color="green")
             plt.legend()
             plt.show()
@@ -518,7 +524,7 @@ def open_curve_fitting_window(root, dataframes, fit_results, logger):
             # Draw the curve calculated with the initial parameters
             x_plot = np.linspace(x_start.get(), x_end.get(), 500)
             y_plot = fit_func(x_plot, *initial_params)
-            plt.figure(1)
+            plt.figure(number_plots[0])
             plt.plot(x_plot, y_plot, label="initial guess curve", linestyle="--", color="green")
             plt.legend()
             plt.show()

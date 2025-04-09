@@ -90,7 +90,7 @@ def norm(plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_c
 # Function to close cycles                                                                     #
 #==============================================================================================#
 
-def close(root, plot_data, number_plots, count_plot, selected_pairs, dataframes, plot_customizations, logger):
+def close(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger):
     '''
     Function to manage the window to select the specific cycle to close.
 

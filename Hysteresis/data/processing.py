@@ -128,7 +128,7 @@ def close(root, plot_data, number_plots, count_plot, selected_pairs, dataframes,
     def update_column_selection(*args):
         ''' Updates the column list based on the selected file, excluding the x-axis.
         '''
-        # Rimuovi tutti i widget delle colonne esistenti
+        # Remove all existing column widgets
         for widget in operation_window.pack_slaves():
             if isinstance(widget, tk.Checkbutton):
                 widget.destroy()
@@ -278,8 +278,63 @@ def apply_close(plot_data, file_choice, selected_columns, count_plot,
         messagebox.showerror("Errore", f"Errore durante l'operazione: {e}")
 
 #==============================================================================================#
-# Function to invert the x-axis to have aligned plots without phases                           #
+# Function to invert axis                                                                      #
 #==============================================================================================#
+
+def apply_inversion(axis, file_choice, selected_pairs, dataframes, logger,
+                    plot_data, count_plot, number_plots, plot_customizations):
+    '''
+    Function to invert the x or y axis of the selected file.
+
+    Parameters
+    ----------
+    axis : str
+        axis to invert, can be "x", "y" or "both"
+    file_choice : instance of tkinter.StringVar
+        variable to store the selected file
+    selected_pairs : list
+        list of columns to plot
+    dataframes : list
+        list of loaded files, each file is a pandas dataframe
+    logger : instance of logging.getLogger
+        logger of the app
+    plot_data : callable
+        function to plot data called in order to
+        immediately make the plot after the changes made
+    count_plot : list
+        list of one element, a flag to update the same plot
+    number_plots : list
+        list of one element, index of the current plot
+    plot_customizations : dict
+        dictionary to save users customizations
+    '''
+    try:
+        if not file_choice.get():
+            messagebox.showerror("Errore", "Devi selezionare un file!")
+            return
+
+        selected_idx = int(file_choice.get().split(" ")[1]) - 1
+        df = dataframes[selected_idx]
+
+        for _, x_var, y_var in selected_pairs:
+            if axis in ("x", "both"):
+                x_col = x_var.get()
+                if x_col in df.columns:
+                    df[x_col] = df[x_col].astype(float) * -1
+                    logger.info(f"Inversione asse x -> colonna {x_col}.")
+
+            if axis in ("y", "both"):
+                y_col = y_var.get()
+                if y_col in df.columns:
+                    df[y_col] = df[y_col].astype(float) * -1
+                    logger.info(f"Inversione asse y -> colonna {y_col}.")
+
+        plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
+        messagebox.showinfo("Successo", f"Inversione asse {axis.upper()} applicata su File {selected_idx + 1}!")
+
+    except Exception as e:
+        messagebox.showerror("Errore", f"Errore durante l'inversione: {e}")
+
 
 def inv_x(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger):
     ''' 
@@ -306,48 +361,22 @@ def inv_x(root, plot_data, count_plot, number_plots, selected_pairs, dataframes,
         logger of the app
     '''
     operation_window = tk.Toplevel(root)
-    operation_window.title("Inverti Asse X")
-
+    operation_window.title("Inverti Asse x")
     file_choice = tk.StringVar()
 
-    # Dropdown to choose file
     tk.Label(operation_window, text="Seleziona il file:").pack(pady=5)
-    file_menu = tk.OptionMenu(operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))])
-    file_menu.pack()
+    tk.OptionMenu(operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))]).pack()
 
-    def apply_2():
-        ''' Applies the inversion on the x-axis of the selected file.
-        '''
-        try:
-            # Get index of selected file
-            if not file_choice.get():
-                messagebox.showerror("Errore", "Devi selezionare un file!")
-                return
+    tk.Button(operation_window, text="Applica",
+                command=lambda: apply_inversion(
+                    "x", file_choice, selected_pairs, dataframes, logger,
+                    plot_data, count_plot, number_plots, plot_customizations)
+                ).pack(pady=10)
 
-            selected_idx = int(file_choice.get().split(" ")[1]) - 1
-            df = dataframes[selected_idx]  # The selected DataFrame
-
-            # Retrieve and invert the selected x column
-            for _, x_var, _ in selected_pairs:
-                x_col = x_var.get()
-                if x_col in df.columns:
-                    logger.info(f"Inversione dell'asse x -> colonna {x_col}.")
-                    df[x_col] = df[x_col].astype(float) * -1   # Reverses column values
-
-            plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
-            messagebox.showinfo("Successo", f"Inversione asse X applicata su File {selected_idx + 1}!")
-        except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante l'operazione: {e}")
-
-    tk.Button(operation_window, text="Applica", command=apply_2).pack(pady=10)
-
-#==============================================================================================#
-# Function invert the y-axis (just for completeness)                                           #
-#==============================================================================================#
 
 def inv_y(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger):
     '''
-    Window to select a file and invert the Y-axis.
+    Window to select a file and invert the y-axis.
 
     Parameters
     ----------
@@ -370,37 +399,149 @@ def inv_y(root, plot_data, count_plot, number_plots, selected_pairs, dataframes,
         logger of the app
     '''
     operation_window = tk.Toplevel(root)
-    operation_window.title("Inverti Asse y")
-
+    operation_window.title("Inverti Asse Y")
     file_choice = tk.StringVar()
 
-    # Dropdown to choose file
     tk.Label(operation_window, text="Seleziona il file:").pack(pady=5)
-    file_menu = tk.OptionMenu(operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))])
+    tk.OptionMenu(operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))]).pack()
+
+    tk.Button(operation_window, text="Applica",
+                command=lambda: apply_inversion(
+                    "y", file_choice, selected_pairs, dataframes, logger,
+                    plot_data, count_plot, number_plots, plot_customizations)
+                ).pack(pady=10)
+
+#==============================================================================================#
+# Function to invert a single branch of the cycle                                              #
+#==============================================================================================#
+
+def inv_single_branch(root, plot_data, count_plot, number_plots,
+                      selected_pairs, dataframes, plot_customizations, logger):
+    '''
+    GUI window to select a file and invert specific branches (columns)
+    of a cycle by applying a sign inversion (-1).
+
+    Parameters
+    ----------
+    root : instance of TK class from tkinter
+        toplevel Tk widget, main window of the application
+    plot_data : callable
+        function to plot data called in order to
+        immediately make the plot after the changes made
+    count_plot : list
+        list of one element, a flag to update the same plot
+    number_plots : list
+        list of one element, index of the current plot
+    selected_pairs : list
+        list of columns to plot
+    dataframes : list
+        list of loaded files, each file is a pandas dataframe
+    plot_customizations : dict
+        dictionary to save users customizations
+    logger : instance of logging.getLogger
+        logger of the app
+    '''
+    operation_window = tk.Toplevel(root)
+    operation_window.title("Inverti Singolo Ramo")
+
+    file_choice = tk.StringVar()
+    selected_columns = {}  # Dictionary of {col_name: tk.BooleanVar}
+
+    # File selection dropdown
+    tk.Label(operation_window, text="Seleziona il file:").pack(pady=5)
+    file_menu = tk.OptionMenu(
+        operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))]
+    )
     file_menu.pack()
 
-    def apply_3():
-        ''' Applies inversion on the y-axis of the selected file.
-        '''
-        try:
-            # Get index of selected file
-            if not file_choice.get():
-                messagebox.showerror("Errore", "Devi selezionare un file!")
-                return
+    def update_column_selection(*args):
+        # Remove existing checkboxes
+        for widget in operation_window.pack_slaves():
+            if isinstance(widget, tk.Checkbutton):
+                widget.destroy()
 
-            selected_idx = int(file_choice.get().split(" ")[1]) - 1
-            df = dataframes[selected_idx]  # The selected DataFrame
+        if not file_choice.get():
+            return
 
-            # Retrieve and invert the selected y column
-            for _, _, y_var in selected_pairs:
-                y_col = y_var.get()
-                if y_col in df.columns:
-                    df[y_col] = df[y_col].astype(float) * -1  # Reverses column values 
-                    logger.info(f"Inversione dell'asse y -> colonna {y_col}.")
+        selected_idx = int(file_choice.get().split(" ")[1]) - 1
+        df = dataframes[selected_idx]
 
-            plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
-            messagebox.showinfo("Successo", f"Inversione asse Y applicata su File {selected_idx + 1}!")
-        except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante l'operazione: {e}")
+        for col in df.columns:
+            selected_columns[col] = tk.BooleanVar(value=False)
+            cb = tk.Checkbutton(operation_window, text=col, variable=selected_columns[col])
+            cb.pack(anchor="w")
 
-    tk.Button(operation_window, text="Applica", command=apply_3).pack(pady=10)
+    file_choice.trace_add("write", update_column_selection)
+
+    # Apply button that directly calls the inversion
+    tk.Button(
+        operation_window,
+        text="Applica",
+        command=lambda: apply_column_inversion(
+            file_choice=file_choice,
+            selected_columns=selected_columns,
+            dataframes=dataframes,
+            logger=logger,
+            plot_data=plot_data,
+            count_plot=count_plot,
+            number_plots=number_plots,
+            selected_pairs=selected_pairs,
+            plot_customizations=plot_customizations
+        )
+    ).pack(pady=10)
+
+    tk.Label(
+        operation_window,
+        text="Seleziona le colonne da invertire:"
+    ).pack(pady=5)
+
+def apply_column_inversion(file_choice, selected_columns, dataframes, logger,
+                           plot_data, count_plot, number_plots, selected_pairs,
+                           plot_customizations):
+    '''
+    Inverts only the selected columns of a selected file.
+
+    Parameters
+    ----------
+    file_choice : tk.StringVar
+        Variable containing the selected file (e.g., "File 1")
+    selected_columns : dict
+        Dictionary mapping column names to tk.BooleanVar()
+    dataframes : list
+        list of loaded files, each file is a pandas dataframe
+    logger : instance of logging.getLogger
+        logger of the app
+    plot_data : callable
+        function to plot data called in order to
+        immediately make the plot after the changes made
+    count_plot : list
+        list of one element, a flag to update the same plot
+    number_plots : list
+        list of one element, index of the current plot
+    selected_pairs : list
+        list of columns to plot
+    plot_customizations : dict
+        dictionary to save users customizations
+    '''
+    try:
+        if not file_choice.get():
+            messagebox.showerror("Errore", "Nessun file selezionato.")
+            return
+
+        idx = int(file_choice.get().split(" ")[1]) - 1
+        df = dataframes[idx]
+
+        selected_cols = [col for col, var in selected_columns.items() if var.get()]
+        if not selected_cols:
+            messagebox.showerror("Errore", "Seleziona almeno una colonna da invertire.")
+            return
+
+        for col in selected_cols:
+            if col in df.columns:
+                df[col] = df[col].astype(float) * -1
+                logger.info(f"Inversione colonna {col} nel file {idx + 1}.")
+
+        plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
+        messagebox.showinfo("Successo", f"Inversione applicata su: {', '.join(selected_cols)}")
+    except Exception as e:
+        messagebox.showerror("Errore", f"Errore durante l'inversione: {e}")

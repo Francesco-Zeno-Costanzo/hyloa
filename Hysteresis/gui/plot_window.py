@@ -10,7 +10,7 @@ from tkinter import messagebox, Toplevel, StringVar, ttk, DoubleVar
 from matplotlib import markers, lines as mlines, colors as mcolors
 
 from Hysteresis.gui.command_window import open_command_window
-from Hysteresis.data.processing import norm, close, inv_x, inv_y
+from Hysteresis.data.processing import norm, close, inv_x, inv_y, inv_single_branch
 
 #==============================================================================================#
 # Main function for managing the plot window                                                   #
@@ -101,6 +101,11 @@ def open_plot_window(app_instance):
     # Button to invert the y-axis
     tk.Button(button_frame_1, text="Inverti asse y",
               command=lambda : inv_y(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
+             ).pack(side="left", padx=5)
+    
+     # Button to invert a single branch
+    tk.Button(button_frame_1, text="Inverti ramo",
+              command=lambda : inv_single_branch(root, plot_data, count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger)
              ).pack(side="left", padx=5)
 
     # Label for selecting couples

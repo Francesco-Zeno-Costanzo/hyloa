@@ -13,6 +13,7 @@ class TestSessionFunctions(unittest.TestCase):
         self.mock_app.logger_path = "log.txt"
         self.mock_app.fit_results = {"fit": "ok"}
         self.mock_app.logger = MagicMock()
+        self.mock_app.list_figures = ["figure1", "figure2"]
 
     @patch("Hysteresis.data.session.filedialog.asksaveasfilename")
     @patch("Hysteresis.data.session.pickle.dump")
@@ -55,6 +56,7 @@ class TestSessionFunctions(unittest.TestCase):
             "plot_customizations": {"title": "grafico"},
             "logger_path": "log.txt",
             "fit_results": {"fit": "ok"},
+            "figures": ["figure1", "figure2"]
         }
         mock_get_logger.return_value = MagicMock()
 

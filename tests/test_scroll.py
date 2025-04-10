@@ -92,32 +92,3 @@ class TestScrollableFrame(unittest.TestCase):
 
 
 
-'''
-La seguente funzione del test:
-"""
-def test_scrollregion_updated_on_configure(self):
-        
-        frame = ScrollableFrame(self.root)
-        frame.pack()
-
-        mock_canvas_configure = MagicMock()
-        frame.canvas.configure = mock_canvas_configure
-
-        # Simulate <Configure> event
-        frame.scrollable_frame.event_generate("<Configure>")
-        self.root.update_idletasks()
-
-        # Ensure scrollregion was updated
-        mock_canvas_configure.assert_called()
-"""
-mi da questo errore:
-FAIL: test_scrollregion_updated_on_configure (test_scroll.TestScrollableFrame)
-Test that scrollregion updates when inner frame is resized.
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "/home/francesco/GitHub/Hysteresis/tests/test_scroll.py", line 50, in test_scrollregion_updated_on_configure
-    mock_canvas_configure.assert_called()
-  File "/usr/lib/python3.10/unittest/mock.py", line 898, in assert_called
-    raise AssertionError(msg)
-AssertionError: Expected 'mock' to have been called.
-'''

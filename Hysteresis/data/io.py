@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel, StringVar
 
 from Hysteresis.data.show import loaded_files
+from Hysteresis.utils.scroll import ScrollableFrame
 
 #==============================================================================================#
 # File upload functions                                                                        #
@@ -145,7 +146,7 @@ def show_column_selection(app_instance, root, file_path, header):
 
     # I show the values ​​of the all_df columns in the upper
     # part of the window via a scrolling sub-window
-    canvas = tk.Canvas(frame)
+    """canvas = tk.Canvas(frame)
     canvas.pack(side="left", fill="both", expand=True)
 
     scrollbar = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
@@ -165,6 +166,19 @@ def show_column_selection(app_instance, root, file_path, header):
 
     
     canvas.configure(yscrollcommand=scrollbar.set)
+    """
+    # Usa ScrollableFrame per i dati tabellari
+    scrollable = ScrollableFrame(frame)
+    scrollable.pack(fill="both", expand=True)
+
+    # Ottieni il frame scrollabile vero e proprio
+    inner_frame = scrollable.scrollable_frame
+
+    # Visualizza i dati come tabella
+    for i, col_name in enumerate(all_df.columns):
+        tk.Label(inner_frame, text=col_name, font=("Arial", 10, "bold")).grid(row=0, column=i, sticky="w", padx=5)
+        for j, value in enumerate(all_df[col_name].values):
+            tk.Label(inner_frame, text=value, font=("Courier", 9)).grid(row=j + 1, column=i, sticky="w", padx=5)
 
     # Bottom Canvas for the bottom line
     bottom_canvas = tk.Canvas(selection_window, height=10)

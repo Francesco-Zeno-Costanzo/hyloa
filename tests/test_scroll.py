@@ -48,6 +48,24 @@ class TestScrollableFrame(unittest.TestCase):
 
         # Ensure scrollregion was updated
         mock_canvas_configure.assert_called()"""
+    
+    def test_scrollregion_updated_on_configure(self):
+        '''Test that scrollregion is updated when the inner frame is resized.
+        '''
+        frame = ScrollableFrame(self.root)
+        frame.pack()
+
+        # Mock the bbox and configure methods
+        mock_bbox = MagicMock(return_value=(0, 0, 100, 200))
+        mock_configure = MagicMock()
+        frame.canvas.bbox = mock_bbox
+        frame.canvas.configure = mock_configure
+
+        # Manually trigger the <Configure> callback
+        frame._on_frame_configure(event=None)
+
+        # Verify that scrollregion was set correctly
+        mock_configure.assert_called_once_with(scrollregion=(0, 0, 100, 200))
 
     def test_mousewheel_binding(self):
         '''Test that mouse wheel binds/unbinds correctly on enter/leave.

@@ -12,11 +12,16 @@ class ScrollableFrame(tk.Frame):
         scrollbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = tk.Frame(self.canvas)
 
-        self.scrollable_frame.bind(
+        """self.scrollable_frame.bind(
             "<Configure>",
             lambda e: self.canvas.configure(
                 scrollregion=self.canvas.bbox("all")
             )
+        )"""
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            self._on_frame_configure
         )
 
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
@@ -28,6 +33,12 @@ class ScrollableFrame(tk.Frame):
         # Enable scrolling with mouse wheel
         self.scrollable_frame.bind("<Enter>", self._bind_mousewheel)
         self.scrollable_frame.bind("<Leave>", self._unbind_mousewheel)
+    
+    def _on_frame_configure(self, event=None):
+        '''Callback to update scrollregion.
+        '''
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
 
     def _bind_mousewheel(self, event):
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)  # Windows/macOS

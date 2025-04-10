@@ -5,7 +5,9 @@ everything that is done otherwise it is not possible to start
 the analysis. From here the calls to the other functions branch out.
 """
 import tkinter as tk
+import matplotlib.pyplot as plt
 from tkinter import ttk, messagebox
+
 from Hysteresis.data.io import load_files
 from Hysteresis.data.show import loaded_files
 from Hysteresis.data.io import save_modified_data
@@ -38,6 +40,10 @@ class MainApp:
         self.logger_path          = None   # Path to the log file
         self.fit_results          = {}     # Dictionary to save fitting results
         self.number_plots         = 0      # Number of all created plots
+        self.list_figures         = []     # List to store all figures
+        self.plot_window_ref      = None  # Reference to the plot window
+
+
 
         # Initialize main window
         self.root = root
@@ -57,6 +63,11 @@ class MainApp:
         '''
         load_files(self)  # Pass the class instance as an argument
 
+        # Check if the plot window is already open
+        # If the plot window is open, refresh the data in it
+        if self.plot_window_ref is not None and self.plot_window_ref.winfo_exists():
+            self.refresh_plot_window_data()
+
     def show_loaded_files(self):
         ''' Call the function to display the uploaded files.
         '''
@@ -69,10 +80,29 @@ class MainApp:
 
 
     def plot(self):
-        ''' Call the function to create a graph.
+        ''' Create a new plot window
         '''
         self.number_plots += 1
-        open_plot_window(self) # Pass the class instance as an argument
+        self.plot_window_ref = open_plot_window(self)  # Save the reference
+
+    
+    def refresh_plot_window_data(self):
+        ''' Update the open plot window with newly loaded files. '''
+        if self.plot_window_ref is None:
+            return
+        
+        # Cerca tutti i widget OptionMenu nella finestra e aggiorna le opzioni dei file
+        for widget in self.plot_window_ref.winfo_children():
+            if isinstance(widget, tk.Frame) or isinstance(widget, tk.LabelFrame):
+                for subwidget in widget.winfo_children():
+                    if isinstance(subwidget, tk.OptionMenu):
+                        menu = subwidget["menu"]
+                        menu.delete(0, "end")
+                        for i in range(len(self.dataframes)):
+                            menu.add_command(
+                                label=f"File {i + 1}",
+                                command=lambda value=f"File {i + 1}": subwidget.variable.set(value)
+                            )
 
     
     def save_session(self):
@@ -94,6 +124,7 @@ class MainApp:
             self.root.quit()
             self.root.destroy()
         elif risposta is False:
+            plt.close("all")
             self.root.quit()
             self.root.destroy()
 

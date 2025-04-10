@@ -57,6 +57,7 @@ class TestNormalizationClose(unittest.TestCase):
         self.app.count_plot = [0]          # Flag for plot counter
         self.app.number_plots = 0         # Index of the figure
         self.app.plot_customizations = {}  # Optional plot customizations
+        self.app.list_figures = []         # List of figures
     
     def tearDown(self):
         '''
@@ -77,7 +78,8 @@ class TestNormalizationClose(unittest.TestCase):
 
         # Call function to test
         norm(self.plot_data, self.app.count_plot, self.app.number_plots, self.selected_pairs,
-             self.app.dataframes, self.app.plot_customizations, self.app.logger)
+             self.app.dataframes, self.app.plot_customizations, self.app.logger,
+             self.app.list_figures)
 
         # Retrieve the normalized data
         normalized_up = self.app.dataframes[0]["Up"].values
@@ -119,7 +121,7 @@ class TestNormalizationClose(unittest.TestCase):
         # Call function to test
         apply_close(self.plot_data, file_choice, selected_columns, self.app.count_plot,
                     self.selected_pairs, self.app.dataframes, self.app.plot_customizations,
-                    self.app.logger, self.app.number_plots)
+                    self.app.logger, self.app.number_plots, self.app.list_figures)
         
         # Result
         up = self.app.dataframes[0]["Up"].values
@@ -142,7 +144,7 @@ class TestNormalizationClose(unittest.TestCase):
         '''
         apply_close(self.plot_data, StringVar(value=''), {}, self.app.count_plot,
                 self.selected_pairs, self.app.dataframes, self.app.plot_customizations,
-                 self.app.logger)
+                 self.app.logger, self.app.list_figures)
         mock_showerror.assert_called_once_with('Errore', 'Devi selezionare un file!')
     
     @patch("Hysteresis.data.processing.messagebox.showerror")
@@ -151,7 +153,7 @@ class TestNormalizationClose(unittest.TestCase):
         '''
         apply_close(self.plot_data, StringVar(value='File 1'), {}, self.app.count_plot,
                 self.app.number_plots, self.selected_pairs, self.app.dataframes,
-                self.app.plot_customizations, self.app.logger)
+                self.app.plot_customizations, self.app.logger, self.app.list_figures)
         mock_showerror.assert_called_once_with("Errore", "Devi selezionare la coppia di dati che crea il ciclo")
   
 #==============================================================================================#
@@ -176,6 +178,7 @@ class TestCloseFunction(unittest.TestCase):
         self.number_plots = [0]
         self.selected_pairs = []
         self.plot_customizations = {}
+        self.list_figures = []
 
     @patch("Hysteresis.data.processing.tk.Toplevel")
     @patch("Hysteresis.data.processing.tk.OptionMenu")
@@ -197,7 +200,8 @@ class TestCloseFunction(unittest.TestCase):
 
         # Call the function to test
         close(self.root, self.plot_data, self.count_plot, self.number_plots, 
-              self.selected_pairs, self.dataframes, self.plot_customizations, self.logger)
+              self.selected_pairs, self.dataframes, self.plot_customizations,
+              self.logger, self.list_figures)
 
         # Verify that the window has been created
         mock_toplevel.assert_called_once_with(self.root)
@@ -236,8 +240,9 @@ class TestAxisInversion(unittest.TestCase):
         self.logger = MagicMock()
         self.plot_data = MagicMock()
         self.count_plot = [0]
-        self.number_plots = 0
+        self.number_plots = [0]
         self.plot_customizations = {}
+        self.list_figures = []
 
         self.file_choice = StringVar()
         self.file_choice.set("File 1")
@@ -256,7 +261,8 @@ class TestAxisInversion(unittest.TestCase):
         ''' test for inversion of x axis
         '''
         apply_inversion("x", self.file_choice, self.selected_pairs, self.dataframes, self.logger,
-                        self.plot_data, self.count_plot, self.number_plots, self.plot_customizations)
+                        self.plot_data, self.count_plot, self.number_plots, self.plot_customizations,
+                        self.list_figures)
         
         np.testing.assert_array_equal(self.dataframes[0]["FieldUp"].values, -np.linspace(-10, 10, 100))
         self.logger.info.assert_called_with("Inversione asse x -> colonna FieldUp.")
@@ -267,7 +273,8 @@ class TestAxisInversion(unittest.TestCase):
         ''' test for inversion of y axis
         '''
         apply_inversion("y", self.file_choice, self.selected_pairs, self.dataframes, self.logger,
-                        self.plot_data, self.count_plot, self.number_plots, self.plot_customizations)
+                        self.plot_data, self.count_plot, self.number_plots, self.plot_customizations,
+                        self.list_figures)
         
         np.testing.assert_array_equal(self.dataframes[0]["Up"].values, -np.linspace(0.01, 0.04, 100))
         self.logger.info.assert_called_with("Inversione asse y -> colonna Up.")
@@ -278,7 +285,8 @@ class TestAxisInversion(unittest.TestCase):
         ''' test for inversion of both axis
         '''
         apply_inversion("both", self.file_choice, self.selected_pairs, self.dataframes, self.logger,
-                        self.plot_data, self.count_plot, self.number_plots, self.plot_customizations)
+                        self.plot_data, self.count_plot, self.number_plots, self.plot_customizations,
+                        self.list_figures)
         
         np.testing.assert_array_equal(self.dataframes[0]["FieldUp"].values, -np.linspace(-10, 10, 100))
         np.testing.assert_array_equal(self.dataframes[0]["Up"].values, -np.linspace(0.01, 0.04, 100))
@@ -290,7 +298,8 @@ class TestAxisInversion(unittest.TestCase):
         ''' Test fro the creation of the window
         '''
         inv_x(self.root, self.plot_data, self.count_plot, self.number_plots,
-              self.selected_pairs, self.dataframes, self.plot_customizations, self.logger)
+              self.selected_pairs, self.dataframes, self.plot_customizations, self.logger,
+              self.list_figures)
         
         self.assertEqual(len(self.root.winfo_children()), 1)
         # Simula selezione e clic
@@ -306,7 +315,8 @@ class TestAxisInversion(unittest.TestCase):
         ''' Test fro the creation of the window
         '''
         inv_y(self.root, self.plot_data, self.count_plot, self.number_plots,
-              self.selected_pairs, self.dataframes, self.plot_customizations, self.logger)
+              self.selected_pairs, self.dataframes, self.plot_customizations,
+              self.logger, self.list_figures)
         
         self.assertEqual(len(self.root.winfo_children()), 1)
         top = self.root.winfo_children()[0]
@@ -334,9 +344,10 @@ class TestColumnInversion(unittest.TestCase):
         self.logger = MagicMock()
         self.plot_data = MagicMock()
         self.count_plot = [0]
-        self.number_plots = 0
+        self.number_plots = [0]
         self.plot_customizations = {}
         self.selected_pairs = []  # Can be empty, not used here
+        self.list_figures = []
 
         self.file_choice = StringVar()
         self.file_choice.set("File 1")
@@ -356,7 +367,7 @@ class TestColumnInversion(unittest.TestCase):
         apply_column_inversion(
             self.file_choice, selected_columns, self.dataframes, self.logger,
             self.plot_data, self.count_plot, self.number_plots, self.selected_pairs,
-            self.plot_customizations
+            self.plot_customizations, self.list_figures
         )
 
         np.testing.assert_array_equal(
@@ -375,7 +386,7 @@ class TestColumnInversion(unittest.TestCase):
         apply_column_inversion(
             file_choice, selected_columns, self.dataframes, self.logger,
             self.plot_data, self.count_plot, self.number_plots, self.selected_pairs,
-            self.plot_customizations
+            self.plot_customizations, self.list_figures
         )
         mock_error.assert_called_once_with("Errore", "Nessun file selezionato.")
     
@@ -388,7 +399,7 @@ class TestColumnInversion(unittest.TestCase):
         apply_column_inversion(
             self.file_choice, selected_columns, self.dataframes, self.logger,
             self.plot_data, self.count_plot, self.number_plots, self.selected_pairs,
-            self.plot_customizations
+            self.plot_customizations, self.list_figures
         )
         mock_error.assert_called_once_with("Errore", "Seleziona almeno una colonna da invertire.")
     
@@ -410,12 +421,11 @@ class TestColumnInversion(unittest.TestCase):
 
         # Call the function
         inv_single_branch(self.root, self.plot_data, self.count_plot, self.number_plots,
-                        self.selected_pairs, self.dataframes, self.plot_customizations, self.logger)
+                          self.selected_pairs, self.dataframes, self.plot_customizations,
+                          self.logger, self.list_figures)
 
         # Simulate pressing the button
         command_called['cmd']()
 
         # Check that the function was called
         mock_apply.assert_called_once()
-
-    

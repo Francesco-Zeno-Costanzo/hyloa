@@ -94,7 +94,14 @@ class TestLoggingSetup(unittest.TestCase):
         self.assertTrue(isinstance(self.app_instance.logger, logging.Logger))
 
         # Verify that the confirmation message has been displayed
-        mock_showinfo.assert_called_once_with(
+        #mock_showinfo.assert_called_once_with(
+        #    "Logging Avviato", f"Il log sarà scritto nel file: {temp_log_path}"
+        #)
+        mock_showinfo.assert_any_call(
+           "Info",
+            "Se si sceglie un file già esistente, la scrittura sara in coda, senza sovrascrizioni.\n"
+        )
+        mock_showinfo.assert_any_call(
             "Logging Avviato", f"Il log sarà scritto nel file: {temp_log_path}"
         )
 

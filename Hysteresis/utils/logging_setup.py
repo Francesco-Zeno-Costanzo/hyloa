@@ -37,6 +37,8 @@ def start_logging(app_instance):
     app_instance : MainApp object
         instance of MainApp from main_window.py
     '''
+    messagebox.showinfo("Info",
+        "Se si sceglie un file già esistente, la scrittura sara in coda, senza sovrascrizioni.\n")
 
     # Open the dialog box to choose the file path
     log_file = filedialog.asksaveasfilename(

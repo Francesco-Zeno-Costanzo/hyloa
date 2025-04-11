@@ -28,7 +28,7 @@ def norm(plot_data, count_plot, number_plots, selected_pairs,
         function to plot data called in order to
         immediately make the plot after the changes made
     count_plot : list
-        list of one element, a flag to update the same plot
+       list of flags to update the same plot
     numer_plots : list
         list of one element, index of the current plot
     selected_pairs : list
@@ -107,7 +107,7 @@ def close(root, plot_data, count_plot, number_plots, selected_pairs,
         function to plot data called in order to
         immediately make the plot after the changes made
     count_plot : list
-        list of one element, a flag to update the same plot
+        list of flags to update the same plot
     number_plots : list
         list of one element, index of the current plot
     selected_pairs : list
@@ -211,7 +211,7 @@ def apply_close(plot_data, file_choice, selected_columns, count_plot,
     selected_columns : dict
         coloumns , that form the loop, to close
     count_plot : list
-        list of one element, a flag to update the same plot
+        list of flags to update the same plot
     selected_pairs : list
         list of columns to plot
     dataframes : list
@@ -313,7 +313,7 @@ def apply_inversion(axis, file_choice, selected_pairs, dataframes, logger,
         function to plot data called in order to
         immediately make the plot after the changes made
     count_plot : list
-        list of one element, a flag to update the same plot
+        list of flags to update the same plot
     number_plots : list
         list of one element, index of the current plot
     plot_customizations : dict
@@ -365,7 +365,7 @@ def inv_x(root, plot_data, count_plot, number_plots, selected_pairs,
     count_plot : list
         list of one element, a flag to update the same plot
     number_plots : list
-        list of one element, index of the current plot
+        list of flags to update the same plot
     selected_pairs : list
         list of columns to plot
     dataframes : list
@@ -452,7 +452,7 @@ def inv_single_branch(root, plot_data, count_plot, number_plots,
         function to plot data called in order to
         immediately make the plot after the changes made
     count_plot : list
-        list of one element, a flag to update the same plot
+        list of flags to update the same plot
     number_plots : list
         list of one element, index of the current plot
     selected_pairs : list
@@ -541,7 +541,7 @@ def apply_column_inversion(file_choice, selected_columns, dataframes, logger,
         function to plot data called in order to
         immediately make the plot after the changes made
     count_plot : list
-        list of one element, a flag to update the same plot
+        list of flags to update the same plot
     number_plots : list
         list of one element, index of the current plot
     selected_pairs : list

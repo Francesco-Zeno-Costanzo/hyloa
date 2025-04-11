@@ -21,10 +21,11 @@ def save_current_session(app_instance):
         "dataframes":          app_instance.dataframes,
         "count_plot":          app_instance.count_plot,
         "header_lines":        app_instance.header_lines,
-        "plot_customizations": app_instance.plot_customizations,
+        #"plot_customizations": app_instance.plot_customizations,
         "logger_path":         app_instance.logger_path,
         "fit_results":         app_instance.fit_results,
         "figures"    :         app_instance.list_figures,
+        "number_plots":        app_instance.number_plots,
     }
     
     if save_file:
@@ -58,10 +59,11 @@ def load_previous_session(app_instance):
         app_instance.dataframes          = sessione.get("dataframes", [])
         app_instance.count_plot          = sessione.get("count_plot", 0)
         app_instance.header_lines        = sessione.get("header_lines", 0)
-        app_instance.plot_customizations = sessione.get("plot_customizations", {})
+        #app_instance.plot_customizations = sessione.get("plot_customizations", {})
         app_instance.logger_path         = sessione.get("logger_path", None)
         app_instance.fit_results         = sessione.get("fit_results", {})
         app_instance.list_figures        = sessione.get("figures", [])
+        app_instance.number_plots        = sessione.get("number_plots", 0)
 
         messagebox.showinfo("Sessione Caricata", f"Sessione caricata dal file: {load_file}")
 
@@ -70,7 +72,7 @@ def load_previous_session(app_instance):
         app_instance.logger = logging.getLogger(__name__)
         app_instance.logger.info("Logger ripristinato da file di sessione.")
 
-        if  app_instance.list_figures: plt.show()
+        if app_instance.list_figures: plt.show()
 
 
     except Exception as e:

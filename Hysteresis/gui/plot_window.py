@@ -30,11 +30,11 @@ def open_plot_window(app_instance):
     # I unpack all the necessary application instance attributes
     root                = app_instance.root
     dataframes          = app_instance.dataframes
-    count_plot          = [app_instance.count_plot]
     plot_customizations = app_instance.plot_customizations
     fit_results         = app_instance.fit_results
     logger              = app_instance.logger
     number_plots        = [app_instance.number_plots]
+    count_plot          = [app_instance.count_plot  ]*number_plots[0] if number_plots[0] > 0 else [app_instance.count_plot]
     list_figures        = app_instance.list_figures
     """
     Count_plot is in a list because it needs to change as the various plots
@@ -170,8 +170,7 @@ def add_pair(plot_window, dataframes, selected_pairs):
     # Dropdown to choose file
     tk.Label(pair_frame, text="File:").pack(side="left", padx=5)
     file_menu = tk.OptionMenu(pair_frame, df_choice, *[f"File {i + 1}" for i in range(len(dataframes))])
-    file_menu.variable = df_choice  # 👈 permette l'accesso esterno alla variabile
-    #file_menu = tk.OptionMenu(pair_frame, df_choice, *[f"File {i + 1}" for i in range(len(dataframes))])
+    file_menu.variable = df_choice
     file_menu.pack(side="left")
 
     if not hasattr(plot_window, "file_menus"):
@@ -234,7 +233,7 @@ def plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customi
     Parameters
     ----------
     count_plot : list
-        list of one element, a flag to update the same plot
+        list of flags to update the same plot
     numer_plots : list
         list of one element, the number of the current plot
     selected_pairs : list
@@ -249,14 +248,22 @@ def plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customi
         list to store the figures
     '''
 
-    fig = plt.figure(number_plots[0], figsize=(10, 6))
-    list_figures.append(fig)
+    if not list_figures:
+        fig = plt.figure(number_plots[0], figsize=(10, 6))
+        list_figures.append((fig, number_plots[0]))
+    else:
+        if number_plots[0] != list_figures[-1][1]:
+            fig = plt.figure(number_plots[0], figsize=(10, 6))
+            list_figures.append((fig, number_plots[0]))
+        else:
+            fig = list_figures[-1][0]
 
-    if count_plot[0] >0 :
+
+    if count_plot[number_plots[0]-1] >0 :
         plt.cla()
     try:
 
-        count_plot[0] += 1
+        count_plot[number_plots[0]-1] += 1
 
         X = []
         Y = []
@@ -272,8 +279,8 @@ def plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customi
             X.append(dataframes[df_idx][x_col].astype(float).values)
             Y.append(dataframes[df_idx][y_col].astype(float).values)
             logger.info(f"Plot di: {x_col} vs {y_col}")
-
-        if not plot_customizations:
+       
+        if count_plot[number_plots[0]-1] < 1000 and not plot_customizations:
             col =  plt.cm.jet(np.linspace(0, 1, len(X)))
             for i in range(0, len(X), 2):
                 
@@ -288,19 +295,23 @@ def plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customi
                 else:
                     line2, = plt.plot(x, y)
 
-               # Apply saved customization
-                customization = plot_customizations.get(i // 2, {})
+                try :
+                    # Apply saved customization
+                    customization = plot_customizations.get(i // 2, {})
 
-                line1.set_color(customization.get("color", line1.get_color()))
-                line1.set_marker(customization.get("marker", line1.get_marker()))
-                line1.set_linestyle(customization.get("linestyle", line1.get_linestyle()))
-                line1.set_label(customization.get("label", f"Ciclo {i // 2 + 1}"))
+                    line1.set_color(customization.get("color", line1.get_color()))
+                    line1.set_marker(customization.get("marker", line1.get_marker()))
+                    line1.set_linestyle(customization.get("linestyle", line1.get_linestyle()))
+                    line1.set_label(customization.get("label", f"Ciclo {i // 2 + 1}"))
 
-                if i % 2 == 1:  # Second branch of the cycle
-                    line2.set_color(customization.get("color", line2.get_color()))
-                    line2.set_marker(customization.get("marker", line2.get_marker()))
-                    line2.set_linestyle(customization.get("linestyle", line2.get_linestyle()))
-                    line2.set_label("_nolegend_")  # Prevent duplicate in legend
+                    if i % 2 == 1:  # Second branch of the cycle
+                        line2.set_color(customization.get("color", line1.get_color()))
+                        line2.set_marker(customization.get("marker", line1.get_marker()))
+                        line2.set_linestyle(customization.get("linestyle", line1.get_linestyle()))
+                        line2.set_label("_nolegend_")  # Prevent duplicate in legend
+                
+                except Exception as e:
+                    print(e)
 
         plt.xlabel("H [Oe]", fontsize=15)
         plt.ylabel(r"M/M$_{sat}$", fontsize=15)
@@ -326,7 +337,7 @@ def customize_plot_style(root, plot_customizations, number_plots, list_figures):
     plot_customizations : dict
         dictionary to save users customizations
     number_plots : list
-        list of one elemente, number of the current plot
+        list of one element, number of the current plot
     list_figures : list
         list to store the figures
     '''
@@ -334,8 +345,8 @@ def customize_plot_style(root, plot_customizations, number_plots, list_figures):
     if not plt.get_fignums():
         messagebox.showerror("Errore", "Nessun grafico aperto! Crea prima un grafico.")
         return
-
-    fig = list_figures[number_plots[0] - 1]
+   
+    fig = list_figures[number_plots[0]-1][0]
     ax = fig.gca()
     lines = ax.lines
     if not lines:
@@ -405,10 +416,11 @@ def customize_plot_style(root, plot_customizations, number_plots, list_figures):
                 "marker":    marker_var.get(),
                 "linestyle": linestyle_var.get(),
                 "label":     label_var.get() or cycle_var.get(),
+
             }
 
             ax.legend()
-            plt.draw()
+            fig.canvas.draw_idle()
             style_window.destroy()
         except Exception as e:
             messagebox.showerror("Errore", f"Errore durante l'applicazione dello stile:\n{e}")
@@ -578,7 +590,7 @@ def open_curve_fitting_window(root, dataframes, fit_results, number_plots, logge
             # Draw the fitted curve
             x_plot = np.linspace(x_start.get(), x_end.get(), 500)
             y_plot = fit_func(x_plot, *params)
-            fig = list_figures[number_plots[0] - 1]
+            fig = list_figures[number_plots[0]-1][0]
             plt.plot(x_plot, y_plot, label=f"Fit: {y_col} vs {x_col}", linestyle="--", color="green")
             plt.legend()
             plt.show()
@@ -601,7 +613,7 @@ def open_curve_fitting_window(root, dataframes, fit_results, number_plots, logge
             # Draw the curve calculated with the initial parameters
             x_plot = np.linspace(x_start.get(), x_end.get(), 500)
             y_plot = fit_func(x_plot, *initial_params)
-            fig = list_figures[number_plots[0] - 1]
+            fig = list_figures[number_plots[0]-1][0]
             plt.plot(x_plot, y_plot, label="initial guess curve", linestyle="--", color="green")
             plt.legend()
             plt.show()

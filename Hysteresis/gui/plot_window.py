@@ -48,78 +48,54 @@ def open_plot_window(app_instance):
         return
 
     plot_window = tk.Toplevel(root)
-    plot_window.geometry("650x300")
+    plot_window.geometry("800x500")
     plot_window.title(f"Pannello di controllo grafico figura {number_plots[0]}")
 
     selected_pairs = []  # List for selected pairs (file, x, y)
 
-    # Top frame for buttons
-    button_frame_0 = tk.Frame(plot_window)
-    button_frame_0.pack(anchor="w", pady=10)
+    plot_window.columnconfigure(0, weight=1)
+    plot_window.rowconfigure(2, weight=1)
 
-    # Button to create the plot
-    tk.Button(button_frame_0, text="Crea Grafico",
-              command=lambda : plot_data(count_plot, number_plots, selected_pairs,
-                                         dataframes, plot_customizations, logger,
-                                         list_figures)
-             ).pack(side="left", padx=5)
-    
-    # Button to customize the plot style
-    tk.Button(button_frame_0, text="Personalizza Stile",
-              command=lambda : customize_plot_style(root, plot_customizations,
-                                                    number_plots, list_figures)
-             ).pack(side="left", padx=5)
-    
-    # Button to open the curve fitting window
-    tk.Button(button_frame_0, text="Curve Fitting",
-              command=lambda : open_curve_fitting_window(root, dataframes,
-                                                         fit_results, number_plots,
-                                                         logger, list_figures)
-             ).pack(side="left", padx=5)
-    
-    # Button to open the command window
-    tk.Button(button_frame_0, text="Esegui Comandi",
-              command=lambda : open_command_window(root, dataframes, fit_results, logger)
-             ).pack(side="left", pady=5)
 
-    # Bottom frame for buttons
-    button_frame_1 = tk.Frame(plot_window)
-    button_frame_1.pack(anchor="w", pady=10)
+    # Unified button frame using grid
+    button_frame = tk.Frame(plot_window)
+    button_frame.pack(padx=10, pady=10, anchor="w")
 
-    # Button to normalize data
-    tk.Button(button_frame_1, text="Normalize",
-              command=lambda : norm(plot_data, count_plot, number_plots, selected_pairs,
-                                    dataframes, plot_customizations, logger,
-                                    list_figures)
-             ).pack(side="left", padx=5)
-    
-    # Button to close the loop
-    tk.Button(button_frame_1, text="Close loop",
-              command=lambda : close(root, plot_data, count_plot, number_plots,
-                                     selected_pairs, dataframes, plot_customizations,
-                                     logger, list_figures)
-             ).pack(side="left", padx=5)
-    
-    # Button to invert the fields
-    tk.Button(button_frame_1, text="Inverti Campi", 
-              command=lambda : inv_x(root, plot_data, count_plot, number_plots,
-                                     selected_pairs, dataframes, plot_customizations,
-                                     logger, list_figures)
-             ).pack(side="left", padx=5)
-    
-    # Button to invert the y-axis
-    tk.Button(button_frame_1, text="Inverti asse y",
-              command=lambda : inv_y(root, plot_data, count_plot, number_plots,
-                                     selected_pairs, dataframes, plot_customizations,
-                                     logger, list_figures)
-             ).pack(side="left", padx=5)
-    
-     # Button to invert a single branch
-    tk.Button(button_frame_1, text="Inverti ramo",
-              command=lambda : inv_single_branch(root, plot_data, count_plot, number_plots,
-                                                 selected_pairs, dataframes, plot_customizations,
-                                                 logger, list_figures)
-             ).pack(side="left", padx=5)
+    buttons_top = [
+        ("Crea Grafico", lambda: plot_data(count_plot, number_plots, selected_pairs,
+                                        dataframes, plot_customizations, logger, list_figures)),
+        ("Personalizza Stile", lambda: customize_plot_style(root, plot_customizations,
+                                                            number_plots, list_figures)),
+        ("Curve Fitting", lambda: open_curve_fitting_window(root, dataframes,
+                                                            fit_results, number_plots,
+                                                            logger, list_figures)),
+        ("Esegui Comandi", lambda: open_command_window(root, dataframes, fit_results, logger)),
+    ]
+
+    buttons_bottom = [
+        ("Normalize", lambda: norm(plot_data, count_plot, number_plots, selected_pairs,
+                                dataframes, plot_customizations, logger, list_figures)),
+        ("Close loop", lambda: close(root, plot_data, count_plot, number_plots,
+                                    selected_pairs, dataframes, plot_customizations,
+                                    logger, list_figures)),
+        ("Inverti Campi", lambda: inv_x(root, plot_data, count_plot, number_plots,
+                                        selected_pairs, dataframes, plot_customizations,
+                                        logger, list_figures)),
+        ("Inverti asse y", lambda: inv_y(root, plot_data, count_plot, number_plots,
+                                        selected_pairs, dataframes, plot_customizations,
+                                        logger, list_figures)),
+        ("Inverti ramo", lambda: inv_single_branch(root, plot_data, count_plot, number_plots,
+                                                selected_pairs, dataframes, plot_customizations,
+                                                logger, list_figures)),
+    ]
+
+    # Create buttons in a grid layout
+    for i, (text, cmd) in enumerate(buttons_top):
+        tk.Button(button_frame, text=text, width=14, command=cmd).grid(row=0, column=i, padx=4, pady=2)
+
+    for i, (text, cmd) in enumerate(buttons_bottom):
+        tk.Button(button_frame, text=text, width=14, command=cmd).grid(row=1, column=i, padx=4, pady=2)
+
 
     # Label for selecting couples
     tk.Label(plot_window, text="Seleziona le coppie di colonne (x, y):").pack()
@@ -182,12 +158,13 @@ def add_pair(plot_window, dataframes, selected_pairs):
     tk.Label(pair_frame, text="x:").pack(side="left", padx=5)
     x_menu = tk.OptionMenu(pair_frame, x_column, "")
     x_menu.pack(side="left")
+    
 
     # Dropdown by columns y
     tk.Label(pair_frame, text="y:").pack(side="left", padx=5)
     y_menu = tk.OptionMenu(pair_frame, y_column, "")
     y_menu.pack(side="left")
-
+    
     def update_columns(*args):
         ''' Update columns based on selected file
         '''
@@ -381,7 +358,8 @@ def customize_plot_style(root, plot_customizations, number_plots, list_figures):
 
     def labeled_dropdown(parent, label, variable, options):
         ttk.Label(parent, text=label).pack(pady=(10, 2))
-        ttk.Combobox(parent, textvariable=variable, values=options, state="readonly").pack(pady=(0, 5), fill='x', padx=40)
+        combo = ttk.Combobox(parent, textvariable=variable, values=options, state="normal")
+        combo.pack(pady=(0, 5), fill='x', padx=40)
 
     # Interface for customization
     ttk.Label(style_window, text="Personalizzazione Ciclo", font=("Helvetica", 14, "bold")).pack(pady=(15, 10))
@@ -474,13 +452,11 @@ def open_curve_fitting_window(root, dataframes, fit_results, number_plots, logge
         "La funzione di fit deve essere una funzione della variabile 'x' e "
         "i nomi dei parametri devono essere specificati nel campo apposito.\n"
         "Per stabilire il range basta la lettura del cursore sul grafico, i valori sono in basso a destra.\n"
-        "In caso di non convergenza del fit conviene selezionare accuratamente i parametri iniziali.\n"
-        "Se il fit non è andato a buon fine viene plottata la curva calcolata nei parametri inziali "
-        "per aiutare nella regolazione degli stessi.\n"
         "Come PROMEMORIA, il ramo 'Up' è quello più a destra a meno che non si sia invertito l'asse x; "
         "in tal caso sarà quello a sinistra.\n"
         "ACTHUNG: la funzione va scritta in python, quindi ad esempio |x| è abs(x), x^2 è x**2, e tutte "
-        "le altre funzioni vanno scritte con np. davanti i.e. np.cos(x), np.exp(x) fuorchè le funzioni speciali."
+        "le altre funzioni vanno scritte con np. davanti i.e. np.cos(x), np.exp(x) fuorchè le funzioni speciali,"
+        "per le quali va usato il nome che usa la libreria scipy.special"
     )
 
     # Using Message to automatically fit text
@@ -588,12 +564,12 @@ def open_curve_fitting_window(root, dataframes, fit_results, number_plots, logge
             params, pcovm = curve_fit(fit_func, x_fit, y_fit, p0=initial_params)
 
             # Draw the fitted curve
-            x_plot = np.linspace(x_start.get(), x_end.get(), 500)
+            """x_plot = np.linspace(x_start.get(), x_end.get(), 500)
             y_plot = fit_func(x_plot, *params)
             fig = list_figures[number_plots[0]-1][0]
             plt.plot(x_plot, y_plot, label=f"Fit: {y_col} vs {x_col}", linestyle="--", color="green")
             plt.legend()
-            plt.show()
+            plt.show()"""
             
             result = ";\n".join([f"{p} = {xi:.3e} +- {dxi:.3e}" 
                                  for p, xi, dxi in zip(param_names, params, np.sqrt(pcovm.diagonal()))])
@@ -611,12 +587,12 @@ def open_curve_fitting_window(root, dataframes, fit_results, number_plots, logge
             messagebox.showerror("Errore", f"Errore durante il fitting: {e}")
             
             # Draw the curve calculated with the initial parameters
-            x_plot = np.linspace(x_start.get(), x_end.get(), 500)
+            """x_plot = np.linspace(x_start.get(), x_end.get(), 500)
             y_plot = fit_func(x_plot, *initial_params)
             fig = list_figures[number_plots[0]-1][0]
             plt.plot(x_plot, y_plot, label="initial guess curve", linestyle="--", color="green")
             plt.legend()
-            plt.show()
+            plt.show()"""
 
     tk.Button(frame_parameters, text="Execute curve fitting",
               command=perform_fitting).grid(row=9, column=0, columnspan=2, pady=10)

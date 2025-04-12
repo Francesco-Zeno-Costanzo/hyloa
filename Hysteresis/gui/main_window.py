@@ -41,7 +41,7 @@ class MainApp:
         self.fit_results          = {}     # Dictionary to save fitting results
         self.number_plots         = 0      # Number of all created plots
         self.list_figures         = []     # List to store all figures
-        self.plot_window_ref      = None  # Reference to the plot window
+        self.plot_window_ref      = None   # Reference to the plot window
 
 
 

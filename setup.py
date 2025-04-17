@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="HysteresisAnalysis", 
-    version="1.0.1",
+    version="1.0.2",
     author="Francesco Zeno Costanzo",
     author_email="zenofrancesco99@gmail.com",
     description="Un pacchetto per l'analisi dei cicli di isteresi",

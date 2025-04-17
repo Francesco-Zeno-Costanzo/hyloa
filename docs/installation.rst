@@ -16,8 +16,13 @@ If you want to install it directly from the GitHub repository:
     cd Hysteresis
     pip install -e .
 
-If you are contributing to the project, make sure to also install the development dependencies:
+If you're on Windows and prefer not to use the terminal, simply:
 
-.. code-block:: bash
+1. Download the repository as a ZIP file from GitHub and extract it.
+2. Inside the extracted folder, double-click on:
 
-    pip install -r docs/requirements.txt
+   .. code-block:: none
+
+      run_ha.bat
+
+This will automatically launch the graphical interface.

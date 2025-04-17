@@ -229,7 +229,7 @@ class MainApp(QMainWindow):
 
 
     def exit_app(self):
-        ''' Function for exitbutton
+        ''' Function for exit button
         '''
         reply = QMessageBox.question(self, "Esci", "Vuoi uscire e salvare la sessione?",
                                      QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
@@ -239,4 +239,19 @@ class MainApp(QMainWindow):
         elif reply == QMessageBox.No:
             QApplication.quit()
         # Otherwise (cancel) => do nothing
+    
+    def closeEvent(self, event):
+        ''' Intercepts window closing to ask whether to save data
+        '''
+        reply = QMessageBox.question(self, "Esci", "Vuoi uscire e salvare la sessione?",
+                                    QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+
+        if reply == QMessageBox.Yes:
+            self.save_session()
+            event.accept()
+        elif reply == QMessageBox.No:
+            event.accept()
+        else:
+            event.ignore()
+
 

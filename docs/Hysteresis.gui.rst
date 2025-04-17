@@ -10,6 +10,8 @@ Submodules
    Hysteresis.gui.command_window
    Hysteresis.gui.main_window
    Hysteresis.gui.plot_window
+   Hysteresis.gui.log_window
+
 
 Module contents
 ---------------

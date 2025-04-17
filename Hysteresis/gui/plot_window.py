@@ -2,278 +2,284 @@
 Code to manage the plot window
 """
 import numpy as np
-import tkinter as tk
 from scipy.special import *
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from tkinter import messagebox, Toplevel, StringVar, ttk, DoubleVar
+from matplotlib.figure import Figure
 from matplotlib import markers, lines as mlines, colors as mcolors
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 
-from Hysteresis.utils.scroll import ScrollableFrame
-from Hysteresis.gui.command_window import open_command_window
-from Hysteresis.data.processing import norm, close, inv_x, inv_y, inv_single_branch
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QScrollArea, QComboBox, QMessageBox, QDialog, QFormLayout,
+    QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy
+)
+
+from Hysteresis.data.processing import norm, close_loop_dialog
+from Hysteresis.data.processing import inv_single_branch_dialog
+from Hysteresis.data.processing import inv_x_dialog, inv_y_dialog
 
 #==============================================================================================#
 # Main function for managing the plot window                                                   #
 #==============================================================================================#
 
-def open_plot_window(app_instance):
-    '''
-    Main function for managing the plot window
+class PlotControlWidget(QWidget):
 
-    Parameters
-    ----------
-    app_instance : MainApp object
-        instance of MainApp from main_window.py
-    '''
-    
-    # I unpack all the necessary application instance attributes
-    root                = app_instance.root
-    dataframes          = app_instance.dataframes
-    plot_customizations = app_instance.plot_customizations
-    fit_results         = app_instance.fit_results
-    logger              = app_instance.logger
-    number_plots        = [app_instance.number_plots]
-    count_plot          = [app_instance.count_plot  ]*number_plots[0] if number_plots[0] > 0 else [app_instance.count_plot]
-    list_figures        = app_instance.list_figures
-    """
-    Count_plot is in a list because it needs to change as the various plots
-    are updated, but it is an integer, so it is immutable; 
-    so we put it in a mutable container, so we will not have problems
-    when we make the closure for the function call.
-    Same for numebr_plots
-    """
-    if not dataframes:
-        messagebox.showerror("Errore", "Non ci sono dati caricati!")
-        return
+    def __init__(self, app_instance, number_plots):
+        super().__init__()
+        
+        self.app_instance         = app_instance  # Instance of main app
+        self.number_plots         = number_plots  # Index of the plot
+        self.plot_customizations  = {}            # Dictionary to save graphic's customization
+        self.selected_pairs       = []            # List of plotted data
+        # Variables to manage figure
+        self.figure               = None         
+        self.ax                   = None
+        self.canvas               = None
+        self.toolbar              = None
 
-    plot_window = tk.Toplevel(root)
-    plot_window.geometry("800x500")
-    plot_window.title(f"Pannello di controllo grafico figura {number_plots[0]}")
+        self.init_ui()
 
-    selected_pairs = []  # List for selected pairs (file, x, y)
+    def init_ui(self):
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
 
-    plot_window.columnconfigure(0, weight=1)
-    plot_window.rowconfigure(2, weight=1)
+        # Top buttons row
+        top_button_layout = QHBoxLayout()
+        top_buttons = [
+            ("Crea Grafico",       self.plot),
+            ("Personalizza Stile", self.customize_plot_style),
+            ("Curve Fitting",      self.curve_fitting),
+            ("Normalize",          self.normalize),
+        ]
+        for text, func in top_buttons:
+            btn = QPushButton(text)
+            btn.clicked.connect(func)
+            top_button_layout.addWidget(btn)
+        main_layout.addLayout(top_button_layout)
 
+        # Bottom buttons row
+        bottom_button_layout = QHBoxLayout()
+        bottom_buttons = [
+            ("Close loop",     self.close_loop),
+            ("Inverti Campi",  self.x_inversion),
+            ("Inverti asse y", self.y_inversion),
+            ("Inverti ramo",   self.revert_branch),
+        ]
+        for text, func in bottom_buttons:
+            btn = QPushButton(text)
+            btn.clicked.connect(func)
+            bottom_button_layout.addWidget(btn)
+        main_layout.addLayout(bottom_button_layout)
 
-    # Unified button frame using grid
-    button_frame = tk.Frame(plot_window)
-    button_frame.pack(padx=10, pady=10, anchor="w")
+        # Section for adding pairs
+        main_layout.addWidget(QLabel("Seleziona le coppie di colonne (x, y):"))
+        add_pair_button = QPushButton("Aggiungi Coppia x-y")
+        add_pair_button.clicked.connect(self.add_pair)
+        main_layout.addWidget(add_pair_button)
 
-    buttons_top = [
-        ("Crea Grafico", lambda: plot_data(count_plot, number_plots, selected_pairs,
-                                        dataframes, plot_customizations, logger, list_figures)),
-        ("Personalizza Stile", lambda: customize_plot_style(root, plot_customizations,
-                                                            number_plots, list_figures)),
-        ("Curve Fitting", lambda: open_curve_fitting_window(root, dataframes,
-                                                            fit_results, number_plots,
-                                                            logger, list_figures)),
-        ("Esegui Comandi", lambda: open_command_window(root, dataframes, fit_results, logger)),
-    ]
+        # Scroll area for dynamic pair selection
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.pair_container = QWidget()
+        self.pair_layout = QVBoxLayout()
+        self.pair_container.setLayout(self.pair_layout)
+        self.scroll_area.setWidget(self.pair_container)
+        main_layout.addWidget(self.scroll_area)
 
-    buttons_bottom = [
-        ("Normalize", lambda: norm(plot_data, count_plot, number_plots, selected_pairs,
-                                dataframes, plot_customizations, logger, list_figures)),
-        ("Close loop", lambda: close(root, plot_data, count_plot, number_plots,
-                                    selected_pairs, dataframes, plot_customizations,
-                                    logger, list_figures)),
-        ("Inverti Campi", lambda: inv_x(root, plot_data, count_plot, number_plots,
-                                        selected_pairs, dataframes, plot_customizations,
-                                        logger, list_figures)),
-        ("Inverti asse y", lambda: inv_y(root, plot_data, count_plot, number_plots,
-                                        selected_pairs, dataframes, plot_customizations,
-                                        logger, list_figures)),
-        ("Inverti ramo", lambda: inv_single_branch(root, plot_data, count_plot, number_plots,
-                                                selected_pairs, dataframes, plot_customizations,
-                                                logger, list_figures)),
-    ]
+        # Add first pair
+        self.add_pair()
 
-    # Create buttons in a grid layout
-    for i, (text, cmd) in enumerate(buttons_top):
-        tk.Button(button_frame, text=text, width=14, command=cmd).grid(row=0, column=i, padx=4, pady=2)
+    def add_pair(self, file_text=None, x_col=None, y_col=None):
+        
+        file_combo = QComboBox()
+        file_combo.addItems([f"File {i + 1}" for i in range(len(self.app_instance.dataframes))])
 
-    for i, (text, cmd) in enumerate(buttons_bottom):
-        tk.Button(button_frame, text=text, width=14, command=cmd).grid(row=1, column=i, padx=4, pady=2)
+        x_combo = QComboBox()
+        y_combo = QComboBox()
 
+        row = QHBoxLayout()
 
-    # Label for selecting couples
-    tk.Label(plot_window, text="Seleziona le coppie di colonne (x, y):").pack()
+        def update_columns():
+            index = file_combo.currentIndex()
+            cols = list(self.app_instance.dataframes[index].columns)
+            x_combo.clear()
+            y_combo.clear()
+            x_combo.addItems(cols)
+            y_combo.addItems(cols)
 
-    # Button to add pairs
-    tk.Button(plot_window, text="Aggiungi Coppia x-y",
-              command=lambda : add_pair(selector_frame, dataframes, selected_pairs)
-              ).pack(pady=5)
-    
-    # Scrollable frame for pair selectors
-    scrollable = ScrollableFrame(plot_window)
-    scrollable.pack(expand=True, fill="both", padx=10, pady=10)
+            # Selection for loading previous session
+            if x_col in cols:
+                x_combo.setCurrentText(x_col)
+            if y_col in cols:
+                y_combo.setCurrentText(y_col)
 
-    # Save a reference to the frame where pairs will be added
-    selector_frame = scrollable.scrollable_frame
+        file_combo.currentIndexChanged.connect(update_columns)
 
-    # Add the first column pair selector
-    add_pair(selector_frame, dataframes, selected_pairs)
+        # Selection for loading previous session
+        if file_text:
+            file_combo.setCurrentText(file_text)
 
+        update_columns()
 
-    return plot_window
+        row.addWidget(QLabel("File:"))
+        row.addWidget(file_combo)
+        row.addWidget(QLabel("x:"))
+        row.addWidget(x_combo)
+        row.addWidget(QLabel("y:"))
+        row.addWidget(y_combo)
 
-    
-#==============================================================================================#
-# Function to add data to plot                                                                 #
-#==============================================================================================#
+        container = QWidget()
+        container.setLayout(row)
+        self.pair_layout.addWidget(container)
+        self.selected_pairs.append((file_combo, x_combo, y_combo))
 
-def add_pair(plot_window, dataframes, selected_pairs):
-    ''' 
-    Adds a new row to select a pair (x, y)
-
-    Parameters
-    ----------
-    plot_window : instance of tk.Toplevel
-        window of the plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    selected_pairs : list
-        list of columns to plot
-    '''
-    pair_frame = tk.Frame(plot_window)
-    pair_frame.pack(anchor="w", pady=5)
-
-    df_choice = tk.StringVar()
-    x_column = tk.StringVar()
-    y_column = tk.StringVar()
-
-    # Dropdown to choose file
-    tk.Label(pair_frame, text="File:").pack(side="left", padx=5)
-    file_menu = tk.OptionMenu(pair_frame, df_choice, *[f"File {i + 1}" for i in range(len(dataframes))])
-    file_menu.variable = df_choice
-    file_menu.pack(side="left")
-
-    if not hasattr(plot_window, "file_menus"):
-        plot_window.file_menus = []
-    plot_window.file_menus.append(file_menu)
-
-
-    # Dropdown by columns x
-    tk.Label(pair_frame, text="x:").pack(side="left", padx=5)
-    x_menu = tk.OptionMenu(pair_frame, x_column, "")
-    x_menu.pack(side="left")
-    
-
-    # Dropdown by columns y
-    tk.Label(pair_frame, text="y:").pack(side="left", padx=5)
-    y_menu = tk.OptionMenu(pair_frame, y_column, "")
-    y_menu.pack(side="left")
-    
-    def update_columns(*args):
-        ''' Update columns based on selected file
+    def plot(self):
+        ''' Call function to plot data
         '''
-        try:
-            df_idx = int(df_choice.get().split(" ")[1]) - 1  # Index of the selected file
-            columns = list(dataframes[df_idx].columns)
-            x_column.set(columns[0])
-            y_column.set(columns[0])
+        plot_data(self, self.app_instance)
 
-            # Update dropdown menus with columns from the selected DataFrame
-            x_menu["menu"].delete(0, "end")
-            y_menu["menu"].delete(0, "end")
-            for col in columns:
-                x_menu["menu"].add_command(label=col, command=lambda value=col: x_column.set(value))
-                y_menu["menu"].add_command(label=col, command=lambda value=col: y_column.set(value))
-        except Exception:
-            pass
-
-    # Link column update to file selection
-    df_choice.trace_add("write", update_columns)
-
-    # Set default file
-    df_choice.set(f"File 1")
+    def customize_plot_style(self):
+        ''' Call function to customizzzation of plots
+        '''
+        customize_plot_style(self, self.plot_customizations,
+                             self.number_plots, self.app_instance.figures_map)
     
-    # Load columns from the first file immediately
-    update_columns()
+    def curve_fitting(self):
+        ''' Curve fitting window
+        '''
+        open_curve_fitting_window(self.app_instance, self)
+       
+    def normalize(self):
+        ''' Call function to normalize data
+        '''
+        norm(self, self.app_instance)
 
-    # Add to couples list
-    selected_pairs.append((df_choice, x_column, y_column))
-    return file_menu
+    def close_loop(self):
+        ''' Call function to close loop
+        '''
+        close_loop_dialog(self, self.app_instance)
 
+    def x_inversion(self):
+        ''' Call function to invert x axis
+        '''
+        inv_x_dialog(self, self.app_instance)
 
+    def y_inversion(self):
+        ''' Call function to invert y axis
+        '''
+        inv_y_dialog(self, self.app_instance)
+
+    def revert_branch(self):
+        ''' Call function to revert a branch of a cycle
+        '''
+        inv_single_branch_dialog(self, self.app_instance)
+
+        
 #==============================================================================================#
 # Function that creates the plot with the chosen data                                          #
 #==============================================================================================#
 
-def plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customizations, logger, list_figures):
+def plot_data(plot_window_instance, app_instance):
     '''
-    Create the chart with the selected pairs.
-    If there are customizations for a given file use those,
-    otherwise, use the default choices.
-
+    Create the plot with the selected pairs using matplotlib.
+   
     Parameters
     ----------
-    count_plot : list
-        list of flags to update the same plot
-    numer_plots : list
-        list of one element, the number of the current plot
-    selected_pairs : list
-        list of columns to plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    plot_customizations : dict
-        dictionary to save users customizations
-    logger : instance of logging.getLogger
-        logger of the app
-    list_figures : list
-        list to store the figures
+    plot_window_instance : PlotControlWidget
+        Instance of the plot control widget containing the selected pairs.
+    app_instance : MainApp
+        Main application instance containing the session data.
     '''
 
-    if not list_figures:
-        fig = plt.figure(number_plots[0], figsize=(10, 6))
-        list_figures.append((fig, number_plots[0]))
+    # Extracting data from the plot window instance
+    selected_pairs      = plot_window_instance.selected_pairs
+    number_plots        = plot_window_instance.number_plots
+    dataframes          = app_instance.dataframes
+    plot_customizations = plot_window_instance.plot_customizations
+    logger              = app_instance.logger
+    
+    # Create a figure
+    if plot_window_instance.figure is None:
+        fig = Figure(figsize=(10, 6))
+        ax  = fig.add_subplot(111)
+
+        # Save objects in the instance
+        plot_window_instance.figure = fig
+        plot_window_instance.ax     = ax
+
+        app_instance.figures_map[number_plots] = (fig, ax)
+
+        # Create canvas and show in sub-window
+        canvas = FigureCanvas(fig)
+        toolbar = NavigationToolbar(canvas, plot_window_instance)
+
+        # Create layout
+        plot_area = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(toolbar)
+        layout.addWidget(canvas)
+        plot_area.setLayout(layout)
+
+        # Save 
+        plot_window_instance.canvas  = canvas
+        plot_window_instance.toolbar = toolbar 
+
+        # Sub-window
+        sub = QMdiSubWindow()
+        sub.setWindowTitle(f"Grafico {number_plots}")
+        sub.setWidget(plot_area)
+        sub.resize(800, 600)
+        app_instance.mdi_area.addSubWindow(sub)
+        sub.show()
+
+
     else:
-        if number_plots[0] != list_figures[-1][1]:
-            fig = plt.figure(number_plots[0], figsize=(10, 6))
-            list_figures.append((fig, number_plots[0]))
-        else:
-            fig = list_figures[-1][0]
+        # Retrieve existing objects
+        fig     = plot_window_instance.figure
+        ax      = plot_window_instance.ax
+        canvas  = plot_window_instance.canvas
+        toolbar = plot_window_instance.toolbar
 
+        # Clear for new plot
+        ax.clear()
 
-    if count_plot[number_plots[0]-1] >0 :
-        plt.cla()
     try:
-
-        count_plot[number_plots[0]-1] += 1
 
         X = []
         Y = []
+
         for df_choice, x_var, y_var in selected_pairs:
-            df_idx = int(df_choice.get().split(" ")[1]) - 1  # Index of the selected file
-            x_col = x_var.get()
-            y_col = y_var.get()
+            df_idx = int(df_choice.currentText().split(" ")[1]) - 1 
+            x_col = x_var.currentText()
+            y_col = y_var.currentText()
 
             if not x_col or not y_col:
-                messagebox.showerror("Errore", "Devi selezionare tutte le coppie di colonne!")
+                QMessageBox.critical(None, "Errore", "Devi selezionare tutte le coppie di colonne!")
                 return
 
             X.append(dataframes[df_idx][x_col].astype(float).values)
             Y.append(dataframes[df_idx][y_col].astype(float).values)
             logger.info(f"Plot di: {x_col} vs {y_col}")
-       
-        if count_plot[number_plots[0]-1] < 1000 and not plot_customizations:
-            col =  plt.cm.jet(np.linspace(0, 1, len(X)))
-            for i in range(0, len(X), 2):
-                
-                plt.plot(X[i],   Y[i],   color=col[i], marker="o", label=f"Ciclo {i//2 + 1}")
-                plt.plot(X[i+1], Y[i+1], color=col[i], marker="o")
 
-        else :
-            # Plot the lines as before
+        if not plot_customizations:
+            col = plt.cm.jet(np.linspace(0, 1, len(X)))
+            for i in range(0, len(X), 2):
+                ax.plot(X[i],   Y[i],   color=col[i], marker="o", label=f"Ciclo {i//2 + 1}")
+                ax.plot(X[i+1], Y[i+1], color=col[i], marker="o")
+
+
+        else:
             for i, (x, y) in enumerate(zip(X, Y)):
                 if i % 2 == 0:
-                    line1, = plt.plot(x, y, label=f"Ciclo {i // 2 + 1}")
+                    line1, = ax.plot(x, y, label=f"Ciclo {i // 2 + 1}")
                 else:
-                    line2, = plt.plot(x, y)
+                    line2, = ax.plot(x, y)
 
-                try :
-                    # Apply saved customization
+                try:
                     customization = plot_customizations.get(i // 2, {})
 
                     line1.set_color(customization.get("color", line1.get_color()))
@@ -281,318 +287,310 @@ def plot_data(count_plot, number_plots, selected_pairs, dataframes, plot_customi
                     line1.set_linestyle(customization.get("linestyle", line1.get_linestyle()))
                     line1.set_label(customization.get("label", f"Ciclo {i // 2 + 1}"))
 
-                    if i % 2 == 1:  # Second branch of the cycle
+                    if i % 2 == 1:
                         line2.set_color(customization.get("color", line1.get_color()))
                         line2.set_marker(customization.get("marker", line1.get_marker()))
                         line2.set_linestyle(customization.get("linestyle", line1.get_linestyle()))
-                        line2.set_label("_nolegend_")  # Prevent duplicate in legend
-                
-                except Exception as e:
-                    print(e)
+                        line2.set_label("_nolegend_")
 
-        plt.xlabel("H [Oe]", fontsize=15)
-        plt.ylabel(r"M/M$_{sat}$", fontsize=15)
-        plt.legend()
-        plt.grid()
-        plt.show()
+                except Exception as e:
+                    print(f"Errore applicando lo stile: {e}")
+
+        ax.set_xlabel("H [Oe]", fontsize=15)
+        ax.set_ylabel(r"M/M$_{sat}$", fontsize=15)
+        ax.legend()
+        ax.grid()
+        canvas.draw()
 
     except Exception as e:
-        messagebox.showerror("Errore", f"Errore durante la creazione del grafico: {e}")
+        QMessageBox.critical(None, "Errore", f"Errore durante la creazione del grafico: {e}")
 
 #==============================================================================================#
 # Function to customize the style of the plot                                                  #
 #==============================================================================================#
 
-def customize_plot_style(root, plot_customizations, number_plots, list_figures):
-    ''' 
-    Opens a window to customize color, marker, and line style of a cycle in the plot.
+def customize_plot_style(parent_widget, plot_customizations, number_plots, figures_map):
+    '''
+    Opens a PyQt5 dialog to customize color, marker, and line style of a cycle in the plot.
 
     Parameters
     ----------
-    root : instance of TK class from tkinter
-        toplevel Tk widget, main window of the application
+    parent_widget : QWidget
+        parent PyQt5 window
     plot_customizations : dict
         dictionary to save users customizations
     number_plots : list
-        list of one element, number of the current plot
-    list_figures : list
-        list to store the figures
+        list with one element, current plot number
+    figures_map : dict
+        dictionary to store all the matplotlib figures
     '''
     
-    if not plt.get_fignums():
-        messagebox.showerror("Errore", "Nessun grafico aperto! Crea prima un grafico.")
+    if parent_widget.figure is None:
+        QMessageBox.critical(parent_widget, "Errore", "Nessun grafico aperto! Crea prima un grafico.")
         return
-   
-    fig = list_figures[number_plots[0]-1][0]
-    ax = fig.gca()
+
+    fig, ax = figures_map[number_plots]
+
     lines = ax.lines
+
     if not lines:
-        messagebox.showerror("Errore", "Nessuna linea presente nel grafico!")
+        QMessageBox.critical(parent_widget, "Errore", "Nessuna linea presente nel grafico!")
         return
 
-    style_window = Toplevel(root)
-    style_window.title("Personalizza Stile Grafico")
-    style_window.geometry("420x450")
-    style_window.resizable(False, False)
-
-    # All possible options
+    # === All possible customization options ===
     colors       = list(mcolors.TABLEAU_COLORS) + list(mcolors.CSS4_COLORS)
     markers_list = [m for m in markers.MarkerStyle.markers.keys() if isinstance(m, str) and len(m) == 1]
-    linestyles   = list(mlines.Line2D.lineStyles.keys())   
-   
-    cycles         = []
+    linestyles   = list(mlines.Line2D.lineStyles.keys())
+
+    # === Cycle names ===
+    cycles = []
     label_to_index = {}
     for i in range(0, len(lines), 2):
         label = plot_customizations.get(i // 2, {}).get("label", f"Ciclo {i // 2 + 1}")
         cycles.append(label)
         label_to_index[label] = i // 2
 
+    # === Dialog ===
+    dialog = QDialog(parent_widget)
+    dialog.setWindowTitle("Personalizza Stile Grafico")
+    dialog.setFixedSize(400, 360)
 
-    # Variables for selection
-    cycle_var     = StringVar(value=cycles[0])
-    color_var     = StringVar(value=colors[0])
-    marker_var    = StringVar(value=markers_list[0])
-    linestyle_var = StringVar(value='-')
-    label_var     = StringVar(value=cycle_var.get())
+    layout = QVBoxLayout(dialog)
+    form_layout = QFormLayout()
+    layout.addLayout(form_layout)
 
+    # === Widgets ===
+    cycle_combo = QComboBox()
+    cycle_combo.addItems(cycles)
 
-    def labeled_dropdown(parent, label, variable, options):
-        ttk.Label(parent, text=label).pack(pady=(10, 2))
-        combo = ttk.Combobox(parent, textvariable=variable, values=options, state="normal")
-        combo.pack(pady=(0, 5), fill='x', padx=40)
+    color_combo = QComboBox()
+    color_combo.addItems(colors)
+    color_combo.setEditable(True)
 
-    # Interface for customization
-    ttk.Label(style_window, text="Personalizzazione Ciclo", font=("Helvetica", 14, "bold")).pack(pady=(15, 10))
-    labeled_dropdown(style_window, "Ciclo", cycle_var, cycles)
-    labeled_dropdown(style_window, "Colore", color_var, colors)
-    labeled_dropdown(style_window, "Marker", marker_var, markers_list)
-    labeled_dropdown(style_window, "Stile linea", linestyle_var, linestyles)
+    marker_combo = QComboBox()
+    marker_combo.addItems(markers_list)
+    marker_combo.setEditable(True)
 
-    # Entry for custom label
-    ttk.Label(style_window, text="nome in legenda").pack(pady=(10, 2))
-    ttk.Entry(style_window, textvariable=label_var).pack(pady=(0, 5), fill='x', padx=40)
+    linestyle_combo = QComboBox()
+    linestyle_combo.addItems(linestyles)
+    linestyle_combo.setEditable(True)
 
+    label_edit = QLineEdit()
+    label_edit.setText(cycles[0])
+
+    # === Add to form ===
+    form_layout.addRow("Ciclo:", cycle_combo)
+    form_layout.addRow("Colore:", color_combo)
+    form_layout.addRow("Marker:", marker_combo)
+    form_layout.addRow("Stile Linea:", linestyle_combo)
+    form_layout.addRow("Nome in legenda:", label_edit)
+
+    # === Apply button ===
+    apply_button = QPushButton("Applica")
+    layout.addWidget(apply_button)
 
     def apply_style():
         try:
-            idx   = label_to_index[cycle_var.get()]
+            idx = label_to_index[cycle_combo.currentText()]
             line1 = lines[idx * 2]
             line2 = lines[idx * 2 + 1]
 
-            # Apply the changes
+            color = color_combo.currentText()
+            marker = marker_combo.currentText()
+            linestyle = linestyle_combo.currentText()
+            legend_label = label_edit.text() or cycle_combo.currentText()
+
+            # Apply style to both lines
             for line in (line1, line2):
-                line.set_color(color_var.get())
-                line.set_marker(marker_var.get())
-                line.set_linestyle(linestyle_var.get())
+                line.set_color(color)
+                line.set_marker(marker)
+                line.set_linestyle(linestyle)
 
-            line1.set_label(label_var.get() or cycle_var.get())
+            line1.set_label(legend_label)
             line2.set_label("_nolegend_")
-
-            # Save the changes
+            
+            # Save customization's 
             plot_customizations[idx] = {
-                "color":     color_var.get(),
-                "marker":    marker_var.get(),
-                "linestyle": linestyle_var.get(),
-                "label":     label_var.get() or cycle_var.get(),
-
+                "color": color,
+                "marker": marker,
+                "linestyle": linestyle,
+                "label": legend_label,
             }
 
             ax.legend()
             fig.canvas.draw_idle()
-            style_window.destroy()
-        except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante l'applicazione dello stile:\n{e}")
+            dialog.accept()
 
-    ttk.Button(style_window, text="Applica", command=apply_style).pack(pady=20)
+        except Exception as e:
+            QMessageBox.critical(dialog, "Errore", f"Errore durante l'applicazione dello stile:\n{e}")
+
+    apply_button.clicked.connect(apply_style)
+
+    dialog.exec_()
 
 #==============================================================================================#
 # Curve fitting function                                                                       #
 #==============================================================================================#
 
-def open_curve_fitting_window(root, dataframes, fit_results, number_plots, logger, list_figures):
+def open_curve_fitting_window(app_instance, plot_widget):
     '''
-    Opens a window to configure the operations to be performed.
-
+    Apre una finestra per configurare il fitting dei dati.
+    
     Parameters
     ----------
-    root : instance of TK class from tkinter
-        toplevel Tk widget, main window of the application
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    fit_results : dict
-        dictionary to store the results
-    number_plots : list
-        list of one element, the number of the current plot
-    logger : instance of logging.getLogger
-        logger of the app
-    list_figures : list
-        list to store the figures
+    app_instance : MainApp
+        Istanza principale dell'applicazione.
+    plot_widget : PlotControlWidget
+        Istanza della finestra di controllo del plot corrente.
     '''
+    dataframes    = app_instance.dataframes
+    fit_results   = app_instance.fit_results
+    logger        = app_instance.logger
+
     if not dataframes:
-        messagebox.showerror("Errore", "Non ci sono dati caricati!")
+        QMessageBox.critical(app_instance, "Errore", "Non ci sono dati caricati!")
         return
 
-    fit_window = Toplevel(root)
-    fit_window.title("Curve Fitting")
-    fit_window.geometry("700x600")
+    window = QWidget()
+    window.setWindowTitle("Curve Fitting")
+    layout = QHBoxLayout(window)
+    window.setLayout(layout)
 
-    # Variables 
-    function_var       = StringVar(value="a*(x - b)") # Fit function
-    x_start            = DoubleVar(value=0)           # Data start point
-    x_end              = DoubleVar(value=1)           # Data end point
-    initial_params_var = StringVar(value="1, 1")      # Initial parameters
-    param_names_var    = StringVar(value="a, b")      # Fit function parameter names
-    selected_df        = StringVar(value=f"File 1")   # File containing the data to be fitted
-    selected_x_col     = StringVar()                  # x_data
-    selected_y_col     = StringVar()                  # y_data
+    def show_help_dialog():
+        help_text = (
+            "La funzione di fit deve essere una funzione della variabile 'x' e "
+            "i nomi dei parametri devono essere specificati nel campo apposito.\n\n"
+            "Per stabilire il range basta la lettura del cursore sul grafico, i valori sono in alto a destra.\n\n"
+            "Come PROMEMORIA, il ramo 'Up' è quello più a destra a meno che non si sia invertito l'asse x; "
+            "in tal caso sarà quello a sinistra.\n\n"
+            "ACHTUNG: la funzione va scritta in Python, quindi ad esempio |x| è abs(x), x^2 è x**2, e tutte "
+            "le altre funzioni vanno scritte con np. davanti (i.e. np.cos(x), np.exp(x)), tranne per le funzioni speciali, "
+            "per le quali va usato il nome che usa la libreria scipy.special (i.e. scipy.special.erf diventa erf)"
+        )
 
+        QMessageBox.information(window, "Guida al Fitting", help_text)
 
-    # Usage
-    description = (
-        "La funzione di fit deve essere una funzione della variabile 'x' e "
-        "i nomi dei parametri devono essere specificati nel campo apposito.\n"
-        "Per stabilire il range basta la lettura del cursore sul grafico, i valori sono in basso a destra.\n"
-        "Come PROMEMORIA, il ramo 'Up' è quello più a destra a meno che non si sia invertito l'asse x; "
-        "in tal caso sarà quello a sinistra.\n"
-        "ACTHUNG: la funzione va scritta in python, quindi ad esempio |x| è abs(x), x^2 è x**2, e tutte "
-        "le altre funzioni vanno scritte con np. davanti i.e. np.cos(x), np.exp(x) fuorchè le funzioni speciali,"
-        "per le quali va usato il nome che usa la libreria scipy.special"
-    )
+    # Left: selection
+    selection_layout = QVBoxLayout()
+    layout.addLayout(selection_layout)
 
-    # Using Message to automatically fit text
-    tk.Message(fit_window, text=description, width=680).pack()
-
-    # Window layout
-    frame_selection = tk.Frame(fit_window)
-    frame_selection.pack(side="left", padx=10, pady=10)
-
-    frame_parameters = tk.Frame(fit_window)
-    frame_parameters.pack(side="left", padx=10, pady=10)
+    help_button = QPushButton("Help")
+    help_button.clicked.connect(show_help_dialog)
+    selection_layout.addWidget(help_button, alignment=Qt.AlignLeft)
 
 
-    # Selection of columns
-    tk.Label(frame_selection, text="Seleziona il file:").grid(row=0, column=0, sticky="w", pady=5)
-    file_menu = tk.OptionMenu(frame_selection, selected_df, *[f"File {i + 1}" for i in range(len(dataframes))])
-    file_menu.grid(row=0, column=1, sticky="w")
+    selection_layout.addWidget(QLabel("Seleziona il file:"))
+    file_combo = QComboBox()
+    file_combo.addItems([f"File {i+1}" for i in range(len(dataframes))])
+    selection_layout.addWidget(file_combo)
 
-    tk.Label(frame_selection, text="Colonna X:").grid(row=1, column=0, sticky="w", pady=5)
-    x_menu = tk.OptionMenu(frame_selection, selected_x_col, "")
-    x_menu.grid(row=1, column=1, sticky="w")
+    selection_layout.addWidget(QLabel("Colonna X:"))
+    x_combo = QComboBox()
+    selection_layout.addWidget(x_combo)
 
-    tk.Label(frame_selection, text="Colonna Y:").grid(row=2, column=0, sticky="w", pady=5)
-    y_menu = tk.OptionMenu(frame_selection, selected_y_col, "")
-    y_menu.grid(row=2, column=1, sticky="w")
+    selection_layout.addWidget(QLabel("Colonna Y:"))
+    y_combo = QComboBox()
+    selection_layout.addWidget(y_combo)
 
+    def update_columns():
+        idx = file_combo.currentIndex()
+        cols = list(dataframes[idx].columns)
+        x_combo.clear()
+        y_combo.clear()
+        x_combo.addItems(cols)
+        y_combo.addItems(cols)
 
-    def update_columns(*args):
-        ''' Update available columns based on the selected file
-        '''
+    file_combo.currentIndexChanged.connect(update_columns)
+    update_columns()
+
+    # Right: parameters
+    param_layout = QVBoxLayout()
+    layout.addLayout(param_layout)
+
+    param_layout.addWidget(QLabel("x_start:"))
+    x_start_edit = QLineEdit("0")
+    param_layout.addWidget(x_start_edit)
+
+    param_layout.addWidget(QLabel("x_end:"))
+    x_end_edit = QLineEdit("1")
+    param_layout.addWidget(x_end_edit)
+
+    param_layout.addWidget(QLabel("Nomi parametri (es. a,b):"))
+    param_names_edit = QLineEdit("a,b")
+    param_layout.addWidget(param_names_edit)
+
+    param_layout.addWidget(QLabel("Parametri iniziali (es. 1,1):"))
+    initial_params_edit = QLineEdit("1,1")
+    param_layout.addWidget(initial_params_edit)
+
+    param_layout.addWidget(QLabel("Funzione di fitting (es. a*(x-b)):"))
+    function_edit = QLineEdit("a*(x - b)")
+    param_layout.addWidget(function_edit)
+
+    output_box = QTextEdit()
+    output_box.setReadOnly(True)
+    output_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    layout.addWidget(output_box)
+
+    def perform_fit():
         try:
-            df_idx = int(selected_df.get().split(" ")[1]) - 1
-            columns = list(dataframes[df_idx].columns)
-            selected_x_col.set(columns[0])
-            selected_y_col.set(columns[0])
 
-            x_menu["menu"].delete(0, "end")
-            y_menu["menu"].delete(0, "end")
-            for col in columns:
-                x_menu["menu"].add_command(label=col, command=lambda value=col: selected_x_col.set(value))
-                y_menu["menu"].add_command(label=col, command=lambda value=col: selected_y_col.set(value))
-        except Exception:
-            pass
+            df_idx  = file_combo.currentIndex()
+            df      = dataframes[df_idx]
+            x_col   = x_combo.currentText()
+            y_col   = y_combo.currentText()
 
-    selected_df.trace_add("write", update_columns)
-    update_columns()  # Initialize with the first file
+            x_data  = df[x_col].astype(float).values
+            y_data  = df[y_col].astype(float).values
 
-    # Selection of range, parameters, and fit function
-    tk.Label(frame_parameters, text="Inserisci il range di fitting:").grid(row=0, column=0, columnspan=2, pady=5)
+            x_start = float(x_start_edit.text())
+            x_end   = float(x_end_edit.text())
+            mask    = (x_data >= x_start) & (x_data <= x_end)
+            x_fit   = x_data[mask]
+            y_fit   = y_data[mask]
 
-    tk.Label(frame_parameters, text="x_start:").grid(row=1, column=0, sticky="w", pady=2)
-    tk.Entry(frame_parameters, textvariable=x_start, width=20).grid(row=1, column=1, pady=2)
+            if len(x_fit) == 0:
+                QMessageBox.warning(window, "Errore", "Nessun dato nel range selezionato!")
+                return
 
-    tk.Label(frame_parameters, text="x_end:").grid(row=2, column=0, sticky="w", pady=2)
-    tk.Entry(frame_parameters, textvariable=x_end, width=20).grid(row=2, column=1, pady=2)
+            param_names    = [p.strip() for p in param_names_edit.text().split(",")]
+            initial_params = [float(p.strip()) for p in initial_params_edit.text().split(",")]
 
-    tk.Label(frame_parameters, text="Inserisci i nomi dei parametri (separati da virgola):").grid(row=3, column=0, columnspan=2, pady=5)
-    tk.Entry(frame_parameters, textvariable=param_names_var, width=40).grid(row=4, column=0, columnspan=2, pady=5)
+            func_code = f"lambda x, {', '.join(param_names)}: {function_edit.text()}"
+            fit_func  = eval(func_code)
 
-    tk.Label(frame_parameters, text="Inserisci i parametri iniziali:").grid(row=5, column=0, columnspan=2, pady=5)
-    tk.Entry(frame_parameters, textvariable=initial_params_var, width=40).grid(row=6, column=0, columnspan=2, pady=5)
+            params, pcov = curve_fit(fit_func, x_fit, y_fit, p0=initial_params)
+            y_plot = fit_func(np.linspace(x_start, x_end, 500), *params)
 
-    tk.Label(frame_parameters, text="Inserisci la funzione di fitting:").grid(row=7, column=0, columnspan=2, pady=5)
-    tk.Entry(frame_parameters, textvariable=function_var, width=40).grid(row=8, column=0, columnspan=2, pady=5)
+            fig = plot_widget.figure
+            ax  = plot_widget.ax
+            ax.plot(np.linspace(x_start, x_end, 500), y_plot, linestyle="--", color="green")
+            plot_widget.canvas.draw()
 
+            result_lines = []
+            for p, val, err in zip(param_names, params, np.sqrt(np.diag(pcov))):
+                result_lines.append(f"{p} = {val:.3e} ± {err:.3e}")
+                fit_results[p] = val
+                fit_results[f"error_{p}"] = err
 
-    def perform_fitting():
-        ''' Performs fitting on the selected function and range.
-        '''
-
-        df_idx = int(selected_df.get().split(" ")[1]) - 1
-        df = dataframes[df_idx]
-        x_col = selected_x_col.get()
-        y_col = selected_y_col.get()
-        logger.info(f"Fit da eseguire per i dati {y_col} in funzione di {x_col}.")
-
-        if x_col not in df.columns or y_col not in df.columns:
-            messagebox.showerror("Errore", "Colonne non valide selezionate!")
-            return
-
-        # Extract the data
-        x_data = df[x_col].astype(float).values
-        y_data = df[y_col].astype(float).values
-
-        # Filter data in the selected range
-        mask = (x_data >= x_start.get()) & (x_data <= x_end.get())
-        x_fit = x_data[mask]
-        y_fit = y_data[mask]
-
-        if len(x_fit) == 0 or len(y_fit) == 0:
-            messagebox.showerror("Errore", "Nessun dato nel range selezionato!")
-            return
-
-        # Define the fit function
-        param_names = [p.strip() for p in param_names_var.get().split(",")]
-        fit_func_code = f"lambda x, {', '.join(param_names)}: {function_var.get()}"            
-        part_after_colon = fit_func_code.split(":")[1].strip()  # Extract the part after the colon
-        logger.info(f"Si vuole usare come funzione di fit: {part_after_colon}.")
-        fit_func = eval(fit_func_code)
-
-        # Retrieve initial parameters
-        initial_params = [float(p.strip()) for p in initial_params_var.get().split(",")]
-        try :
-            # Perform the fit
-            params, pcovm = curve_fit(fit_func, x_fit, y_fit, p0=initial_params)
-
-            # Draw the fitted curve
-            """x_plot = np.linspace(x_start.get(), x_end.get(), 500)
-            y_plot = fit_func(x_plot, *params)
-            fig = list_figures[number_plots[0]-1][0]
-            plt.plot(x_plot, y_plot, label=f"Fit: {y_col} vs {x_col}", linestyle="--", color="green")
-            plt.legend()
-            plt.show()"""
-            
-            result = ";\n".join([f"{p} = {xi:.3e} +- {dxi:.3e}" 
-                                 for p, xi, dxi in zip(param_names, params, np.sqrt(pcovm.diagonal()))])
-            
+            result = "\n".join(result_lines)
+            output_box.setPlainText(result)
+            logger.info("Fit completato con successo.")
             # Explicit cast to avoid newline issues in log file
             logger.info(f"Il fit ha portato i seguenti risultati: {str(result).replace(chr(10), ' ')}.")
-            messagebox.showinfo("Fit Completato", f"I risultati per i parametri del fit sono:\n{result}")
-
-            # Save on the dictionary for the command window
-            for p, xi, dxi in zip(param_names, params, np.sqrt(pcovm.diagonal())):
-                fit_results[p] = xi
-                fit_results[f"error_{p}"] = dxi
+            app_instance.refresh_shell_variables()
 
         except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante il fitting: {e}")
-            
-            # Draw the curve calculated with the initial parameters
-            """x_plot = np.linspace(x_start.get(), x_end.get(), 500)
-            y_plot = fit_func(x_plot, *initial_params)
-            fig = list_figures[number_plots[0]-1][0]
-            plt.plot(x_plot, y_plot, label="initial guess curve", linestyle="--", color="green")
-            plt.legend()
-            plt.show()"""
+            QMessageBox.critical(window, "Errore", f"Errore durante il fitting: {e}")
+           
+    fit_button = QPushButton("Esegui Fit")
+    fit_button.clicked.connect(perform_fit)
+    param_layout.addWidget(fit_button)
 
-    tk.Button(frame_parameters, text="Execute curve fitting",
-              command=perform_fitting).grid(row=9, column=0, columnspan=2, pady=10)
+    # Sub-window for fitting panel
+    sub = QMdiSubWindow()
+    sub.setWidget(window)
+    sub.setWindowTitle("Curve Fitting")
+    sub.resize(600, 300)
+    app_instance.mdi_area.addSubWindow(sub)
+    sub.show()

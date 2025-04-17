@@ -2,15 +2,17 @@
 Code that contains some standard operations to do on the data.
 """
 import numpy as np
-import tkinter as tk
-from tkinter import messagebox
+from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QComboBox, QCheckBox, QPushButton,
+    QMessageBox, QScrollArea, QWidget, QFormLayout
+)
+
 
 #==============================================================================================#
 # Function to normalize curves in the interval [-1, 1]                                         #
 #==============================================================================================#
 
-def norm(plot_data, count_plot, number_plots, selected_pairs,
-         dataframes, plot_customizations, logger, list_figures):
+def norm(plot_instance, app_instance):
     '''
     Cycle normalization function.
     For each cycle the procedure implemented is the following:
@@ -24,167 +26,159 @@ def norm(plot_data, count_plot, number_plots, selected_pairs,
 
     Parameters
     ----------
-    plot_data : callable
-        function to plot data called in order to
-        immediately make the plot after the changes made
-    count_plot : list
-       list of flags to update the same plot
-    numer_plots : list
-        list of one element, index of the current plot
-    selected_pairs : list
-        list of columns to plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    plot_customizations : dict
-        dictionary to save users customizations
-    logger : instance of logging.getLogger
-        logger of the app
-    list_figures : list
-        list of all figures created
+    plot_instance : instance of the plot class
+        Instance of the plot class
+    app_instance : MainApp
+        Main application instance containing the session data.
     '''
 
-    Y = []
-    for df_choice, _, y_var in selected_pairs:
-        df_idx = int(df_choice.get().split(" ")[1]) - 1  # Index of selected file
-        y_col = y_var.get()
-        y = dataframes[df_idx][y_col].astype(float).values
-        Y.append(y)
-    
-    N_Y = []
-    for y1, y2 in zip(Y[0::2], Y[1::2]):
-        ell_up = y1
-        ell_dw = y2
+    parent_widget  = app_instance
+    dataframes     = app_instance.dataframes
+    logger         = app_instance.logger
+    selected_pairs = plot_instance.selected_pairs
 
-        # Calculate mean values ​​for normalization
-        aveup1 = np.mean(ell_up[:5])
-        aveup2 = np.mean(ell_up[-5:])
-        avedw1 = np.mean(ell_dw[:5])
-        avedw2 = np.mean(ell_dw[-5:])
 
-        if ((aveup1 > aveup2 and avedw1 > avedw2) or (aveup1 < aveup2 and avedw1 < avedw2)):
-            aveup1 = (aveup1 + avedw1) * 0.5
-            avedw1 = (aveup2 + avedw2) * 0.5
-        else:
-            aveup1 = (aveup1 + avedw2) * 0.5
-            avedw1 = (aveup2 + avedw1) * 0.5
+    try:
+        Y = []
+        for df_choice, _, y_var in selected_pairs:
+            df_idx = int(df_choice.currentText().split(" ")[1]) - 1
+            y_col = y_var.currentText()
+            y = dataframes[df_idx][y_col].astype(float).values
+            Y.append(y)
 
-        v_shift     =    (aveup1 + avedw1) * 0.5
-        v_amplitude = abs(aveup1 - avedw1) * 0.5
+        N_Y = []
+        for y1, y2 in zip(Y[0::2], Y[1::2]):
+            ell_up = y1
+            ell_dw = y2
 
-        # Normalize the data
-        ell_up_normalized = (ell_up - v_shift) / v_amplitude
-        ell_dw_normalized = (ell_dw - v_shift) / v_amplitude
-        N_Y.append(ell_up_normalized)
-        N_Y.append(ell_dw_normalized)
-    
-    # Update normalized data in DataFrames
-    for (df_choice, _, y_column), n_y in zip(selected_pairs, N_Y):
-        
-        df_idx     = int(df_choice.get().split(" ")[1]) - 1
-        y_col_name = y_column.get()
-        
-        logger.info(f"Normalizzazione applicata alle colonne {y_col_name}.")
-        dataframes[df_idx][y_col_name] = n_y
+            # Compute averages at start/end
+            aveup1 = np.mean(ell_up[:5])
+            aveup2 = np.mean(ell_up[-5:])
+            avedw1 = np.mean(ell_dw[:5])
+            avedw2 = np.mean(ell_dw[-5:])
 
-    plot_data(count_plot, number_plots, selected_pairs,
-              dataframes, plot_customizations, logger, list_figures)
+            # Branch direction correction
+            if ((aveup1 > aveup2 and avedw1 > avedw2) or (aveup1 < aveup2 and avedw1 < avedw2)):
+                aveup1 = (aveup1 + avedw1) * 0.5
+                avedw1 = (aveup2 + avedw2) * 0.5
+            else:
+                aveup1 = (aveup1 + avedw2) * 0.5
+                avedw1 = (aveup2 + avedw1) * 0.5
+
+            v_shift = (aveup1 + avedw1) * 0.5
+            v_amplitude = abs(aveup1 - avedw1) * 0.5
+
+            # Normalize
+            ell_up_normalized = (ell_up - v_shift) / v_amplitude
+            ell_dw_normalized = (ell_dw - v_shift) / v_amplitude
+
+            N_Y.append(ell_up_normalized)
+            N_Y.append(ell_dw_normalized)
+
+        # Update DataFrames
+        for (df_choice, _, y_var), n_y in zip(selected_pairs, N_Y):
+            df_idx = int(df_choice.currentText().split(" ")[1]) - 1
+            y_col  = y_var.currentText()
+            logger.info(f"Normalizzazione applicata alle colonne {y_col}.")
+            dataframes[df_idx][y_col] = n_y
+
+        #plot_data(plot_instance, app_instance)
+        plot_instance.plot()
+    except Exception as e:
+        QMessageBox.critical(parent_widget, "Errore", f"Errore durante la normalizzazione:\n{e}")
 
 
 #==============================================================================================#
 # Function to close cycles                                                                     #
 #==============================================================================================#
 
-def close(root, plot_data, count_plot, number_plots, selected_pairs,
-          dataframes, plot_customizations, logger, list_figures):
+def close_loop_dialog(plot_instance, app_instance):
     '''
-    Function to manage the window to select the specific cycle to close.
+    Qt window to select file and columns for loop closure.
 
     Parameters
     ----------
-    root : instance of TK class from tkinter
-        toplevel Tk widget, main window of the application
-    plot_data : callable
-        function to plot data called in order to
-        immediately make the plot after the changes made
-    count_plot : list
-        list of flags to update the same plot
-    number_plots : list
-        list of one element, index of the current plot
-    selected_pairs : list
-        list of columns to plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    plot_customizations : dict
-        dictionary to save users customizations
-    logger : instance of logging.getLogger
-        logger of the app
-    list_figures : list
-        list of all figures created
+    plot_instance : QWidget
+        Widget from which this dialog is called (usually the plot panel).
+    app_instance : MainApp
+        Main application instance with session state.
     '''
-    operation_window = tk.Toplevel(root)
-    operation_window.title("Chiudi loop")
+    dataframes = app_instance.dataframes
+    if not dataframes:
+        QMessageBox.warning(plot_instance, "Errore", "Non ci sono dati caricati.")
+        return
 
-    file_choice = tk.StringVar()
-    selected_columns = {}  # Dictionary for tracking column selections
+    dialog = QDialog(plot_instance)
+    dialog.setWindowTitle("Chiudi Loop")
 
-    # Dropdown to choose file
-    tk.Label(operation_window, text="Seleziona il file:").pack(pady=5)
-    file_menu = tk.OptionMenu(operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))])
-    file_menu.pack()
+    layout = QVBoxLayout(dialog)
 
-    def update_column_selection(*args):
-        ''' Updates the column list based on the selected file, excluding the x-axis.
-        '''
-        # Remove all existing column widgets
-        for widget in operation_window.pack_slaves():
-            if isinstance(widget, tk.Checkbutton):
-                widget.destroy()
+    layout.addWidget(QLabel("Seleziona il file:"))
+    file_combo = QComboBox()
+    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
+    layout.addWidget(file_combo)
 
-        if not file_choice.get():
-            return
+    column_checks = {}  # col_name -> QCheckBox
 
-        selected_idx = int(file_choice.get().split(" ")[1]) - 1
-        df = dataframes[selected_idx]  # The selected DataFrame
-        num_cols = len(df.columns)     # Total number of columns in the DataFrame
+    column_area      = QScrollArea()
+    column_container = QWidget()
+    column_layout    = QFormLayout(column_container)
+    column_area.setWidget(column_container)
+    column_area.setWidgetResizable(True)
+    layout.addWidget(column_area)
+
+    def update_column_list():
+        while column_layout.count():
+            item = column_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        idx = file_combo.currentIndex()
+        df = dataframes[idx]
+        num_cols = len(df.columns)
 
         # Determine the columns of the x-axis based on the number of columns. 
         # This is based on the reasonable assumption that the
         # quantities are loaded in pairs to form the entire cycle
         if num_cols >= 8:
-            x_columns = [df.columns[0], df.columns[4]]  # First and fifth columns
+            x_cols = [df.columns[0], df.columns[4]]
         elif num_cols == 6:
-            x_columns = [df.columns[0], df.columns[3]]  # First and fourth columns
+            x_cols = [df.columns[0], df.columns[3]]
         elif num_cols == 4:
-            x_columns = [df.columns[0], df.columns[2]]  # First and third column
+            x_cols = [df.columns[0], df.columns[2]]
         else:
-            pass # The minimum value for a whole cycle is 4 columns
+            x_cols = []
 
-        # Create checkboxes for columns, excluding x-axis ones
+        column_checks.clear()
         for col in df.columns:
-            if col in x_columns:
-                continue  # Skip x-axis columns
+            if col in x_cols:
+                continue
+            cb = QCheckBox(col)
+            column_checks[col] = cb
+            column_layout.addRow(cb)
 
-            selected_columns[col] = tk.BooleanVar(value=False)
-            cb = tk.Checkbutton(operation_window, text=col, variable=selected_columns[col])
-            cb.pack(anchor="w")
+    file_combo.currentIndexChanged.connect(update_column_list)
+    update_column_list()
 
+    def on_apply():
+        selected_file_idx = file_combo.currentIndex()
+        selected_cols = [col for col, cb in column_checks.items() if cb.isChecked()]
+        apply_loop_closure(
+            plot_instance,
+            app_instance,
+            selected_file_idx,
+            selected_cols
+        )
+        dialog.accept()
 
-    file_choice.trace_add("write", update_column_selection)
+    layout.addWidget(QLabel("Seleziona le colonne da correggere (una coppia alla volta):"))
+    apply_button = QPushButton("Applica")
+    apply_button.clicked.connect(on_apply)
+    layout.addWidget(apply_button)
 
-    tk.Button(operation_window, text="Applica",
-              command=lambda : apply_close(plot_data, file_choice, selected_columns, count_plot,
-                                           selected_pairs, dataframes, plot_customizations,
-                                           logger, number_plots, list_figures)
-            ).pack(pady=10)
-    
-    tk.Label(operation_window,
-             text="Selezionare la coppia (una alla volta) di curve da chiudere:"
-            ).pack(pady=5)
+    dialog.exec_()
 
-
-def apply_close(plot_data, file_choice, selected_columns, count_plot,
-                selected_pairs, dataframes, plot_customizations, logger,
-                number_plots, list_figures):
+def apply_loop_closure(plot_instance, app_instance, file_index, selected_cols):
     '''
     Function that corrects the effects of instrumental drift and closes the loop.
 
@@ -198,53 +192,35 @@ def apply_close(plot_data, file_choice, selected_columns, count_plot,
     3) Apply a linear correction to reduce the misalignment:
         This correction is applied only on the dominant difference and its intensity
         decreases linearly while iterating on the points of the loop:
+        
         - The values of the increasing branch are incremented or decremented.
         - The values of the decreasing branch are corrected symmetrically.
     
     Parameters
     ----------
-    plot_data : callable
-        function to plot data called in order to
-        immediately make the plot after the changes made
-    file_choice : instance of tkinter.StringVar
-        variable to store the selected file
-    selected_columns : dict
-        coloumns , that form the loop, to close
-    count_plot : list
-        list of flags to update the same plot
-    selected_pairs : list
-        list of columns to plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    plot_customizations : dict
-        dictionary to save users customizations
-    logger : instance of logging.getLogger
-        logger of the app
-    number_plots : list
-        list of one element, index of the current plot
-    list_figures : list
-        list of all figures created
+    plot_instance : QWidget
+        Calling plot widget (used for re-plotting).
+    app_instance : MainApp
+        Global app state.
+    file_index : int
+        Index of the selected DataFrame.
+    selected_cols : list of str
+        Columns to correct (should be pairs).
     '''
     try:
-        if not file_choice.get():
-            messagebox.showerror("Errore", "Devi selezionare un file!")
+        df = app_instance.dataframes[file_index]
+        logger = app_instance.logger
+
+        if len(selected_cols) < 2:
+            QMessageBox.warning(plot_instance, "Errore", "Devi selezionare la coppia di dati che crea il ciclo")
             return
 
-        selected_idx = int(file_choice.get().split(" ")[1]) - 1
-        df = dataframes[selected_idx]  # The selected DataFrame
+        if len(selected_cols) % 2 != 0:
+            QMessageBox.warning(plot_instance, "Errore", "Devi selezionare la coppia di dati che crea il ciclo.")
+            return
 
-        # Filter selected columns
-        selected_cols = [col for col, is_selected in selected_columns.items() if is_selected.get()]
-        if not selected_cols:
-            messagebox.showerror("Errore", "Devi selezionare la coppia di dati che crea il ciclo")
-            return
-        if len(selected_cols) == 1:
-            messagebox.showerror("Errore", "Devi selezionare la coppia di dati che crea il ciclo")
-            return
-        
-        # Close the loop
         N_Y = []
-        for col1, col2 in zip(selected_cols[0::2], selected_cols[1::2]):
+        for col1, col2 in zip(selected_cols[::2], selected_cols[1::2]):
             ell_up = df[col1].astype(float).values
             ell_dw = df[col2].astype(float).values
 
@@ -272,28 +248,28 @@ def apply_close(plot_data, file_choice, selected_columns, count_plot,
                         ell_up[i] += (0.5 * i * dy_stop) / (num - 1)
                         ell_dw[i] -= (0.5 * i * dy_stop) / (num - 1)
 
-            N_Y.append(ell_up)
-            N_Y.append(ell_dw)
+            N_Y.append((col1, ell_up))
+            N_Y.append((col2, ell_dw))
 
-        # Update normalized data in the selected DataFrame
-        for col, n_y in zip(selected_cols, N_Y):
-            df[col] = n_y
+        for col, new_values in N_Y:
+            df[col] = new_values
             logger.info(f"Chiusura del ciclo applicata a {col}.")
 
-        plot_data(count_plot, number_plots, selected_pairs, dataframes,
-                  plot_customizations, logger, list_figures)
+        # Re-plot
+        plot_instance.plot()
 
-        messagebox.showinfo("Successo", f"Operazione applicata su File {selected_idx + 1}!")
+        QMessageBox.information(plot_instance, "Successo",
+                                f"Correzione applicata su File {file_index + 1}.")
+
     except Exception as e:
-        messagebox.showerror("Errore", f"Errore durante l'operazione: {e}")
+        QMessageBox.critical(plot_instance, "Errore",
+                             f"Errore durante la chiusura del ciclo:\n{e}")
 
 #==============================================================================================#
 # Function to invert axis                                                                      #
 #==============================================================================================#
 
-def apply_inversion(axis, file_choice, selected_pairs, dataframes, logger,
-                    plot_data, count_plot, number_plots, plot_customizations,
-                    list_figures):
+def apply_inversion(axis, file_index, selected_pairs, dataframes, logger, plot_instance):
     '''
     Function to invert the x or y axis of the selected file.
 
@@ -301,276 +277,224 @@ def apply_inversion(axis, file_choice, selected_pairs, dataframes, logger,
     ----------
     axis : str
         axis to invert, can be "x", "y" or "both"
-    file_choice : instance of tkinter.StringVar
-        variable to store the selected file
+    file_index : int
+        Index of the selected DataFrame.
     selected_pairs : list
         list of columns to plot
     dataframes : list
         list of loaded files, each file is a pandas dataframe
     logger : instance of logging.getLogger
         logger of the app
-    plot_data : callable
-        function to plot data called in order to
-        immediately make the plot after the changes made
-    count_plot : list
-        list of flags to update the same plot
-    number_plots : list
-        list of one element, index of the current plot
-    plot_customizations : dict
-        dictionary to save users customizations
-    list_figures : list
-        list of all figures created
+    plot_instance : QWidget
+        Widget from which this dialog is called (usually the plot panel).
     '''
     try:
-        if not file_choice.get():
-            messagebox.showerror("Errore", "Devi selezionare un file!")
-            return
+        df = dataframes[file_index]
 
-        selected_idx = int(file_choice.get().split(" ")[1]) - 1
-        df = dataframes[selected_idx]
-
-        for _, x_var, y_var in selected_pairs:
+        for _, x_combo, y_combo in selected_pairs:
             if axis in ("x", "both"):
-                x_col = x_var.get()
+                x_col = x_combo.currentText()
                 if x_col in df.columns:
                     df[x_col] = df[x_col].astype(float) * -1
                     logger.info(f"Inversione asse x -> colonna {x_col}.")
 
             if axis in ("y", "both"):
-                y_col = y_var.get()
+                y_col = y_combo.currentText()
                 if y_col in df.columns:
                     df[y_col] = df[y_col].astype(float) * -1
                     logger.info(f"Inversione asse y -> colonna {y_col}.")
 
-        plot_data(count_plot, number_plots, selected_pairs, dataframes,
-                  plot_customizations, logger, list_figures)
-        messagebox.showinfo("Successo", f"Inversione asse {axis.upper()} applicata su File {selected_idx + 1}!")
+        plot_instance.plot()
+
+        QMessageBox.information(plot_instance, "Successo",
+                                f"Inversione asse {axis.upper()} applicata su File {file_index + 1}!")
 
     except Exception as e:
-        messagebox.showerror("Errore", f"Errore durante l'inversione: {e}")
+        QMessageBox.critical(plot_instance, "Errore",
+                             f"Errore durante l'inversione:\n{e}")
 
-
-def inv_x(root, plot_data, count_plot, number_plots, selected_pairs,
-          dataframes, plot_customizations, logger, list_figures):
-    ''' 
-    Window to select a file and invert the x-axis.
+def inv_x_dialog(plot_instance, app_instance):
+    '''
+    Dialog to select a file and invert the x-axis.
 
     Parameters
     ----------
-    root : instance of TK class from tkinter
-        toplevel Tk widget, main window of the application
-    plot_data : callable
-        function to plot data called in order to
-        immediately make the plot after the changes made
-    count_plot : list
-        list of one element, a flag to update the same plot
-    number_plots : list
-        list of flags to update the same plot
-    selected_pairs : list
-        list of columns to plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    plot_customizations : dict
-        dictionary to save users customizations
-    logger : instance of logging.getLogger
-        logger of the app
-    list_figures : list
-        list of all figures created
+    plot_instance : QWidget
+        Widget from which this dialog is called (usually the plot panel).
+    app_instance : MainApp
+        Main application instance with session state.
     '''
-    operation_window = tk.Toplevel(root)
-    operation_window.title("Inverti Asse x")
-    file_choice = tk.StringVar()
+    dataframes = app_instance.dataframes
+    if not dataframes:
+        QMessageBox.warning(plot_instance, "Errore", "Non ci sono dati caricati.")
+        return
 
-    tk.Label(operation_window, text="Seleziona il file:").pack(pady=5)
-    tk.OptionMenu(operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))]).pack()
+    dialog = QDialog(plot_instance)
+    dialog.setWindowTitle("Inverti Asse X")
+    layout = QVBoxLayout(dialog)
 
-    tk.Button(operation_window, text="Applica",
-                command=lambda: apply_inversion(
-                    "x", file_choice, selected_pairs, dataframes, logger,
-                    plot_data, count_plot, number_plots, plot_customizations,
-                    list_figures)
-                ).pack(pady=10)
+    layout.addWidget(QLabel("Seleziona il file:"))
+    file_combo = QComboBox()
+    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
+    layout.addWidget(file_combo)
+
+    apply_btn = QPushButton("Applica")
+    layout.addWidget(apply_btn)
+
+    def on_apply():
+        file_index = file_combo.currentIndex()
+        apply_inversion(
+            "x", file_index, plot_instance.selected_pairs, app_instance.dataframes,
+            app_instance.logger, plot_instance
+        )
+        dialog.accept()
+
+    apply_btn.clicked.connect(on_apply)
+    dialog.exec_()
 
 
-def inv_y(root, plot_data, count_plot, number_plots, selected_pairs,
-          dataframes, plot_customizations, logger, list_figures):
+def inv_y_dialog(plot_instance, app_instance):
     '''
-    Window to select a file and invert the y-axis.
+    Dialog to select a file and invert the y-axis.
 
     Parameters
     ----------
-    root : instance of TK class from tkinter
-        toplevel Tk widget, main window of the application
-    plot_data : callable
-        function to plot data called in order to
-        immediately make the plot after the changes made
-    count_plot : list
-        list of one element, a flag to update the same plot
-    number_plots : list
-        list of one element, index of the current plot
-    selected_pairs : list
-        list of columns to plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    plot_customizations : dict
-        dictionary to save users customizations
-    logger : instance of logging.getLogger
-        logger of the app
-    list_figures : list
-        list of all figures created
+    plot_instance : QWidget
+        Widget from which this dialog is called (usually the plot panel).
+    app_instance : MainApp
+        Main application instance with session state.
     '''
-    operation_window = tk.Toplevel(root)
-    operation_window.title("Inverti Asse Y")
-    file_choice = tk.StringVar()
+    dataframes = app_instance.dataframes
+    if not dataframes:
+        QMessageBox.warning(plot_instance, "Errore", "Non ci sono dati caricati.")
+        return
 
-    tk.Label(operation_window, text="Seleziona il file:").pack(pady=5)
-    tk.OptionMenu(operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))]).pack()
+    dialog = QDialog(plot_instance)
+    dialog.setWindowTitle("Inverti Asse Y")
+    layout = QVBoxLayout(dialog)
 
-    tk.Button(operation_window, text="Applica",
-                command=lambda: apply_inversion(
-                    "y", file_choice, selected_pairs, dataframes, logger,
-                    plot_data, count_plot, number_plots, plot_customizations,
-                    list_figures)
-                ).pack(pady=10)
+    layout.addWidget(QLabel("Seleziona il file:"))
+    file_combo = QComboBox()
+    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
+    layout.addWidget(file_combo)
+
+    apply_btn = QPushButton("Applica")
+    layout.addWidget(apply_btn)
+
+    def on_apply():
+        file_index = file_combo.currentIndex()
+        apply_inversion(
+            "y", file_index, plot_instance.selected_pairs, app_instance.dataframes,
+            app_instance.logger, plot_instance
+        )
+        dialog.accept()
+
+    apply_btn.clicked.connect(on_apply)
+    dialog.exec_()
 
 #==============================================================================================#
 # Function to invert a single branch of the cycle                                              #
 #==============================================================================================#
 
-def inv_single_branch(root, plot_data, count_plot, number_plots,
-                      selected_pairs, dataframes, plot_customizations,
-                      logger, list_figures):
+def inv_single_branch_dialog(parent_widget, app_instance):
     '''
-    GUI window to select a file and invert specific branches (columns)
-    of a cycle by applying a sign inversion (-1).
+    Crea la finestra per selezionare il file e le colonne da invertire.
 
     Parameters
     ----------
-    root : instance of TK class from tkinter
-        toplevel Tk widget, main window of the application
-    plot_data : callable
-        function to plot data called in order to
-        immediately make the plot after the changes made
-    count_plot : list
-        list of flags to update the same plot
-    number_plots : list
-        list of one element, index of the current plot
-    selected_pairs : list
-        list of columns to plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    plot_customizations : dict
-        dictionary to save users customizations
-    logger : instance of logging.getLogger
-        logger of the app
-    list_figures : list
-        list of all figures created
+    plot_instance : QWidget
+        Widget from which this dialog is called (usually the plot panel).
+    app_instance : MainApp
+        Main application instance with session state.
     '''
-    operation_window = tk.Toplevel(root)
-    operation_window.title("Inverti Singolo Ramo")
 
-    file_choice = tk.StringVar()
-    selected_columns = {}  # Dictionary of {col_name: tk.BooleanVar}
+    dataframes = app_instance.dataframes
 
-    # File selection dropdown
-    tk.Label(operation_window, text="Seleziona il file:").pack(pady=5)
-    file_menu = tk.OptionMenu(
-        operation_window, file_choice, *[f"File {i + 1}" for i in range(len(dataframes))]
-    )
-    file_menu.pack()
+    dialog = QDialog(parent_widget)
+    dialog.setWindowTitle("Inverti Singolo Ramo")
+    layout = QVBoxLayout(dialog)
 
-    def update_column_selection(*args):
-        # Remove existing checkboxes
-        for widget in operation_window.pack_slaves():
-            if isinstance(widget, tk.Checkbutton):
-                widget.destroy()
+    layout.addWidget(QLabel("Seleziona il file:"))
+    file_combo = QComboBox()
+    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
+    layout.addWidget(file_combo)
 
-        if not file_choice.get():
+    checkbox_container = QWidget()
+    checkbox_layout = QVBoxLayout()
+    checkbox_container.setLayout(checkbox_layout)
+    layout.addWidget(checkbox_container)
+
+    selected_columns = {}
+
+    def update_checkboxes():
+        # Clean old checkbox
+        for i in reversed(range(checkbox_layout.count())):
+            widget = checkbox_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+        selected_columns.clear()
+
+        idx = file_combo.currentIndex()
+        if idx < 0 or idx >= len(dataframes):
             return
 
-        selected_idx = int(file_choice.get().split(" ")[1]) - 1
-        df = dataframes[selected_idx]
+        cols = dataframes[idx].columns
+        for col in cols:
+            cb = QCheckBox(col)
+            checkbox_layout.addWidget(cb)
+            selected_columns[col] = cb
 
-        for col in df.columns:
-            selected_columns[col] = tk.BooleanVar(value=False)
-            cb = tk.Checkbutton(operation_window, text=col, variable=selected_columns[col])
-            cb.pack(anchor="w")
+    file_combo.currentIndexChanged.connect(update_checkboxes)
+    update_checkboxes()
 
-    file_choice.trace_add("write", update_column_selection)
+    apply_btn = QPushButton("Applica")
+    layout.addWidget(apply_btn)
 
-    # Apply button that directly calls the inversion
-    tk.Button(
-        operation_window,
-        text="Applica",
-        command=lambda: apply_column_inversion(
-            file_choice=file_choice,
+    apply_btn.clicked.connect(
+        lambda: apply_column_inversion(
+            file_index=file_combo.currentIndex(),
             selected_columns=selected_columns,
-            dataframes=dataframes,
-            logger=logger,
-            plot_data=plot_data,
-            count_plot=count_plot,
-            number_plots=number_plots,
-            selected_pairs=selected_pairs,
-            plot_customizations=plot_customizations,
-            list_figures=list_figures
+            dataframes=app_instance.dataframes,
+            logger=app_instance.logger,
+            plot_instance=parent_widget,
         )
-    ).pack(pady=10)
+    )
 
-    tk.Label(
-        operation_window,
-        text="Seleziona le colonne da invertire:"
-    ).pack(pady=5)
+    dialog.exec_()
 
-def apply_column_inversion(file_choice, selected_columns, dataframes, logger,
-                           plot_data, count_plot, number_plots, selected_pairs,
-                           plot_customizations, list_figures):
+def apply_column_inversion(file_index, selected_columns, dataframes, logger, plot_instance):
     '''
-    Inverts only the selected columns of a selected file.
-
+    Inverts the sign of selected columns in the given DataFrame.
+    
     Parameters
     ----------
-    file_choice : tk.StringVar
-        Variable containing the selected file (e.g., "File 1")
+    file_index : int
+        Index of the selected DataFrame.
     selected_columns : dict
-        Dictionary mapping column names to tk.BooleanVar()
+        dict of selected colums for inversion
     dataframes : list
         list of loaded files, each file is a pandas dataframe
     logger : instance of logging.getLogger
         logger of the app
-    plot_data : callable
-        function to plot data called in order to
-        immediately make the plot after the changes made
-    count_plot : list
-        list of flags to update the same plot
-    number_plots : list
-        list of one element, index of the current plot
-    selected_pairs : list
-        list of columns to plot
-    plot_customizations : dict
-        dictionary to save users customizations
-    list_figures : list
-        list of all figures created
+    plot_instance : QWidget
+        Widget from which this dialog is called (usually the plot panel).
     '''
     try:
-        if not file_choice.get():
-            messagebox.showerror("Errore", "Nessun file selezionato.")
+        df = dataframes[file_index]
+        selected = [col for col, cb in selected_columns.items() if cb.isChecked()]
+
+        if not selected:
+            QMessageBox.warning(plot_instance, "Errore", "Seleziona almeno una colonna.")
             return
 
-        idx = int(file_choice.get().split(" ")[1]) - 1
-        df = dataframes[idx]
-
-        selected_cols = [col for col, var in selected_columns.items() if var.get()]
-        if not selected_cols:
-            messagebox.showerror("Errore", "Seleziona almeno una colonna da invertire.")
-            return
-
-        for col in selected_cols:
+        for col in selected:
             if col in df.columns:
                 df[col] = df[col].astype(float) * -1
-                logger.info(f"Inversione colonna {col} nel file {idx + 1}.")
+                logger.info(f"Inversione colonna {col} nel file {file_index + 1}.")
 
-        plot_data(count_plot, number_plots, selected_pairs, dataframes,
-                  plot_customizations, logger, list_figures)
-        messagebox.showinfo("Successo", f"Inversione applicata su: {', '.join(selected_cols)}")
+        plot_instance.plot()
+        QMessageBox.information(plot_instance, "Successo",
+                                f"Inversione applicata su: {', '.join(selected)}")
     except Exception as e:
-        messagebox.showerror("Errore", f"Errore durante l'inversione: {e}")
+        QMessageBox.critical(plot_instance, "Errore", f"Errore durante l'inversione:\n{e}")
+

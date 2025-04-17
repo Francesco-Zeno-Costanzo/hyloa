@@ -4,11 +4,14 @@ Code to handle data input and output, i.e. loading and saving data
 import os
 import numpy as np
 import pandas as pd
-import tkinter as tk
-from tkinter import filedialog, messagebox, Toplevel, StringVar
 
-from Hysteresis.data.show import loaded_files
-from Hysteresis.utils.scroll import ScrollableFrame
+from PyQt5.QtWidgets import (
+    QFileDialog, QMessageBox, QWidget, QHBoxLayout, QLabel,
+    QPushButton, QCheckBox, QLineEdit, QScrollArea, QTableWidget,
+    QTableWidgetItem, QDialog, QVBoxLayout, QComboBox
+)
+from PyQt5.QtCore import Qt
+
 
 #==============================================================================================#
 # File upload functions                                                                        #
@@ -38,168 +41,128 @@ def load_files(app_instance):
     ----------
     app_instance : instance of MainApp from main_window.py
     '''
-    
-    root = app_instance.root
-    
     if app_instance.logger is None:
-        messagebox.showerror("Errore", "Impossibile iniziare l'analisi senza avviare il log")
+        QMessageBox.critical(None, "Errore", "Impossibile iniziare l'analisi senza avviare il log")
         return
 
-    file_paths = filedialog.askopenfilenames(
-        filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+    file_paths, _ = QFileDialog.getOpenFileNames(
+        None,
+        "Seleziona i file",
+        "",
+        "Text Files (*.txt);;All Files (*)"
     )
+
     if not file_paths:
         return
 
     for file_path in file_paths:
         try:
-            # Reads the file and displays a secondary window to select columns
             with open(file_path, "r", encoding='utf-8') as f:
-                header = f.readline().strip().split("\t")  # Assumes that columns are separated by tabs
-            app_instance.logger.info(f"Apertura file {file_path}.")
+                header = f.readline().strip().split("\t")
 
-            show_column_selection(app_instance, root, file_path, header)
+            app_instance.logger.info(f"Apertura file {file_path}")
+            show_column_selection(app_instance, file_path, header)
+
         except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante il caricamento del file: {file_path}\n{e}")
+            QMessageBox.critical(None, "Errore", f"Errore durante il caricamento del file: {file_path}\n{e}")
 
 #==============================================================================================#
 
-def show_column_selection(app_instance, root, file_path, header):
+def show_column_selection(app_instance, file_path, header):
     '''
-    Show a window to select columns and names.
+    Dialog window to select columns to load.
 
     Parameters
     ----------
-    app_instance : MainApp object
-        instance of MainApp from main_window.py
-    root : instance of TK class fro tkinter
-        toplevel Tk widget, main window of the application
+    app_instance : instance of MainApp
     file_path : string
         path of the file to read
-    header : list
-        first line of the file to select columns to read
+    header : list of str
+        header of the file
     '''
-    selection_window = tk.Toplevel(root)
-    selection_window.title(f"Seleziona Colonne: {os.path.basename(file_path)}")
-    selection_window.geometry("800x750")
+    # Create a dialog window
+    dialog = QWidget()
+    dialog.setWindowTitle(f"Seleziona Colonne: {os.path.basename(file_path)}")
+    dialog.setGeometry(100, 100, 900, 750)
+    main_layout = QVBoxLayout(dialog)
 
-    # Create a frame with a scrollbar for columns
-    frame = tk.Frame(selection_window)
-    frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-    # Usage
-    description = (
-        "Seleziona le colonne da caricare e assegna un nome, oppure lascia vuota la casella "
-        "il nome assegnato di default sarà: nome file + nome colonna.\n"
-        "Scorrere con la barra laterale per visualizzare i dati caricabili."
-       )
-
-    # Using Message to automatically fit text
-    tk.Message(frame, text=description, width=780).pack()
-
-    # Top Canvas for the top line
-    top_canvas = tk.Canvas(frame, height=10)
-    top_canvas.pack(fill="x")
-    top_canvas.create_line(5, 5, 790, 5, fill="black", width=2)  # Horizontal line
+    # Instructions
+    instructions = QLabel(
+        "Seleziona le colonne da caricare e assegna un nome. Se il nome è vuoto verrà usato il default.\n"
+        "Scorri in basso per visualizzare i dati."
+    )
+    instructions.setWordWrap(True)
+    main_layout.addWidget(instructions)
 
     selected_columns = {}
-    custom_names = {}
+    custom_names     = {}
 
-    def submit_selection():
-        ''' Save the selection of columns and names.
-        '''
+    # Preview Data Table
+    all_df = pd.read_csv(file_path, sep="\t").drop([0, 1, 2])
+    table = QTableWidget()
+    table.setRowCount(len(all_df))
+    table.setColumnCount(len(all_df.columns))
+    table.setHorizontalHeaderLabels(list(all_df.columns))
 
-        columns_to_load = [
-            header[i]
-            for i in range(len(header))
-            if selected_columns.get(i).get()
-        ]
-        custom_column_names = [
-            custom_names[i].get() or f"{os.path.splitext(os.path.basename(file_path))[0]}_{header[i]}"
-            for i in range(len(header))
-            if selected_columns.get(i).get()
-        ]
+    for i in range(len(all_df)):
+        for j, col in enumerate(all_df.columns):
+            item = QTableWidgetItem(str(all_df.iloc[i, j]))
+            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+            table.setItem(i, j, item)
 
-        try:
-            # Load the DataFrame and add it to the list
-            df = pd.read_csv(file_path, sep="\t", nrows=3)
-            app_instance.header_lines.append(df)
+    table.setFixedHeight(250)
+    main_layout.addWidget(table)
 
-            df = pd.read_csv(file_path, sep="\t", usecols=columns_to_load)
-
-            df.columns = custom_column_names
-            df = df.drop([0, 1, 2])  # Ignore any extra lines of header
-            
-            app_instance.dataframes.append(df)
-
-            app_instance.logger.info(f"Dal file: {file_path}, caricate le colonne: {columns_to_load}.")
-
-            messagebox.showinfo("Successo", f"Dati caricati da {file_path}!")
-        except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante il caricamento dei dati: {e}")
-
-        selection_window.destroy()
-
-    # Load the DataFrame to show the columns
-    all_df = pd.read_csv(file_path, sep="\t")
-    all_df = all_df.drop([0, 1, 2])  # Ignore any extra lines of header
-
-    # I show the values ​​of the all_df columns in the upper
-    # part of the window via a scrolling sub-window
-    """canvas = tk.Canvas(frame)
-    canvas.pack(side="left", fill="both", expand=True)
-
-    scrollbar = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-    scrollbar.pack(side="right", fill="y")
-
-    inner_frame = tk.Frame(canvas)
-    inner_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-    canvas.create_window((0, 0), window=inner_frame, anchor="nw")
-
-    # I show the values ​​of the columns of all_df as if I were seeing a table
-    for i, col_name in enumerate(all_df.columns):
-        tk.Label(inner_frame, text=col_name).grid(row=0, column=i, sticky="w")
-        
-        # Box in which the numeric values ​​of the columns appear
-        for j, value in enumerate(all_df[col_name].values):
-            tk.Label(inner_frame, text=value).grid(row=j + 1, column=i, sticky="w")
-
-    
-    canvas.configure(yscrollcommand=scrollbar.set)
-    """
-    # Usa ScrollableFrame per i dati tabellari
-    scrollable = ScrollableFrame(frame)
-    scrollable.pack(fill="both", expand=True)
-
-    # Ottieni il frame scrollabile vero e proprio
-    inner_frame = scrollable.scrollable_frame
-
-    # Visualizza i dati come tabella
-    for i, col_name in enumerate(all_df.columns):
-        tk.Label(inner_frame, text=col_name, font=("Arial", 10, "bold")).grid(row=0, column=i, sticky="w", padx=5)
-        for j, value in enumerate(all_df[col_name].values):
-            tk.Label(inner_frame, text=value, font=("Courier", 9)).grid(row=j + 1, column=i, sticky="w", padx=5)
-
-    # Bottom Canvas for the bottom line
-    bottom_canvas = tk.Canvas(selection_window, height=10)
-    bottom_canvas.pack(fill="x")
-    bottom_canvas.create_line(10, 5, 790, 5, fill="black", width=2)  # Linea orizzontale
-
-    # Interface to select columns
-    tk.Label(selection_window, text="Seleziona le colonne da caricare:").pack(anchor="w")
+    # Column selection section (in scroll area)
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll_content = QWidget()
+    scroll_layout = QVBoxLayout(scroll_content)
 
     for i, col_name in enumerate(header):
-    
-        selected_columns[i] = tk.BooleanVar(value=True)
-        custom_names[i] = tk.StringVar()
+        box = QHBoxLayout()
+        checkbox = QCheckBox(col_name)
+        checkbox.setChecked(True)
+        selected_columns[i] = checkbox
+        custom_names[i] = QLineEdit()
+        custom_names[i].setPlaceholderText("Nome colonna personalizzato")
+        box.addWidget(checkbox)
+        box.addWidget(custom_names[i])
+        scroll_layout.addLayout(box)
 
-        frame = tk.Frame(selection_window)
-        frame.pack(anchor="w")
+    scroll_content.setLayout(scroll_layout)
+    scroll.setWidget(scroll_content)
+    main_layout.addWidget(scroll)
 
-        tk.Checkbutton(frame, text=col_name, variable=selected_columns[i]).pack(side="left")
-        tk.Entry(frame, textvariable=custom_names[i], width=20).pack(side="left")
+    # Confirm button
+    def submit_selection():
+        try:
+            columns_to_load = [header[i] for i in range(len(header)) if selected_columns[i].isChecked()]
+            column_names = [
+                custom_names[i].text() or f"{os.path.splitext(os.path.basename(file_path))[0]}_{header[i]}"
+                for i in range(len(header)) if selected_columns[i].isChecked()
+            ]
 
-    tk.Button(selection_window, text="Carica", command=submit_selection).pack(pady=10)
+            df_header = pd.read_csv(file_path, sep="\t", nrows=3)
+            app_instance.header_lines.append(df_header)
+
+            df_data = pd.read_csv(file_path, sep="\t", usecols=columns_to_load)
+            df_data.columns = column_names
+            df_data = df_data.drop([0, 1, 2])
+
+            app_instance.dataframes.append(df_data)
+            app_instance.logger.info(f"Dal file: {file_path}, caricate le colonne: {columns_to_load}")
+            QMessageBox.information(dialog, "Successo", f"Dati caricati da {file_path}!")
+            app_instance.refresh_shell_variables()
+            dialog.close()
+        except Exception as e:
+            QMessageBox.critical(dialog, "Errore", f"Errore durante il caricamento:\n{e}")
+
+    confirm_button = QPushButton("Carica")
+    confirm_button.clicked.connect(submit_selection)
+    main_layout.addWidget(confirm_button)
+
+    dialog.show()
 
 #==============================================================================================#
 # Functions to save modified data                                                              #
@@ -236,7 +199,7 @@ def save_header(app_instance, df, file_path):
 
 #==============================================================================================#
 
-def save_modified_data(app_instance):
+def save_modified_data(app_instance, parent_widget):
     ''' 
     Allows you to choose the file and data to save, with the related headers.
 
@@ -244,45 +207,54 @@ def save_modified_data(app_instance):
     ----------
     app_instance : MainApp object
         instance of MainApp from main_window.py
+    parent_widget : QWidget
+        parent widget for the dialog
     '''
-    root         = app_instance.root
-    dataframes   = app_instance.dataframes
+
+    dataframes = app_instance.dataframes
 
     if not dataframes:
-        messagebox.showerror("Errore", "Non ci sono dati caricati!")
+        QMessageBox.critical(parent_widget, "Errore", "Nessun dato da salvare.")
         return
-
-    save_window = Toplevel(root)
-    save_window.title("Salva Dati Modificati")
-    save_window.geometry("500x400")
-
-    # Variables for selection
-    selected_df = StringVar(value=f"File 1")  # File selected by default
-
-    tk.Label(save_window, text="Seleziona il file da salvare:").pack(pady=5)
-    file_menu = tk.OptionMenu(save_window, selected_df, *[f"File {i + 1}" for i in range(len(dataframes))])
-    file_menu.pack(pady=5)
-
-    description = (
+    
+     # Instructions
+    instructions = QLabel(
         "Selezionare i file contenente i dati da salvare, se si vuole essere sicuri si può "
         "verificare quali siano sati i file caricati vedendo anche i rispettivi dati.\n"
         "Qualora fossero sate caricate meno colonne delle 8 disponibili verrano aggiunte "
-        "delle colonne di zeri per mantenere la compatibilià."     
+        "delle colonne di zeri per mantenere la compatibilià."
     )
+    instructions.setWordWrap(True)
     
-    # Using Message to automatically fit text
-    tk.Message(save_window, text=description, width=480).pack()
+    dialog = QDialog(parent_widget)
+    dialog.setWindowTitle("Seleziona il file da salvare")
+    dialog.setGeometry(100, 100, 400, 200)
 
-    tk.Button(save_window, text="Salva",
-              command=lambda : save_to_file(selected_df, app_instance, save_window)
-             ).pack(pady=20)
+    layout = QVBoxLayout(dialog)
+    layout.addWidget(instructions)
+    layout.addWidget(QLabel("Scegli il file da salvare:"))
 
-    tk.Button(save_window, text="Visualizza File Caricati",
-              command=lambda : loaded_files(app_instance)
-             ).pack(pady=10)
+    combo = QComboBox()
+    for i in range(len(dataframes)):
+        # Add the filename to the combo box
+        combo.addItem(f"File {i + 1}")
+
+    layout.addWidget(combo)
+
+    save_button = QPushButton("Salva")
+    layout.addWidget(save_button)
+
+    def on_save_clicked():
+        df_idx = combo.currentIndex()
+        save_to_file(df_idx, app_instance, parent_widget)
+        dialog.accept()
+
+    save_button.clicked.connect(on_save_clicked)
+
+    dialog.exec_()
 
 
-def save_to_file(selected_df, app_instance, save_window):
+def save_to_file(df_idx, app_instance, parent_widget=None):
     '''
     Save the selected data to a new text file.
     If fewer columns than the 8 available are loaded,
@@ -290,34 +262,35 @@ def save_to_file(selected_df, app_instance, save_window):
 
     Parameters
     ----------
-    selected_df : StringVar
-        variable containing the name of the selected file
+    df_idx : int
+        index of the selected dataframe
     app_instance : MainApp object
         instance of MainApp from main_window.py
     save_window : Toplevel object
         window to close after saving the data
-    '''
+    '''  
 
     dataframes   = app_instance.dataframes
     header_lines = app_instance.header_lines
    
     try:
-        df_idx = int(selected_df.get().split(" ")[1]) - 1
+        # Retrieve the selected DataFrame
         df = dataframes[df_idx]
        
         # Retrieve the header of the selected file
-
         header = header_lines[df_idx]
  
         # Dialog to choose the name of the new file
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
-            initialfile=f"dati_modificati_file_{df_idx + 1}.txt",
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent_widget,
+            "Salva il file modificato",
+            "",
+            "File di Testo (*.txt);;CSV (*.csv);;Tutti i file (*)"
         )
     
         if not file_path:
-            return 
+            QMessageBox.warning(parent_widget, "Annullato", "Operazione annullata.")
+            return
 
         save_header(app_instance, header, file_path)
         # Save the data in the new file in text format
@@ -334,7 +307,7 @@ def save_to_file(selected_df, app_instance, save_window):
                 expanded_data[:, ::2] = data
             elif cols == 6:
                 # Inserts a column of zeros as the fourth and final column
-                expanded_data[:, :3] = data[:, :3]
+                expanded_data[:, :3]  = data[:, :3]
                 expanded_data[:, 4:7] = data[:, 3:]
             elif cols == 8:
                 # All data
@@ -342,7 +315,7 @@ def save_to_file(selected_df, app_instance, save_window):
 
             np.savetxt(f, expanded_data, delimiter="\t", fmt="%s")
 
-        messagebox.showinfo("Salvataggio completato", f"Dati salvati in {os.path.basename(file_path)}")
-        save_window.destroy()
+        QMessageBox.information(parent_widget, "Successo", f"Dati salvati con successo in:\n{file_path}")
+
     except Exception as e:
-        messagebox.showerror("Errore", f"Errore durante il salvataggio: {e}")
+        QMessageBox.critical(parent_widget, "Errore", f"Errore durante il salvataggio:\n{e}")

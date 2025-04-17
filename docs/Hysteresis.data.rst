@@ -9,7 +9,7 @@ Submodules
 
    Hysteresis.data.io
    Hysteresis.data.processing
-   Hysteresis.data.show
+   Hysteresis.data.session
 
 Module contents
 ---------------

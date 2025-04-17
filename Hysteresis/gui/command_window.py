@@ -2,206 +2,194 @@
 Code to manage the window where you can
 run code to make changes to the data
 """
+
 import io
 import sys
 import numpy as np
-import tkinter as tk
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QTextEdit
+)
+from PyQt5.QtCore import Qt
+
 from scipy.special import *
 from scipy.optimize import *
 import matplotlib.pyplot as plt
-from tkinter import Toplevel, messagebox
 
-
-def open_command_window(root, dataframes, fit_results, logger):
-    ''' 
-    Opens an interactive Python shell to run commands on the data and view the output.
-
-    Parameters
-    ----------
-    root : instance of TK class from tkinter
-        toplevel Tk widget, main window of the application
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    fit_results : dict
-        dictionary to store the results
-    logger : instance of logging.getLogger
-        logger of the app
+class ShellEditor(QTextEdit):
+    ''' Class for wrinting in the shell
     '''
 
-    if not dataframes:
-        messagebox.showerror("Errore", "Non ci sono dati caricati!")
-        return
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFontFamily("Courier")
+        self.setFontPointSize(10)
+        self.setLineWrapMode(QTextEdit.NoWrap)
+        self.setText(">>> ")
 
-    # Create a new window
-    command_window = Toplevel(root)
-    command_window.title("Shell Interattiva Python")
-    command_window.geometry("800x600")
-
-    tk.Label(command_window, text="Shell Python interattiva:", font=("Helvetica", 12)).pack(pady=5)
-
-    # Text area for input/output
-    shell_text = tk.Text(command_window, wrap="word", height=30, width=80)
-    shell_text.pack(pady=5, padx=10)
-    shell_text.insert("end", ">>> ")  # Initial prompt
-
-    # Local dictionary to store generated variables
-    local_vars = {}
-
-    # Populate `local_vars` with DataFrame columns as NumPy arrays
-    for idx, df in enumerate(dataframes):
-        for column in df.columns:
-            # The variable name will be the column name
-            local_vars[column] = df[column].astype(float).values
-    
-    # Add the fit results
-    local_vars = {**local_vars, **fit_results}
-
-    # Command history variables
-    command_history = []
-    history_index = -1
-
-
-    def execute_command(event=None):
-        ''' Executes the entered command and displays input/output in the shell.
+    def keyPressEvent(self, event):
+        ''' Function to handle events from key pressing
         '''
-        global history_index
-        # Get the command from the current line
-        command_start = shell_text.index("insert linestart")
-        command_end   = shell_text.index("insert lineend")
-        command       = shell_text.get(command_start, command_end).strip(">>> ").strip()
+        cursor = self.textCursor() 
+        cursor_pos = cursor.position()
+        prompt_pos = self.toPlainText().rfind(">>> ") + 4
 
-        logger.info(f"Esecuzione del comando: {command}")
+        # Protection against Backspace and Delete on the prompt
+        if cursor_pos <= prompt_pos and event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
+            return 
 
-        # Save command to history
-        if command :
-            command_history.append(command)
-            history_index = len(command_history)  # Reset history index
+        # Block left arrow cursor movement before prompt
+        if cursor_pos <= prompt_pos and event.key() == Qt.Key_Left:
+            return
 
-        # Redirect stdout and stderr
+        # If I type before the prompt, I go back to the end of the text
+        if cursor_pos < prompt_pos:
+            cursor.setPosition(len(self.toPlainText()))
+            self.setTextCursor(cursor)
+
+        super().keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        ''' Function to handle events from mouse pressing
+        '''
+        cursor = self.cursorForPosition(event.pos())
+        cursor_pos = cursor.position()
+        prompt_pos = self.toPlainText().rfind(">>> ") + 4
+
+        if cursor_pos < prompt_pos:
+            # Force cursor after prompt
+            cursor.setPosition(len(self.toPlainText()))
+            self.setTextCursor(cursor)
+        else:
+            super().mousePressEvent(event)
+
+
+class CommandWindow(QWidget):
+    ''' 
+    Class for all the window, 
+    for comand history navigation and evaluation
+    '''
+
+    def __init__(self, app_instance):
+        super().__init__()
+        self.app_instance = app_instance
+        self.dataframes = app_instance.dataframes
+        self.fit_results = app_instance.fit_results
+        self.logger = app_instance.logger
+
+        self.setWindowTitle("Shell Interattiva Python")
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Only in-line command", self))
+
+        self.shell_text = ShellEditor(self)
+        layout.addWidget(self.shell_text)
+
+        self.local_vars = self._initialize_local_vars()
+        self.command_history = []
+        self.history_index = -1
+
+        self.shell_text.installEventFilter(self)
+        self.shell_text.moveCursor(self.shell_text.textCursor().End)
+
+    def _initialize_local_vars(self):
+        ''' Function to initialize the varibales konwn by the shell
+        '''
+        local_vars = {}
+
+        for idx, df in enumerate(self.dataframes):
+            for column in df.columns:
+                local_vars[column] = df[column].astype(float).values
+
+        local_vars.update(self.fit_results)
+        return local_vars
+
+    def refresh_variables(self):
+        ''' Function to update the varibales konwn by the shell
+        '''
+        self.local_vars.clear()
+
+        for idx, df in enumerate(self.app_instance.dataframes):
+            for column in df.columns:
+                self.local_vars[column] = df[column].astype(float).values
+
+        self.local_vars.update(self.app_instance.fit_results)
+
+
+    def eventFilter(self, obj, event):
+        ''' Handle switch for navigation in command's history or execute command
+        '''
+        if obj is self.shell_text:
+            if event.type() == event.KeyPress:
+                key = event.key()
+
+                if key == Qt.Key_Return:
+                    self.execute_command()
+                    return True
+
+                elif key == Qt.Key_Up:
+                    self.navigate_history(-1)
+                    return True
+
+                elif key == Qt.Key_Down:
+                    self.navigate_history(1)
+                    return True
+
+        return super().eventFilter(obj, event)
+
+    def execute_command(self):
+        ''' Function that execute the command
+        '''
+        text = self.shell_text.toPlainText()
+        last_prompt = text.rfind(">>> ")
+        command = text[last_prompt + 4:].strip()
+
+        if not command:
+            self.shell_text.append(">>> ")
+            return
+
+        self.command_history.append(command)
+        self.history_index = len(self.command_history)
+
+        if self.logger:
+            self.logger.info(f"Esecuzione del comando: {command}")
+
         old_stdout, old_stderr = sys.stdout, sys.stderr
         sys.stdout = output_capture = io.StringIO()
         sys.stderr = output_capture
 
         try:
-            # Run the command
-            exec(command, globals(), local_vars)
+            exec(command, globals(), self.local_vars)
             output = output_capture.getvalue()
-
         except Exception as e:
             output = f"Errore: {str(e)}\n"
-
         finally:
-            # Restore original stdout and stderr
             sys.stdout, sys.stderr = old_stdout, old_stderr
-        
-        # Synchronize changes from local_vars to dataframes
-        for idx, df in enumerate(dataframes):
+
+        for idx, df in enumerate(self.dataframes):
             for column in df.columns:
-                if column in local_vars:
-                    modified_array = local_vars[column]
+                if column in self.local_vars:
+                    modified_array = self.local_vars[column]
                     if not np.array_equal(df[column].values, modified_array):
                         df[column] = modified_array
 
-        # View command and output
-        shell_text.configure(state="normal")     # Re-enable the text area
-        shell_text.insert("end", f"\n{output}")  # Add output
-        shell_text.insert("end", ">>> ")         # and new prompt
-        shell_text.see("end")                    # Scroll to the bottom
+        self.shell_text.append(output)
+        self.shell_text.append(">>> ")
+        self.shell_text.moveCursor(self.shell_text.textCursor().End)
 
-        # Move the cursor immediately after the new prompt
-        shell_text.mark_set("insert", f"{shell_text.index('end-1c')}")  # Index of the cursor
-        
-        # Prevents the default behavior of adding a new carriage return 
-        # caused by executing the command via enter key
-        return "break"  
-    
-    def on_key_press(event):
-        ''' Allows writing only after the >>> prompt and prevents unwanted changes.
+    def navigate_history(self, direction):
+        ''' Function for navigating in all command's history
         '''
-        try:
-            # Get the index of the last prompt
-            last_prompt_index = shell_text.search(">>> ", "end-1c", backwards=True)
-            if not last_prompt_index:  # If the prompt is not found
-                return "break"         # Block any input
+        if not self.command_history:
+            return
 
-            # Compute the end position of the prompt
-            prompt_end_index = f"{last_prompt_index} + 4c"
-            cursor_index = shell_text.index("insert")
+        self.history_index += direction
+        self.history_index = max(0, min(self.history_index, len(self.command_history) - 1))
 
-            # Prevents navigation before prompt
-            if event.keysym in ("Left", "BackSpace") and shell_text.compare(cursor_index, "<=", prompt_end_index):
-                return "break"
+        command = self.command_history[self.history_index]
 
-            # Block typing before the end of the prompt
-            if shell_text.compare(cursor_index, "<", prompt_end_index):
-                return "break"
+        text = self.shell_text.toPlainText()
+        last_prompt = text.rfind(">>> ")
+        new_text = text[:last_prompt + 4] + command
+        self.shell_text.setText(new_text)
+        self.shell_text.moveCursor(self.shell_text.textCursor().End)
 
-            # Prevents prompt from being deleted with Delete key
-            if event.keysym == "Delete" and shell_text.compare(cursor_index, "<=", prompt_end_index):
-                return "break"
-
-        except tk.TclError as e:
-            # Log for any errors in the indexes
-            logger.error(f"Errore in on_key_press: {e}")
-            return "break"
-
-        return  # Allow other events
-    
-
-    def navigate_history(event):
-        ''' Navigate between commands with the up and down keys
-        '''
-        global history_index
-
-        if event.keysym == "Up":      # Navigate back in history
-            try :
-                if history_index > 0:
-                    history_index -= 1
-                elif history_index == -1 and command_history:  # Initial case
-                    history_index = len(command_history) - 1
-
-            except NameError:
-                pass
-
-        elif event.keysym == "Down":  # Navigate forward in history
-            try:
-                if history_index < len(command_history) - 1:
-                    history_index += 1
-                elif history_index == len(command_history) - 1:
-                    history_index = -1
-            
-            except NameError:
-                pass
-
-        # Show the current command in the shell
-        try :
-            if history_index >= 0:
-                command = command_history[history_index]
-            else:
-                command = ""
-        
-        except NameError:
-                command = ""
-
-        # Replace the current command with the one in the history
-        current_line_start = shell_text.index("insert linestart")
-        shell_text.delete(current_line_start, "insert lineend")
-        shell_text.insert(current_line_start, f">>> {command}")
-
-        # Place the cursor at the end of the line
-        shell_text.mark_set("insert", "end-1c")
-        return "break"
-
-    
-    # Link Enter to Command Execution
-    shell_text.bind("<Return>", execute_command)
-
-    # Block typing before prompt
-    shell_text.bind("<KeyPress>", on_key_press)
-
-    # Link arrow keys to history navigation
-    shell_text.bind("<Up>", navigate_history)
-    shell_text.bind("<Down>", navigate_history)
-
-    shell_text.focus_set()                   # Initial focus
-    shell_text.mark_set("insert", "end-1c")  # Place the cursor at the prompt

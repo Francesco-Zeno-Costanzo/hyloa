@@ -4,173 +4,239 @@ It is necessary to start the log session in order to trace
 everything that is done otherwise it is not possible to start
 the analysis. From here the calls to the other functions branch out.
 """
-import tkinter as tk
+
 import matplotlib.pyplot as plt
-from tkinter import ttk, messagebox
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QMdiArea, QMdiSubWindow, QWidget, QVBoxLayout,
+    QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox
+)
 
 from Hysteresis.data.io import load_files
-from Hysteresis.data.show import loaded_files
+from Hysteresis.gui.log_window import LogWindow
 from Hysteresis.data.io import save_modified_data
-from Hysteresis.gui.plot_window import open_plot_window
+from Hysteresis.gui.command_window import CommandWindow
+from Hysteresis.gui.plot_window import PlotControlWidget
 from Hysteresis.utils.logging_setup import start_logging
 from Hysteresis.data.session import save_current_session
 from Hysteresis.data.session import load_previous_session
 
 
-class MainApp:
-    
-    def __init__(self, root):
-        '''
-        Class constructor, rather than global variables,
-        define attributes to manage the information and 
-        configurations
+class MainApp(QMainWindow):
+    '''
+    Class to handle the main window
+    '''
+    def __init__(self):
 
-        Parameters
-        ----------
-        root : instance of TK class from tkinter
-            toplevel Tk widget, main window of the application
-        '''
-        
+        super().__init__()
+        self.setWindowTitle("Analisi Cicli di Isteresi")
+        self.setGeometry(100, 100, 1000, 700)
+
+        # MDI area
+        self.mdi_area = QMdiArea()
+        self.setCentralWidget(self.mdi_area)
+
         # Attributes to manage information and configuration
         self.dataframes           = []     # List to store loaded DataFrames
-        self.count_plot           = 0      # Counter to update the single plot
-        self.plot_customizations  = {}     # Dictionary to save graphic's customization
         self.header_lines         = []     # List to store the initial lines of files
         self.logger               = None   # Logger for the entire application
         self.logger_path          = None   # Path to the log file
         self.fit_results          = {}     # Dictionary to save fitting results
         self.number_plots         = 0      # Number of all created plots
-        self.list_figures         = []     # List to store all figures
-        self.plot_window_ref      = None   # Reference to the plot window
+        self.figures_map          = {}     # dict to store all figures
+        self.plot_widgets         = {}     # {int: PlotControlWidget}
 
+        # Interface
+        self.shell_sub = None
+        self.log_sub   = None
 
+        self.init_sidebar()
+        self.show()
 
-        # Initialize main window
-        self.root = root
-        self.root.title("Analisi Cicli di Isteresi")
-        self.root.geometry("500x500")
-        self.create_main_window()
-    
+    def init_sidebar(self):
+        ''' Create sidebar with buttons
+        '''
+        dock = QDockWidget(self)
+        dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        control_panel = QWidget()
+        layout = QVBoxLayout(control_panel)
+
+        description = QLabel(
+            "Per poter inziare l'analisi è necessario specificare un nome per il file di log.\n"
+            "Se si carica una sessione precedente verrà usato il file di log di quella sessione.\n"
+        )
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        layout.addWidget(self.make_button("Avvia Logging", self.conf_logging))
+
+        layout.addWidget(self.make_group("Gestione File", [
+            ("Carica File", self.load_data),
+            ("Visualizza File", self.show_loaded_files)
+        ]))
+
+        layout.addWidget(self.make_group("Analisi", [
+            ("Crea Grafico", self.plot),
+            ("Salva Dati", self.save_data)
+        ]))
+
+        layout.addWidget(self.make_group("Sessione", [
+            ("Salva Sessione", self.save_session),
+            ("Carica Sessione", self.load_session)
+        ]))
+
+        layout.addWidget(self.make_button("Esci", self.exit_app))
+
+        dock.setWidget(control_panel)
+        self.addDockWidget(Qt.LeftDockWidgetArea, dock)
+
+    def make_button(self, text, callback):
+        btn = QPushButton(text)
+        btn.clicked.connect(callback)
+        return btn
+
+    def make_group(self, title, button_info):
+        group = QGroupBox(title)
+        layout = QVBoxLayout()
+        for label, callback in button_info:
+            btn = QPushButton(label)
+            btn.clicked.connect(callback)
+            layout.addWidget(btn)
+        group.setLayout(layout)
+        return group
+
+    #==================== Application Functions ====================#
 
     def conf_logging(self):
-        ''' Initializes logging.
+        ''' Function that call the logging configuration
         '''
-        start_logging(self)
-    
+        start_logging(self, parent_widget=self)
 
     def load_data(self):
-        ''' Call the function to load the data and update the interface.
+        ''' call load file to load data
         '''
         load_files(self)  # Pass the class instance as an argument
+        self.refresh_shell_variables()
 
-        # Check if the plot window is already open
-        # If the plot window is open, refresh the data in it
-        if self.plot_window_ref is not None and self.plot_window_ref.winfo_exists():
-            self.refresh_plot_window_data()
 
     def show_loaded_files(self):
-        ''' Call the function to display the uploaded files.
+        ''' Function that create a window to see all data aviable
         '''
-        loaded_files(self) # Pass the class instance as an argument
-    
-    def save(self):
+        sub = QMdiSubWindow()
+        sub.setWindowTitle("File Caricati")
+        txt = QTextEdit()
+        txt.setText("\n".join(
+            [f'File {i+1}: '+', '.join(df.columns) for i, df in enumerate(self.dataframes)]
+            ) or "Nessun file caricato")
+        sub.setWidget(txt)
+        self.mdi_area.addSubWindow(sub)
+        sub.show()
+
+    def save_data(self):
         ''' Call the function to save the modified data.
         '''
-        save_modified_data(self) # Pass the class instance as an argument
-
-
+        save_modified_data(self, parent_widget=self) # Pass the class instance as an argument
+    
     def plot(self):
-        ''' Create a new plot window
+        ''' Function that create a instance for plot's control panel
         '''
         self.number_plots += 1
-        self.plot_window_ref = open_plot_window(self)  # Save the reference
+        plot_widget = PlotControlWidget(self, self.number_plots)
+        self.plot_widgets[self.number_plots] = plot_widget
 
+        sub = QMdiSubWindow()
+        sub.setWidget(plot_widget)
+        sub.setWindowTitle(f"Controllo grafico {self.number_plots}")
+        sub.resize(600, 300)
+        self.mdi_area.addSubWindow(sub)
+        sub.show()
     
-    def refresh_plot_window_data(self):
-        ''' Update the open plot window with newly loaded files. '''
-        if self.plot_window_ref is None:
-            return
-        
-        # Cerca tutti i widget OptionMenu nella finestra e aggiorna le opzioni dei file
-        for widget in self.plot_window_ref.winfo_children():
-            if isinstance(widget, tk.Frame) or isinstance(widget, tk.LabelFrame):
-                for subwidget in widget.winfo_children():
-                    if isinstance(subwidget, tk.OptionMenu):
-                        menu = subwidget["menu"]
-                        menu.delete(0, "end")
-                        for i in range(len(self.dataframes)):
-                            menu.add_command(
-                                label=f"File {i + 1}",
-                                command=lambda value=f"File {i + 1}": subwidget.variable.set(value)
-                            )
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        QTimer.singleShot(0, self.position_default_panels)
 
-    
-    def save_session(self):
-        ''' Call the function to save the session.
+    def open_default_panels(self):
         '''
-        save_current_session(self)
+        Function for opening automatically the shell and the log panel
+        in the bottom part of the main window one next to the other
+        '''
+        # Create shell
+        shell_widget   = CommandWindow(self)
+        self.shell_sub = QMdiSubWindow()
+        self.shell_sub.setWidget(shell_widget)
+        self.shell_sub.setWindowTitle("Python Shell")
+        self.shell_sub.resize(self.width() // 2, 300)
+        self.mdi_area.addSubWindow(self.shell_sub)
+        self.shell_sub.show()
+
+        # Create log panel
+        log_widget   = LogWindow(self)
+        self.log_sub = QMdiSubWindow()
+        self.log_sub.setWidget(log_widget)
+        self.log_sub.setWindowTitle("Log Output")
+        self.log_sub.resize(self.width() // 2, 300)
+        self.mdi_area.addSubWindow(self.log_sub)
+        self.log_sub.show()
+
+        self.position_default_panels()
+    
+    def position_default_panels(self):
+        ''' 
+        Function that handle the postion and the automatic scaling
+        of the log and shell panels
+        '''
+        if not hasattr(self, 'shell_sub') or not hasattr(self, 'log_sub'):
+            return  
+
+        if not self.shell_sub or not self.log_sub:
+            return
+
+        mdi_size     = self.mdi_area.viewport().size()
+        width        = mdi_size.width()
+        height       = mdi_size.height()
+        half_width   = width // 2
+        panel_height = 300
+
+        # If too small adapt height
+        if panel_height * 2 > height:
+            panel_height = height // 2
+
+        self.shell_sub.resize(half_width, panel_height)
+        self.log_sub.resize(half_width, panel_height)
+
+        self.shell_sub.move(0, height - panel_height)
+        self.log_sub.move(half_width, height - panel_height)
+
+
+    def refresh_shell_variables(self):
+        ''' Function to automatically add new variables to the shell context
+        '''
+        for sub in self.mdi_area.subWindowList():
+            widget = sub.widget()
+            if isinstance(widget, CommandWindow):
+                widget.refresh_variables()
+
+    def save_session(self):
+        ''' Function that call save_current_session
+        '''
+        save_current_session(self, parent_widget=self)
 
     def load_session(self):
-        ''' Call the function to load a previous session.
+        ''' Function that call load_previous_session
         '''
-        load_previous_session(self)
+        load_previous_session(self, parent_widget=self)
+        self.refresh_shell_variables()
+
 
     def exit_app(self):
-        ''' Function to exit the application
+        ''' Function for exitbutton
         '''
-        risposta = messagebox.askyesnocancel("Uscita", "Vuoi salvare la sessione prima di uscire?")
-        if risposta is True:
-            save_current_session(self)
-            self.root.quit()
-            self.root.destroy()
-        elif risposta is False:
-            plt.close("all")
-            self.root.quit()
-            self.root.destroy()
+        reply = QMessageBox.question(self, "Esci", "Vuoi uscire e salvare la sessione?",
+                                     QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+        if reply == QMessageBox.Yes:
+            self.save_session()
+            QApplication.quit()
+        elif reply == QMessageBox.No:
+            QApplication.quit()
+        # Otherwise (cancel) => do nothing
 
-    def create_main_window(self):
-        ''' Function to create the main window with improved layout and style '''
-        
-        style = ttk.Style()
-        style.configure("TButton", font=("Segoe UI", 10))
-        style.configure("TLabel", font=("Segoe UI", 10))
-        
-        self.root.configure(bg="#f0f0f0")
-
-        description = (
-            "Il codice è in grado di effettuare una serie di analisi sui cicli di Isteresi.\n"
-            "Per poterlo eseguire è necessario specificare un nome per il file di log.\n"
-            "In caso non venga specificato il path il file sarà salvato nella cartella corrente.\n"
-            "Se si vuole cambiare file di log, riavviare il programma"        
-        )
-
-        tk.Label(self.root, text=description, justify="center", wraplength=480,
-                bg="#f0f0f0", font=("Segoe UI", 10)).pack(pady=10)
-
-        ttk.Button(self.root, text="Avvia Logging", command=self.conf_logging).pack(pady=10)
-
-        # Frame to organize buttons in sections
-        sections = [
-            ("Gestione File", [
-                ("Carica File", self.load_data),
-                ("Visualizza File Caricati", self.show_loaded_files)
-            ]),
-            ("Analisi e Salvataggio", [
-                ("Crea Grafico", self.plot),
-                ("Salva Dati Modificati", self.save)
-            ]),
-            ("Gestione Sessione", [
-                ("Salva Sessione", self.save_session),
-                ("Carica Sessione", self.load_session)
-            ])
-        ]
-
-        for section_title, buttons in sections:
-            frame = ttk.LabelFrame(self.root, text=section_title)
-            frame.pack(pady=10, padx=10, fill="x")
-
-            for label, command in buttons:
-                ttk.Button(frame, text=label, command=command).pack(side=tk.LEFT, padx=10, pady=5, expand=True)
-
-        # Exit Button
-        ttk.Button(self.root, text="Esci", command=self.exit_app).pack(pady=20)

@@ -2,15 +2,18 @@
 Code to run to start the analysis.
 """
 
-from tkinter import Tk
+import sys
+from PyQt5.QtWidgets import QApplication
+
 from Hysteresis.gui.main_window import MainApp
+
 
 def main():
     ''' Function that starts the gui for analysis
-    '''
-    root = Tk()
-    MainApp(root)
-    root.mainloop()
+    '''   
+    app = QApplication(sys.argv)
+    window = MainApp()
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()

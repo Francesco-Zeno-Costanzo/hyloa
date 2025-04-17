@@ -21,6 +21,12 @@ set SHORTCUT_NAME=Avvia_Hysteresis.lnk
 set DESKTOP=%USERPROFILE%\Desktop
 set SHORTCUT_PATH=%DESKTOP%\%SHORTCUT_NAME%
 
+REM === Percorso all'icona del pacchetto ===
+set ICON_PATH=%BASE_DIR%Hysteresis\resources\icon.ico
+
+REM === Percorso al launcher VBS ===
+set LAUNCH_VBS=%BASE_DIR%launch_hysteresis.vbs
+
 echo ================================
 echo Creazione ambiente virtuale...
 python -m venv "%VENV_DIR%"
@@ -36,25 +42,30 @@ pip install -r requirements.txt
 pip install .
 
 echo ================================
+echo Creazione script VBS di avvio...
+REM === Salva un file .vbs che avvia il programma senza mostrare il terminale
+echo Set WshShell = CreateObject("WScript.Shell") > "%LAUNCH_VBS%"
+echo WshShell.Run Chr(34) ^& "%PYTHON_EXE%" ^& Chr(34) ^& " " ^& Chr(34) ^& "%MAIN_SCRIPT%" ^& Chr(34), 0 >> "%LAUNCH_VBS%"
+echo Set WshShell = Nothing >> "%LAUNCH_VBS%"
+
+echo ================================
 echo Creazione shortcut sul Desktop...
 
-REM === VBS per creare shortcut ===
+REM === Crea la scorciatoia alla VBS
 echo Set oWS = WScript.CreateObject("WScript.Shell") > temp.vbs
 echo sLinkFile = "%SHORTCUT_PATH%" >> temp.vbs
 echo Set oLink = oWS.CreateShortcut(sLinkFile) >> temp.vbs
-echo oLink.TargetPath = "%PYTHON_EXE%" >> temp.vbs
-echo oLink.Arguments = """%MAIN_SCRIPT%""" >> temp.vbs
+echo oLink.TargetPath = "%LAUNCH_VBS%" >> temp.vbs
 echo oLink.WorkingDirectory = "%BASE_DIR%" >> temp.vbs
 echo oLink.WindowStyle = 1 >> temp.vbs
-echo oLink.IconLocation = "%PYTHON_EXE%, 0" >> temp.vbs
+echo oLink.IconLocation = "%ICON_PATH%" >> temp.vbs
 echo oLink.Description = "Avvia Hysteresis GUI" >> temp.vbs
 echo oLink.Save >> temp.vbs
 
-REM === Esegui lo script VBS ===
 cscript //nologo temp.vbs
 del temp.vbs
 
 echo ================================
 echo Installazione completata!
-echo Shortcut creata sul Desktop.
+echo Scorciatoia creata sul Desktop.
 pause

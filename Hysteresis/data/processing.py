@@ -12,7 +12,91 @@ from PyQt5.QtWidgets import (
 # Function to normalize curves in the interval [-1, 1]                                         #
 #==============================================================================================#
 
-def norm(plot_instance, app_instance):
+def norm_dialog(plot_instance, app_instance):
+    '''
+    Qt window to select file and columns for normalization.
+
+    Parameters
+    ----------
+    plot_instance : QWidget
+        Widget that called this dialog (usually the plot panel).
+    app_instance : MainApp
+        Main application instance containing the session.
+    '''
+    dataframes = app_instance.dataframes
+    if not dataframes:
+        QMessageBox.warning(plot_instance, "Errore", "Non ci sono dati caricati.")
+        return
+
+    dialog = QDialog(plot_instance)
+    dialog.setWindowTitle("Normalizza Cicli")
+    layout = QVBoxLayout(dialog)
+
+    layout.addWidget(QLabel("Seleziona il file:"))
+    file_combo = QComboBox()
+    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
+    layout.addWidget(file_combo)
+
+    column_checks = {}
+
+    column_area      = QScrollArea()
+    column_container = QWidget()
+    column_layout    = QFormLayout(column_container)
+    column_area.setWidget(column_container)
+    column_area.setWidgetResizable(True)
+    layout.addWidget(column_area)
+
+    def update_column_list():
+        while column_layout.count():
+            item = column_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        idx = file_combo.currentIndex()
+        df = dataframes[idx]
+        num_cols = len(df.columns)
+
+        # Determine the columns of the x-axis based on the number of columns. 
+        # This is based on the reasonable assumption that the
+        # quantities are loaded in pairs to form the entire cycle
+        if num_cols >= 8:
+            x_cols = [df.columns[0], df.columns[4]]
+        elif num_cols == 6:
+            x_cols = [df.columns[0], df.columns[3]]
+        elif num_cols == 4:
+            x_cols = [df.columns[0], df.columns[2]]
+        else:
+            x_cols = []
+
+        column_checks.clear()
+
+        for col in df.columns:
+            if col in x_cols:
+                continue
+            cb = QCheckBox(col)
+            column_checks[col] = cb
+            column_layout.addRow(cb)
+
+    file_combo.currentIndexChanged.connect(update_column_list)
+    update_column_list()
+
+    def on_apply():
+        selected_file_idx = file_combo.currentIndex()
+        selected_cols = [col for col, cb in column_checks.items() if cb.isChecked()]
+        if len(selected_cols) % 2 != 0 or len(selected_cols) == 0:
+            QMessageBox.critical(dialog, "Errore", "Seleziona un numero pari di colonne.")
+            return
+        dialog.accept()
+        apply_norm(plot_instance, app_instance, selected_file_idx, selected_cols)
+
+    layout.addWidget(QLabel("Seleziona le colonne Y da normalizzare (a coppie):"))
+    apply_button = QPushButton("Applica")
+    apply_button.clicked.connect(on_apply)
+    layout.addWidget(apply_button)
+
+    dialog.exec_()
+
+def apply_norm(plot_instance, app_instance, file_index, selected_cols):
     '''
     Cycle normalization function.
     For each cycle the procedure implemented is the following:
@@ -35,21 +119,14 @@ def norm(plot_instance, app_instance):
     parent_widget  = app_instance
     dataframes     = app_instance.dataframes
     logger         = app_instance.logger
-    selected_pairs = plot_instance.selected_pairs
-
 
     try:
-        Y = []
-        for df_choice, _, y_var in selected_pairs:
-            df_idx = int(df_choice.currentText().split(" ")[1]) - 1
-            y_col = y_var.currentText()
-            y = dataframes[df_idx][y_col].astype(float).values
-            Y.append(y)
-
+        df = app_instance.dataframes[file_index]
+   
         N_Y = []
-        for y1, y2 in zip(Y[0::2], Y[1::2]):
-            ell_up = y1
-            ell_dw = y2
+        for y1, y2 in zip(selected_cols[::2], selected_cols[1::2]):
+            ell_up = df[y1].astype(float).values
+            ell_dw = df[y2].astype(float).values
 
             # Compute averages at start/end
             aveup1 = np.mean(ell_up[:5])
@@ -72,18 +149,19 @@ def norm(plot_instance, app_instance):
             ell_up_normalized = (ell_up - v_shift) / v_amplitude
             ell_dw_normalized = (ell_dw - v_shift) / v_amplitude
 
-            N_Y.append(ell_up_normalized)
-            N_Y.append(ell_dw_normalized)
+            N_Y.append((y1, ell_up_normalized))
+            N_Y.append((y2, ell_dw_normalized))
 
-        # Update DataFrames
-        for (df_choice, _, y_var), n_y in zip(selected_pairs, N_Y):
-            df_idx = int(df_choice.currentText().split(" ")[1]) - 1
-            y_col  = y_var.currentText()
-            logger.info(f"Normalizzazione applicata alle colonne {y_col}.")
-            dataframes[df_idx][y_col] = n_y
+        for col, new_values in N_Y:
+            df[col] = new_values
+            logger.info(f"Normalizzazione applicata a {col}.")
 
-        #plot_data(plot_instance, app_instance)
+        # Re-plot
         plot_instance.plot()
+
+        QMessageBox.information(plot_instance, "Successo",
+                                f"Normalizzazione applicata su File {file_index + 1}.")
+        
     except Exception as e:
         QMessageBox.critical(parent_widget, "Errore", f"Errore durante la normalizzazione:\n{e}")
 

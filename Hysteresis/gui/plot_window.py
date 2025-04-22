@@ -17,9 +17,10 @@ from PyQt5.QtWidgets import (
     QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy
 )
 
-from Hysteresis.data.processing import norm, close_loop_dialog
 from Hysteresis.data.processing import inv_single_branch_dialog
 from Hysteresis.data.processing import inv_x_dialog, inv_y_dialog
+from Hysteresis.data.processing import norm_dialog, close_loop_dialog
+
 
 #==============================================================================================#
 # Main function for managing the plot window                                                   #
@@ -155,7 +156,7 @@ class PlotControlWidget(QWidget):
     def normalize(self):
         ''' Call function to normalize data
         '''
-        norm(self, self.app_instance)
+        norm_dialog(self, self.app_instance)
 
     def close_loop(self):
         ''' Call function to close loop

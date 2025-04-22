@@ -16,6 +16,7 @@ from Hysteresis.data.io import load_files
 from Hysteresis.gui.log_window import LogWindow
 from Hysteresis.data.io import save_modified_data
 from Hysteresis.gui.command_window import CommandWindow
+from Hysteresis.data.io import remove_loaded_file_dialog
 from Hysteresis.gui.plot_window import PlotControlWidget
 from Hysteresis.utils.logging_setup import start_logging
 from Hysteresis.data.session import save_current_session
@@ -118,7 +119,6 @@ class MainApp(QMainWindow):
         load_files(self)  # Pass the class instance as an argument
         self.refresh_shell_variables()
 
-
     def show_loaded_files(self):
         ''' Function that create a window to see all data aviable
         '''
@@ -140,6 +140,15 @@ class MainApp(QMainWindow):
     def plot(self):
         ''' Function that create a instance for plot's control panel
         '''
+
+        if self.logger is None:
+            QMessageBox.critical(None, "Errore", "Impossibile iniziare l'analisi senza avviare il log")
+            return
+        
+        if len(self.dataframes) == 0:
+            QMessageBox.critical(None, "Errore", "Nessun file caricato")
+            return
+        
         self.number_plots += 1
         plot_widget = PlotControlWidget(self, self.number_plots)
         self.plot_widgets[self.number_plots] = plot_widget

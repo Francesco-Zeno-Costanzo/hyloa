@@ -56,19 +56,39 @@ def load_files(app_instance):
         return
 
     for file_path in file_paths:
+
+        filename = os.path.basename(file_path)
+
+        # Check if the file is already loaded
+        existing_names = [df.attrs.get("filename", "") for df in app_instance.dataframes]
+
+        if filename in existing_names:
+            reply = QMessageBox.question(
+                None,
+                "File già caricato",
+                f"Il file '{filename}' è già stato caricato.\nVuoi sovrascriverlo?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.No:
+                continue  # Skip this file
+            else:
+                index_to_replace = existing_names.index(filename)
+        else:
+            index_to_replace = None  # new file
+
         try:
             with open(file_path, "r", encoding='utf-8') as f:
                 header = f.readline().strip().split("\t")
 
             app_instance.logger.info(f"Apertura file {file_path}")
-            show_column_selection(app_instance, file_path, header)
+            show_column_selection(app_instance, file_path, header, index_to_replace)
 
         except Exception as e:
             QMessageBox.critical(None, "Errore", f"Errore durante il caricamento del file: {file_path}\n{e}")
 
 #==============================================================================================#
 
-def show_column_selection(app_instance, file_path, header):
+def show_column_selection(app_instance, file_path, header, index_to_replace=None):
     '''
     Dialog window to select columns to load.
 
@@ -150,8 +170,19 @@ def show_column_selection(app_instance, file_path, header):
             df_data.columns = column_names
             df_data = df_data.drop([0, 1, 2])
 
-            app_instance.dataframes.append(df_data)
             app_instance.logger.info(f"Dal file: {file_path}, caricate le colonne: {columns_to_load}")
+
+            df_data.attrs["filename"] = os.path.basename(file_path)
+
+            if index_to_replace is not None:
+                app_instance.dataframes[index_to_replace]   = df_data
+                app_instance.header_lines[index_to_replace] = df_header
+                app_instance.logger.info(f"File '{file_path}' sovrascritto in posizione {index_to_replace}")
+            else:
+                app_instance.dataframes.append(df_data)
+                app_instance.header_lines.append(df_header)
+                app_instance.logger.info(f"File '{file_path}' aggiunto")
+
             QMessageBox.information(dialog, "Successo", f"Dati caricati da {file_path}!")
             app_instance.refresh_shell_variables()
             dialog.close()

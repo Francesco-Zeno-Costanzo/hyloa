@@ -16,7 +16,6 @@ from Hysteresis.data.io import load_files
 from Hysteresis.gui.log_window import LogWindow
 from Hysteresis.data.io import save_modified_data
 from Hysteresis.gui.command_window import CommandWindow
-from Hysteresis.data.io import remove_loaded_file_dialog
 from Hysteresis.gui.plot_window import PlotControlWidget
 from Hysteresis.utils.logging_setup import start_logging
 from Hysteresis.data.session import save_current_session

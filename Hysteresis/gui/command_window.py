@@ -192,4 +192,11 @@ class CommandWindow(QWidget):
         new_text = text[:last_prompt + 4] + command
         self.shell_text.setText(new_text)
         self.shell_text.moveCursor(self.shell_text.textCursor().End)
+    
+    def append_text(self, text):
+        cursor = self.shell_text.textCursor()
+        cursor.movePosition(cursor.End)
+        cursor.insertText(text)
+        self.shell_text.setTextCursor(cursor)
+        self.shell_text.ensureCursorVisible()
 

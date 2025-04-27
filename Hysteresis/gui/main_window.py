@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
 from Hysteresis.data.io import load_files
 from Hysteresis.gui.log_window import LogWindow
 from Hysteresis.data.io import save_modified_data
+from Hysteresis.gui.script_window import ScriptEditor
 from Hysteresis.gui.command_window import CommandWindow
 from Hysteresis.gui.plot_window import PlotControlWidget
 from Hysteresis.utils.logging_setup import start_logging
@@ -77,7 +78,8 @@ class MainApp(QMainWindow):
 
         layout.addWidget(self.make_group("Analisi", [
             ("Crea Grafico", self.plot),
-            ("Salva Dati", self.save_data)
+            ("Salva Dati", self.save_data),
+            ("Script", self.open_script_editor)
         ]))
 
         layout.addWidget(self.make_group("Sessione", [
@@ -169,9 +171,9 @@ class MainApp(QMainWindow):
         in the bottom part of the main window one next to the other
         '''
         # Create shell
-        shell_widget   = CommandWindow(self)
+        self.shell_widget = CommandWindow(self)
         self.shell_sub = QMdiSubWindow()
-        self.shell_sub.setWidget(shell_widget)
+        self.shell_sub.setWidget(self.shell_widget)
         self.shell_sub.setWindowTitle("Python Shell")
         self.shell_sub.resize(self.width() // 2, 300)
         self.mdi_area.addSubWindow(self.shell_sub)
@@ -223,6 +225,16 @@ class MainApp(QMainWindow):
             widget = sub.widget()
             if isinstance(widget, CommandWindow):
                 widget.refresh_variables()
+    
+    def open_script_editor(self):
+        editor = ScriptEditor(self)
+        sub = QMdiSubWindow()
+        sub.setWidget(editor)
+        sub.setWindowTitle("Editor di Script")
+        sub.resize(600, 300)
+        self.mdi_area.addSubWindow(sub)
+        sub.show()
+
 
     def save_session(self):
         ''' Function that call save_current_session

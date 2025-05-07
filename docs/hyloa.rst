@@ -1,4 +1,4 @@
-Hysteresis package
+hyloa package
 ==================
 
 Subpackages
@@ -7,9 +7,9 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   Hysteresis.data
-   Hysteresis.gui
-   Hysteresis.utils
+   hyloa.data
+   hyloa.gui
+   hyloa.utils
 
 Submodules
 ----------
@@ -17,12 +17,12 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
-   Hysteresis.main
+   hyloa.main
 
 Module contents
 ---------------
 
-.. automodule:: Hysteresis
+.. automodule:: hyloa
    :members:
    :undoc-members:
    :show-inheritance:

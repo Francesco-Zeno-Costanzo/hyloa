@@ -1,5 +1,5 @@
-Hysteresis.utils package
-========================
+hyloa.data package
+=======================
 
 Submodules
 ----------
@@ -7,12 +7,14 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
-   Hysteresis.utils.logging_setup
+   hyloa.data.io
+   hyloa.data.processing
+   hyloa.data.session
 
 Module contents
 ---------------
 
-.. automodule:: Hysteresis.utils
+.. automodule:: hyloa.data
    :members:
    :undoc-members:
    :show-inheritance:

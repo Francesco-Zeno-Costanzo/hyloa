@@ -1,16 +1,16 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="HysteresisAnalysis", 
+    name="hyloa", 
     version="1.1.5",
     author="Francesco Zeno Costanzo",
     author_email="zenofrancesco99@gmail.com",
     description="Un pacchetto per l'analisi dei cicli di isteresi",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/Francesco-Zeno-Costanzo/Hysteresis",
-    packages=find_packages(where="."),  # Search package in Hysteresis/
-    package_dir={"": "."},  # Means that Hysteresis/ in the root
+    url="https://github.com/Francesco-Zeno-Costanzo/hyloa",
+    packages=find_packages(where="."),  # Search package in hyloa/
+    package_dir={"": "."},  # Means that hyloa/ in the root
     include_package_data=True,
     install_requires=[
         "PyQt5",
@@ -27,7 +27,7 @@ setup(
     python_requires=">=3.10.12",
     entry_points={
         "console_scripts": [
-            "hysteresis-analysis=Hysteresis.main:main",
+            "hyloa=hyloa.main:main",
         ],
     },
 )

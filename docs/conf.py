@@ -8,9 +8,9 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath(".."))  # Allow import Hysteresis/
+sys.path.insert(0, os.path.abspath(".."))  # Allow import hyloa/
 
-project = 'HysteresisAnalysis'
+project = 'hyloa'
 copyright = '2025, Francesco Zeno Costanzo'
 author = 'Francesco Zeno Costanzo'
 release = '0.1.0'

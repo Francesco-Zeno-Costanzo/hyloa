@@ -1,7 +1,7 @@
-Hysteresis.data.io module
+hyloa.data.io module
 =========================
 
-.. automodule:: Hysteresis.data.io
+.. automodule:: hyloa.data.io
    :members:
    :undoc-members:
    :show-inheritance:

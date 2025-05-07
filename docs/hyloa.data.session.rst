@@ -1,7 +1,7 @@
-Hysteresis.data.session module
+hyloa.data.session module
 ===============================
 
-.. automodule:: Hysteresis.data.session
+.. automodule:: hyloa.data.session
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,0 +1,3 @@
+[console_scripts]
+hyloa = hyloa.main:main
+

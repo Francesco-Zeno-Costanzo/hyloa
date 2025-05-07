@@ -17,9 +17,9 @@ from PyQt5.QtWidgets import (
     QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy
 )
 
-from Hysteresis.data.processing import inv_single_branch_dialog
-from Hysteresis.data.processing import inv_x_dialog, inv_y_dialog
-from Hysteresis.data.processing import norm_dialog, close_loop_dialog
+from hyloa.data.processing import inv_single_branch_dialog
+from hyloa.data.processing import inv_x_dialog, inv_y_dialog
+from hyloa.data.processing import norm_dialog, close_loop_dialog
 
 
 #==============================================================================================#

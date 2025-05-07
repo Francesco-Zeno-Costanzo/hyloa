@@ -1,7 +1,7 @@
-Hysteresis.data.processing module
+hyloa.data.processing module
 =================================
 
-.. automodule:: Hysteresis.data.processing
+.. automodule:: hyloa.data.processing
    :members:
    :undoc-members:
    :show-inheritance:

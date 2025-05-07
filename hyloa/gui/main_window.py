@@ -12,15 +12,15 @@ from PyQt5.QtWidgets import (
     QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox
 )
 
-from Hysteresis.data.io import load_files
-from Hysteresis.gui.log_window import LogWindow
-from Hysteresis.data.io import save_modified_data
-from Hysteresis.gui.script_window import ScriptEditor
-from Hysteresis.gui.command_window import CommandWindow
-from Hysteresis.gui.plot_window import PlotControlWidget
-from Hysteresis.utils.logging_setup import start_logging
-from Hysteresis.data.session import save_current_session
-from Hysteresis.data.session import load_previous_session
+from hyloa.data.io import load_files
+from hyloa.gui.log_window import LogWindow
+from hyloa.data.io import save_modified_data
+from hyloa.gui.script_window import ScriptEditor
+from hyloa.gui.command_window import CommandWindow
+from hyloa.gui.plot_window import PlotControlWidget
+from hyloa.utils.logging_setup import start_logging
+from hyloa.data.session import save_current_session
+from hyloa.data.session import load_previous_session
 
 
 class MainApp(QMainWindow):

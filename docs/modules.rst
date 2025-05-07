@@ -1,7 +1,7 @@
-Hysteresis
+hyloa
 ==========
 
 .. toctree::
    :maxdepth: 4
 
-   Hysteresis
+   hyloa

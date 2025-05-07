@@ -8,8 +8,8 @@ from PyQt5.QtWidgets import (
     QMdiSubWindow, QMessageBox, QFileDialog
 )
 
-from Hysteresis.utils.logging_setup import setup_logging
-from Hysteresis.gui.plot_window import PlotControlWidget
+from hyloa.utils.logging_setup import setup_logging
+from hyloa.gui.plot_window import PlotControlWidget
 
 def save_current_session(app_instance, parent_widget=None):
     '''

@@ -1,17 +1,17 @@
-.. Hysteresis Analysis documentation master file, created by
+.. Hyloa documentation master file, created by
    sphinx-quickstart on YYYY-MM-DD.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
 ========================================
-Hysteresis Analysis - Documentation
+HYLOA - Documentation
 ========================================
 
-Welcome to the official documentation of **Hysteresis Analysis**, a software for analyzing hysteresis loops.
+Welcome to the official documentation of **HYsteresis LOop Analysis**, a software for analyzing hysteresis loops.
 
 .. image:: _static/hysteresis_logo.png
    :scale: 30%
-   :alt: Logo di Hysteresis Analysis
+   :alt: Logo di hyloa
    :align: center
 
 **Documentation index:**
@@ -23,22 +23,22 @@ Welcome to the official documentation of **Hysteresis Analysis**, a software for
    installation
    usage
    modules
-   Hysteresis
-   Hysteresis.data
-   Hysteresis.gui
-   Hysteresis.utils
+   hyloa
+   hyloa.data
+   hyloa.gui
+   hyloa.utils
 
 -----------------
 
-**What is Hysteresis Analysis?**
+**What is HYLOA?**
 ----------------------------------
-`Hysteresis Analysis` is a Python package designed to analyze hysteresis loops with an intuitive graphical interface.
+`HYLOA` is a Python package designed to analyze hysteresis loops with an intuitive graphical interface.
 
 📌 **Main features**:
 
 - 📊 **Data display**: Loading and displaying hysteresis loops.
 - 🔧 **Analysis tools**: Filters, normalization, curve fitting and more.
-- 🖥 **User-friendly graphical interface** based on Tkinter.
+- 🖥 **User-friendly graphical interface** based on PyQt5.
 
 -----------------
 
@@ -54,15 +54,15 @@ Directly from the GitHub repository:
 
 .. code-block:: bash
 
-    git clone https://github.com/Francesco-Zeno-Costanzo/Hysteresis.git
-    cd Hysteresis
+    git clone https://github.com/Francesco-Zeno-Costanzo/hyloa.git
+    cd hyloa
     pip install .
 
 To launch the graphical interface:
 
 .. code-block:: bash
 
-   hysteresis-analysis
+   hyloa
 
 **Windows users - quick launch:**
 
@@ -73,15 +73,14 @@ If you're on Windows and prefer not to use the terminal, simply:
 
    .. code-block:: none
 
-      run_ha.bat
+      setup.bat
 
-This will automatically launch the graphical interface.
-
+This will automatically install everything you need and create a desktop shortcut to launch the GUI.
 
 
 **Feedback**
 -----------------
-If you find a bug or have suggestions, open an issue at [GitHub](https://github.com/Francesco-Zeno-Costanzo/Hysteresis).
+If you find a bug or have suggestions, open an issue at [GitHub](https://github.com/Francesco-Zeno-Costanzo/hyloa).
 
 -----------------
 

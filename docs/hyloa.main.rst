@@ -1,7 +1,7 @@
-Hysteresis.main module
+hyloa.main module
 ======================
 
-.. automodule:: Hysteresis.main
+.. automodule:: hyloa.main
    :members:
    :undoc-members:
    :show-inheritance:

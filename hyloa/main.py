@@ -5,7 +5,7 @@ Code to run to start the analysis.
 import sys
 from PyQt5.QtWidgets import QApplication
 
-from Hysteresis.gui.main_window import MainApp
+from hyloa.gui.main_window import MainApp
 
 
 def main():

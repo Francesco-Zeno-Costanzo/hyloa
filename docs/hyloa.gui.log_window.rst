@@ -1,7 +1,7 @@
-Hysteresis.gui.plot\_window module
+hyloa.gui.log\_window module
 ==================================
 
-.. automodule:: Hysteresis.gui.plot_window
+.. automodule:: hyloa.gui.log_window
    :members:
    :undoc-members:
    :show-inheritance:

@@ -2,7 +2,7 @@
 setlocal
 
 REM === Nome della cartella del progetto ===
-set PROJECT_NAME=Hysteresis
+set PROJECT_NAME=hyloa
 
 REM === Percorso assoluto di questa cartella ===
 set BASE_DIR=%~dp0
@@ -14,18 +14,18 @@ REM === Percorso a Python dentro l'ambiente virtuale ===
 set PYTHON_EXE=%VENV_DIR%\Scripts\python.exe
 
 REM === Percorso allo script main ===
-set MAIN_SCRIPT=%BASE_DIR%Hysteresis\main.py
+set MAIN_SCRIPT=%BASE_DIR%hyloa\main.py
 
 REM === Percorso alla shortcut da creare sul Desktop ===
-set SHORTCUT_NAME=Avvia_Hysteresis.lnk
+set SHORTCUT_NAME=Avvia_hyloa.lnk
 set DESKTOP=%USERPROFILE%\Desktop
 set SHORTCUT_PATH=%DESKTOP%\%SHORTCUT_NAME%
 
 REM === Percorso all'icona del pacchetto ===
-set ICON_PATH=%BASE_DIR%Hysteresis\resources\icon.ico
+set ICON_PATH=%BASE_DIR%hyloa\resources\icon.ico
 
 REM === Percorso al launcher VBS ===
-set LAUNCH_VBS=%BASE_DIR%launch_hysteresis.vbs
+set LAUNCH_VBS=%BASE_DIR%launch_hyloa.vbs
 
 echo ================================
 echo Creazione ambiente virtuale...
@@ -59,7 +59,7 @@ echo oLink.TargetPath = "%LAUNCH_VBS%" >> temp.vbs
 echo oLink.WorkingDirectory = "%BASE_DIR%" >> temp.vbs
 echo oLink.WindowStyle = 1 >> temp.vbs
 echo oLink.IconLocation = "%ICON_PATH%" >> temp.vbs
-echo oLink.Description = "Avvia Hysteresis GUI" >> temp.vbs
+echo oLink.Description = "Avvia hyloa GUI" >> temp.vbs
 echo oLink.Save >> temp.vbs
 
 cscript //nologo temp.vbs

@@ -1,7 +1,7 @@
-Hysteresis.gui.command\_window module
+hyloa.gui.command\_window module
 =====================================
 
-.. automodule:: Hysteresis.gui.command_window
+.. automodule:: hyloa.gui.command_window
    :members:
    :undoc-members:
    :show-inheritance:

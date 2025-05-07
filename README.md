@@ -1,4 +1,4 @@
-# **Hysteresis Analysis**
+# **HYLOA**
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Francesco-Zeno-Costanzo/Hysteresis/main/docs/_static/hysteresis_logo.png" alt="Hysteresis Logo" width="250">
@@ -11,7 +11,7 @@
 ---
 
 ## **Introduction**  
-Hysteresis Analysis is a Python package that allows you to **load, analyze and visualize** hysteresis loops using a graphical interface.
+HYsteresis LOop Analysis is a Python package that allows you to **load, analyze and visualize** hysteresis loops using a graphical interface.
 
 
 ### **Main features:**  
@@ -22,20 +22,20 @@ Hysteresis Analysis is a Python package that allows you to **load, analyze and v
 - ✔️ Saving modified data
 
 🔗 **Complete documentation:**  
-📚 [ReadTheDocs - Hysteresis Analysis](https://hysteresisanalysis.readthedocs.io/en/latest/)  
+📚 [ReadTheDocs - hyloa](https://hysteresisanalysis.readthedocs.io/en/latest/)  
 
 ---
 
 ## **Installation**  
 ### **from  this repo**
 ```bash
-git clone https://github.com/Francesco-Zeno-Costanzo/Hysteresis.git
-cd Hysteresis
+git clone https://github.com/Francesco-Zeno-Costanzo/hyloa.git
+cd hyloa
 pip install -e .
 ```
 
 ## **Usage**  
 To start the graphical interface, use the command:
 ```bash
-hysteresis-analysis
+hyloa
 ```

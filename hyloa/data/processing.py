@@ -36,6 +36,8 @@ def norm_dialog(plot_instance, app_instance):
     file_combo = QComboBox()
     file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
     layout.addWidget(file_combo)
+    layout.addWidget(QLabel("Seleziona le colonne Y da normalizzare (a coppie):"))
+
 
     column_checks = {}
 
@@ -89,7 +91,6 @@ def norm_dialog(plot_instance, app_instance):
         dialog.accept()
         apply_norm(plot_instance, app_instance, selected_file_idx, selected_cols)
 
-    layout.addWidget(QLabel("Seleziona le colonne Y da normalizzare (a coppie):"))
     apply_button = QPushButton("Applica")
     apply_button.clicked.connect(on_apply)
     layout.addWidget(apply_button)
@@ -195,6 +196,7 @@ def close_loop_dialog(plot_instance, app_instance):
     file_combo = QComboBox()
     file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
     layout.addWidget(file_combo)
+    layout.addWidget(QLabel("Seleziona le colonne da correggere (una coppia alla volta):"))
 
     column_checks = {}  # col_name -> QCheckBox
 
@@ -249,7 +251,6 @@ def close_loop_dialog(plot_instance, app_instance):
         )
         dialog.accept()
 
-    layout.addWidget(QLabel("Seleziona le colonne da correggere (una coppia alla volta):"))
     apply_button = QPushButton("Applica")
     apply_button.clicked.connect(on_apply)
     layout.addWidget(apply_button)

@@ -300,7 +300,12 @@ def plot_data(plot_window_instance, app_instance):
         ax.set_xlabel("H [Oe]", fontsize=15)
         ax.set_ylabel(r"M/M$_{sat}$", fontsize=15)
         ax.legend()
-        ax.grid()
+        
+        # Add horizontal line at y=0
+        ax.axhline(y=0, color='gray', linestyle='--', linewidth=1)
+        # Add vertical line at x=0
+        ax.axvline(x=0, color='gray', linestyle='--', linewidth=1)
+                        
         canvas.draw()
 
     except Exception as e:
@@ -333,6 +338,19 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
     fig, ax = figures_map[number_plots]
 
     lines = ax.lines
+
+    # Remove grid 
+    filtered_lines = []
+    for line in lines:
+        x_data, y_data = line.get_xdata(), line.get_ydata()
+       
+        if not (
+            (all(y == 0 for y in y_data) and len(set(x_data)) > 1) or  # axhline(0)
+            (all(x == 0 for x in x_data) and len(set(y_data)) > 1)     # axvline(0)
+        ):
+            filtered_lines.append(line)
+            
+    lines = filtered_lines
 
     if not lines:
         QMessageBox.critical(parent_widget, "Errore", "Nessuna linea presente nel grafico!")

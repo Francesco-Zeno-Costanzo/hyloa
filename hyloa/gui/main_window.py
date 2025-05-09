@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QMdiArea, QMdiSubWindow, QWidget, QVBoxLayout,
-    QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox
+    QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox, QHBoxLayout,
+    QDialog
 )
 
 from hyloa.data.io import load_files
@@ -79,7 +80,8 @@ class MainApp(QMainWindow):
         layout.addWidget(self.make_group("Analisi", [
             ("Crea Grafico", self.plot),
             ("Salva Dati", self.save_data),
-            ("Script", self.open_script_editor)
+            ("Script", self.open_script_editor),
+            ("Appunti", self.open_comment_window)
         ]))
 
         layout.addWidget(self.make_group("Sessione", [
@@ -234,6 +236,40 @@ class MainApp(QMainWindow):
         sub.resize(600, 300)
         self.mdi_area.addSubWindow(sub)
         sub.show()
+    
+    def open_comment_window(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Appunti dell'analisi")
+
+        layout = QVBoxLayout(dialog)
+
+        layout.addWidget(QLabel("Gli appunti scritti verranno salvati nel file di log:"))
+
+        text_edit = QTextEdit()
+        layout.addWidget(text_edit)
+
+        btn_layout  = QHBoxLayout()
+        confirm_btn = QPushButton("Salva")
+        cancel_btn  = QPushButton("Annulla")
+        btn_layout.addWidget(confirm_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
+
+        def save_comment():
+            comment = text_edit.toPlainText().strip()
+            if comment:
+                if self.logger:
+                    self.logger.info(f"[Commento] {comment}")
+                QMessageBox.information(dialog, "Salvato", "Commento salvato nel log.")
+                dialog.accept()
+            else:
+                QMessageBox.warning(dialog, "Vuoto", "Il commento è vuoto.")
+
+        confirm_btn.clicked.connect(save_comment)
+        cancel_btn.clicked.connect(dialog.reject)
+
+        dialog.exec_()
+
 
 
     def save_session(self):

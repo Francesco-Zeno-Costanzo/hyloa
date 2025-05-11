@@ -17,7 +17,7 @@ REM === Percorso allo script main ===
 set MAIN_SCRIPT=%BASE_DIR%hyloa\main.py
 
 REM === Percorso alla shortcut da creare sul Desktop ===
-set SHORTCUT_NAME=Avvia_hyloa.lnk
+set SHORTCUT_NAME=hyloa.lnk
 set DESKTOP=%USERPROFILE%\Desktop
 set SHORTCUT_PATH=%DESKTOP%\%SHORTCUT_NAME%
 
@@ -37,9 +37,9 @@ call "%VENV_DIR%\Scripts\activate.bat"
 
 echo ================================
 echo Installazione dipendenze...
-pip install --upgrade pip
-pip install -r requirements.txt
-pip install .
+"%PYTHON_EXE%" -m pip install --upgrade pip
+"%PYTHON_EXE%" -m pip install -r requirements.txt
+"%PYTHON_EXE%" -m pip install .
 
 echo ================================
 echo Creazione script VBS di avvio...

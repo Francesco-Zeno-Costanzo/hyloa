@@ -7,7 +7,7 @@
 HYLOA - Documentation
 ========================================
 
-Welcome to the official documentation of **HYsteresis LOop Analysis**, a software for analyzing hysteresis loops.
+Welcome to the official documentation of **HYsteresis LOop Analyzer**, a software for analyzing hysteresis loops.
 
 .. image:: _static/hysteresis_logo.png
    :scale: 30%

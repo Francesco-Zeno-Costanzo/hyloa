@@ -23,6 +23,6 @@ If you're on Windows and prefer not to use the terminal, simply:
 
    .. code-block:: none
 
-      run_ha.bat
+      setup.bat
 
 This will automatically install everything you need and create a desktop shortcut to launch the GUI.

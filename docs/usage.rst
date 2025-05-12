@@ -2,7 +2,7 @@
 Using the package
 ===========================
 
-To start the hysteresis loop analysis graphical interface, use the command:
+To start the hyloa graphical interface, use the command:
 
 .. code-block:: bash
 

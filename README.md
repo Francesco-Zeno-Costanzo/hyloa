@@ -11,7 +11,7 @@
 ---
 
 ## **Introduction**  
-HYsteresis LOop Analysis is a Python package that allows you to **load, analyze and visualize** hysteresis loops using a graphical interface.
+HYsteresis LOop Analyzer is a Python package that allows you to **load, analyze and visualize** hysteresis loops using a graphical interface.
 
 
 ### **Main features:**  
@@ -27,12 +27,20 @@ HYsteresis LOop Analysis is a Python package that allows you to **load, analyze 
 ---
 
 ## **Installation**  
-### **from  this repo**
+### **Linux**
 ```bash
 git clone https://github.com/Francesco-Zeno-Costanzo/hyloa.git
 cd hyloa
 pip install -e .
 ```
+### **Windows**
+If you're on Windows and prefer not to use the terminal, simply:
+
+- Download the repository as a ZIP file from GitHub and extract it.
+- Inside the extracted folder, double-click on: setup.bat
+
+This will automatically install everything you need and create a desktop shortcut to launch the GUI.
+
 
 ## **Usage**  
 To start the graphical interface, use the command:

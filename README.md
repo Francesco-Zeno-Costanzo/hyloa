@@ -31,7 +31,7 @@ HYsteresis LOop Analyzer is a Python package that allows you to **load, analyze 
 ```bash
 git clone https://github.com/Francesco-Zeno-Costanzo/hyloa.git
 cd hyloa
-pip install -e .
+pip install .
 ```
 ### **Windows**
 If you're on Windows and prefer not to use the terminal, simply:
@@ -43,7 +43,7 @@ This will automatically install everything you need and create a desktop shortcu
 
 
 ## **Usage**  
-To start the graphical interface, use the command:
+To start the graphical interface on Linux, use the command:
 ```bash
 hyloa
 ```

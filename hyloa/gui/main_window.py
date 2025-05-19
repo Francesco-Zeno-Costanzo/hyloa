@@ -98,12 +98,12 @@ class MainApp(QMainWindow):
 
         layout.addWidget(self.make_group("Gestione File", [
             ("Carica File", self.load_data),
-            ("Visualizza File", self.show_loaded_files)
+            ("Visualizza File", self.show_loaded_files),
+            ("Salva Dati", self.save_data)
         ]))
 
         layout.addWidget(self.make_group("Analisi", [
             ("Crea Grafico", self.plot),
-            ("Salva Dati", self.save_data),
             ("Script", self.open_script_editor),
             ("Appunti", self.open_comment_window)
         ]))
@@ -320,6 +320,11 @@ class MainApp(QMainWindow):
     def closeEvent(self, event):
         ''' Intercepts window closing to ask whether to save data
         '''
+
+        if self.logger is None:
+            event.accept()
+            return
+        
         reply = QMessageBox.question(self, "Esci", "Vuoi uscire e salvare la sessione?",
                                     QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
 

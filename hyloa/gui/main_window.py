@@ -27,7 +27,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QMdiArea, QMdiSubWindow, QWidget, QVBoxLayout,
     QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox, QHBoxLayout,
-    QDialog
+    QListWidget, QDialog
 )
 
 # Code for data management
@@ -110,7 +110,8 @@ class MainApp(QMainWindow):
 
         layout.addWidget(self.make_group("Sessione", [
             ("Salva Sessione", self.save_session),
-            ("Carica Sessione", self.load_session)
+            ("Carica Sessione", self.load_session),
+            ("Elenco finestre", self.show_window_navigator)
         ]))
 
         layout.addWidget(self.make_button("Esci", self.exit_app))
@@ -250,6 +251,8 @@ class MainApp(QMainWindow):
                 widget.refresh_variables()
     
     def open_script_editor(self):
+        ''' Function to open a window to write some python code
+        '''
         editor = ScriptEditor(self)
         sub = QMdiSubWindow()
         sub.setWidget(editor)
@@ -259,6 +262,8 @@ class MainApp(QMainWindow):
         sub.show()
     
     def open_comment_window(self):
+        ''' Function to open a window to write some comments about the data or something else
+        '''
         dialog = QDialog(self)
         dialog.setWindowTitle("Appunti dell'analisi")
 
@@ -303,6 +308,45 @@ class MainApp(QMainWindow):
         '''
         load_previous_session(self, parent_widget=self)
         self.refresh_shell_variables()
+    
+    def show_window_navigator(self):
+        ''' Function to navigate through all open windows
+        '''
+        subwindows = self.mdi_area.subWindowList()
+        if not subwindows:
+            QMessageBox.information(self, "Nessuna Finestra", "Non ci sono finestre aperte.")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Navigatore Finestre")
+        dialog.setMinimumWidth(300)
+        layout = QVBoxLayout(dialog)
+
+        label = QLabel("Seleziona una finestra da attivare:")
+        layout.addWidget(label)
+
+        list_widget = QListWidget()
+        for win in subwindows:
+            list_widget.addItem(win.windowTitle())
+        layout.addWidget(list_widget)
+
+        button = QPushButton("Vai alla finestra selezionata")
+        layout.addWidget(button)
+
+        def activate_window():
+            idx = list_widget.currentRow()
+            if idx >= 0:
+                win = subwindows[idx]
+                self.mdi_area.setActiveSubWindow(win)
+                win.showNormal()
+                win.raise_()
+                dialog.accept()
+
+        button.clicked.connect(activate_window)
+        list_widget.itemDoubleClicked.connect(lambda _: activate_window())
+
+        dialog.exec_()
+
 
 
     def exit_app(self):

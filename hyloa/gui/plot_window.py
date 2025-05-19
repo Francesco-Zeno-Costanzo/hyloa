@@ -31,7 +31,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QComboBox, QMessageBox, QDialog, QFormLayout,
-    QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy
+    QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy, QFrame
 )
 
 from hyloa.data.processing import inv_single_branch_dialog
@@ -111,8 +111,16 @@ class PlotControlWidget(QWidget):
 
         # Add first pair
         self.add_pair()
+        self.add_pair()
 
     def add_pair(self, file_text=None, x_col=None, y_col=None):
+
+        if len(self.selected_pairs) % 2 == 0:
+            num   = len(self.selected_pairs) // 2 + 1
+            title = QLabel(f"Ciclo {num}")
+            title.setStyleSheet("font-weight: bold; margin-top: 10px; margin-bottom: 5px;")
+            self.pair_layout.addWidget(title)
+
         
         file_combo = QComboBox()
         file_combo.addItems([f"File {i + 1}" for i in range(len(self.app_instance.dataframes))])
@@ -155,6 +163,13 @@ class PlotControlWidget(QWidget):
         container.setLayout(row)
         self.pair_layout.addWidget(container)
         self.selected_pairs.append((file_combo, x_combo, y_combo))
+
+        if len(self.selected_pairs) % 2 == 0:
+            separator = QFrame()
+            separator.setFrameShape(QFrame.HLine)
+            separator.setFrameShadow(QFrame.Sunken)
+            separator.setStyleSheet("margin: 8px 0px;")
+            self.pair_layout.addWidget(separator)
 
     def plot(self):
         ''' Call function to plot data

@@ -40,10 +40,12 @@ from hyloa.data.processing import norm_dialog, close_loop_dialog
 
 
 #==============================================================================================#
-# Main function for managing the plot window                                                   #
+# Main class for managing the plot window                                                      #
 #==============================================================================================#
 
 class PlotControlWidget(QWidget):
+    ''' Main class for managing the plot window  
+    '''
 
     def __init__(self, app_instance, number_plots):
         super().__init__()
@@ -195,6 +197,35 @@ class PlotControlWidget(QWidget):
         '''
         inv_single_branch_dialog(self, self.app_instance)
 
+
+#==============================================================================================#
+# Class to overwrite close event to remove discarded figures                                   #
+#==============================================================================================#
+
+class PlotSubWindow(QMdiSubWindow):
+    ''' Class to overwrite close event to remove discarded figures
+    '''
+
+    def __init__(self, app_instance, plot_widget, plot_id):
+        super().__init__()
+        self.app_instance = app_instance
+        self.plot_widget  = plot_widget
+        self.plot_id      = plot_id
+        self.setWidget(plot_widget)
+        self.setWindowTitle(f"Controllo grafico {plot_id}")
+        self.resize(600, 300)
+
+    def closeEvent(self, event):
+        # Remove the control widget
+        if self.plot_id in self.app_instance.plot_widgets:
+            del self.app_instance.plot_widgets[self.plot_id]
+
+        # Remove the associated figure
+        if self.plot_id in self.app_instance.figures_map:
+            del self.app_instance.figures_map[self.plot_id]
+            self.app_instance.logger.info(f"Figura {self.plot_id} rimossa da figures_map.")
+
+        event.accept()
         
 #==============================================================================================#
 # Function that creates the plot with the chosen data                                          #

@@ -30,15 +30,22 @@ from PyQt5.QtWidgets import (
     QDialog
 )
 
+# Code for data management
 from hyloa.data.io import load_files
-from hyloa.gui.log_window import LogWindow
 from hyloa.data.io import save_modified_data
+from hyloa.data.session import save_current_session
+from hyloa.data.session import load_previous_session
+
+# Code for interface
+from hyloa.gui.log_window import LogWindow
+from hyloa.gui.plot_window import PlotSubWindow
 from hyloa.gui.script_window import ScriptEditor
 from hyloa.gui.command_window import CommandWindow
 from hyloa.gui.plot_window import PlotControlWidget
+
+# Auxiliary code
 from hyloa.utils.logging_setup import start_logging
-from hyloa.data.session import save_current_session
-from hyloa.data.session import load_previous_session
+
 
 
 class MainApp(QMainWindow):
@@ -173,10 +180,7 @@ class MainApp(QMainWindow):
         plot_widget = PlotControlWidget(self, self.number_plots)
         self.plot_widgets[self.number_plots] = plot_widget
 
-        sub = QMdiSubWindow()
-        sub.setWidget(plot_widget)
-        sub.setWindowTitle(f"Controllo grafico {self.number_plots}")
-        sub.resize(600, 300)
+        sub = PlotSubWindow(self, plot_widget, self.number_plots)
         self.mdi_area.addSubWindow(sub)
         sub.show()
     

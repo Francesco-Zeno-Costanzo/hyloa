@@ -26,6 +26,8 @@ from PyQt5.QtWidgets import (
 )
 
 from hyloa.utils.logging_setup import setup_logging
+
+from hyloa.gui.plot_window import PlotSubWindow
 from hyloa.gui.plot_window import PlotControlWidget
 
 def save_current_session(app_instance, parent_widget=None):
@@ -150,10 +152,7 @@ def load_previous_session(app_instance, parent_widget=None):
             widget.plot_customizations = plot_info.get("plot_customizations", {})
 
             # Create sub window for panel
-            sub = QMdiSubWindow()
-            sub.setWidget(widget)
-            sub.setWindowTitle(f"Controllo grafico {idx}")
-            sub.resize(600, 300)
+            sub = PlotSubWindow(app_instance, widget, idx)
             app_instance.mdi_area.addSubWindow(sub)
             sub.show()
 

@@ -89,12 +89,15 @@ class MainApp(QMainWindow):
 
         description = QLabel(
             "Per poter inziare l'analisi è necessario specificare un nome per il file di log.\n"
-            "Se si carica una sessione precedente verrà usato il file di log di quella sessione.\n"
+            "Per maggiori informazioni usare il tasto help.\n"
         )
         description.setWordWrap(True)
         layout.addWidget(description)
 
-        layout.addWidget(self.make_button("Avvia Logging", self.conf_logging))
+        layout.addWidget(self.make_group("Inizio", [
+            ("Help", self.help),
+            ("Avvia Logging", self.conf_logging)
+        ]))
 
         layout.addWidget(self.make_group("Gestione File", [
             ("Carica File", self.load_data),
@@ -109,12 +112,14 @@ class MainApp(QMainWindow):
         ]))
 
         layout.addWidget(self.make_group("Sessione", [
-            ("Salva Sessione", self.save_session),
             ("Carica Sessione", self.load_session),
-            ("Elenco finestre", self.show_window_navigator)
+            ("Elenco finestre", self.show_window_navigator),
+            ("Salva Sessione", self.save_session)
         ]))
 
-        layout.addWidget(self.make_button("Esci", self.exit_app))
+        layout.addWidget(self.make_group("Exit", [
+            ("Esci", self.exit_app)
+        ]))
 
         dock.setWidget(control_panel)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
@@ -135,6 +140,18 @@ class MainApp(QMainWindow):
         return group
 
     #==================== Application Functions ====================#
+
+    def help(self):
+        help_text = (
+            "Per poter inziare l'analisi è necessario specificare un nome per il file di log. "
+            "Se si carica una sessione precedente verrà usato il file di log della sessione. "
+            "File di log e file della sessione devono essere nella stessa cartella. "
+            "In caso il file di log non fosse più presente ne verrà creato uno nuovo con lo stesso "
+            "nome e stesso path del precedente. \n\n"
+
+        )
+
+        QMessageBox.information(self.mdi_area, "Breve guida ad hyloa", help_text)
 
     def conf_logging(self):
         ''' Function that call the logging configuration
@@ -319,21 +336,50 @@ class MainApp(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Navigatore Finestre")
-        dialog.setMinimumWidth(300)
-        layout = QVBoxLayout(dialog)
+        dialog.setMinimumSize(600, 400)
+        layout = QHBoxLayout(dialog)
 
-        label = QLabel("Seleziona una finestra da attivare:")
-        layout.addWidget(label)
-
+        # List of all windows
+        left_layout = QVBoxLayout()
         list_widget = QListWidget()
         for win in subwindows:
             list_widget.addItem(win.windowTitle())
-        layout.addWidget(list_widget)
+        left_layout.addWidget(QLabel("Finestre aperte:"))
+        left_layout.addWidget(list_widget)
 
-        button = QPushButton("Vai alla finestra selezionata")
-        layout.addWidget(button)
+        # Preview of selected windows
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(QLabel("Anteprima finestra selezionata:"))
+
+        preview_label = QLabel()
+        preview_label.setFixedSize(280, 220)
+        preview_label.setStyleSheet("border: 1px solid gray; background: white;")
+        preview_label.setAlignment(Qt.AlignCenter)
+        right_layout.addWidget(preview_label)
+
+        # Button to bring window to the foreground
+        activate_button = QPushButton("Attiva finestra selezionata")
+        right_layout.addWidget(activate_button)
+
+        # Merge layout
+        layout.addLayout(left_layout)
+        layout.addLayout(right_layout)
+
+        def update_preview():
+            ''' Function to update preview
+            '''
+            idx = list_widget.currentRow()
+            if idx >= 0:
+                sub = subwindows[idx]
+                pixmap = sub.grab()  # Screenshot of the window
+                preview = pixmap.scaled(preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                preview_label.setPixmap(preview)
+
+        list_widget.currentRowChanged.connect(update_preview)
 
         def activate_window():
+            ''' Function to bring window to the foreground
+            '''
             idx = list_widget.currentRow()
             if idx >= 0:
                 win = subwindows[idx]
@@ -342,7 +388,7 @@ class MainApp(QMainWindow):
                 win.raise_()
                 dialog.accept()
 
-        button.clicked.connect(activate_window)
+        activate_button.clicked.connect(activate_window)
         list_widget.itemDoubleClicked.connect(lambda _: activate_window())
 
         dialog.exec_()

@@ -27,7 +27,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QMdiArea, QMdiSubWindow, QWidget, QVBoxLayout,
     QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox, QHBoxLayout,
-    QListWidget, QDialog
+    QListWidget, QDialog, QInputDialog
 )
 
 # Code for data management
@@ -71,6 +71,7 @@ class MainApp(QMainWindow):
         self.number_plots         = 0      # Number of all created plots
         self.figures_map          = {}     # dict to store all figures
         self.plot_widgets         = {}     # {int: PlotControlWidget}
+        self.plot_names           = {}     # {int: "name of the figure"}
 
         # Interface
         self.shell_sub = None
@@ -196,9 +197,18 @@ class MainApp(QMainWindow):
             QMessageBox.critical(None, "Errore", "Nessun file caricato")
             return
         
+        # Ask a name for the plot
+        text, ok = QInputDialog.getText(self, "Nome Grafico", "Inserisci un nome per il grafico:")
+        if not ok or not text.strip():
+            return  # cancel if empty or canceled
+
         self.number_plots += 1
-        plot_widget = PlotControlWidget(self, self.number_plots)
+        custom_name        = text.strip()
+
+        # Create control panel
+        plot_widget = PlotControlWidget(self, self.number_plots, custom_name)
         self.plot_widgets[self.number_plots] = plot_widget
+        self.plot_names[self.number_plots]   = custom_name
 
         sub = PlotSubWindow(self, plot_widget, self.number_plots)
         self.mdi_area.addSubWindow(sub)

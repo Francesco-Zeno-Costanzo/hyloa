@@ -78,6 +78,9 @@ def save_current_session(app_instance, parent_widget=None):
                     "plot_customizations": widget.plot_customizations.copy()
                 }
                 for idx, widget in app_instance.plot_widgets.items()
+            },
+            "plot_names": {
+                idx : name for idx, name in app_instance.plot_names.items()
             }
         }
 
@@ -134,9 +137,15 @@ def load_previous_session(app_instance, parent_widget=None):
 
         # Recreate all plot's control panels
         plot_widgets_data = session_data.get("plot_widgets", {})
+        plot_names_data   = session_data.get("plot_names",   {}) 
+        
+        # Loop only over widget because widgets and names share the same keys
         for idx_str, plot_info in plot_widgets_data.items():
-            idx = int(idx_str)
-            widget = PlotControlWidget(app_instance, idx)
+            
+            idx       = int(idx_str)
+            plot_name = plot_names_data.get(idx, f"Grafico {idx}")
+
+            widget = PlotControlWidget(app_instance, idx, plot_name)
             
             for i in reversed(range(widget.pair_layout.count())):
                 widget.pair_layout.itemAt(i).widget().setParent(None)

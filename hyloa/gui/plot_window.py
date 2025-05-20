@@ -47,7 +47,7 @@ class PlotControlWidget(QWidget):
     ''' Main class for managing the plot window  
     '''
 
-    def __init__(self, app_instance, number_plots):
+    def __init__(self, app_instance, number_plots, plot_name="Grafico"):
         super().__init__()
         
         self.app_instance         = app_instance  # Instance of main app
@@ -59,6 +59,7 @@ class PlotControlWidget(QWidget):
         self.ax                   = None
         self.canvas               = None
         self.toolbar              = None
+        self.plot_name            = plot_name
 
         self.init_ui()
 
@@ -227,13 +228,14 @@ class PlotSubWindow(QMdiSubWindow):
         self.plot_widget  = plot_widget
         self.plot_id      = plot_id
         self.setWidget(plot_widget)
-        self.setWindowTitle(f"Controllo grafico {plot_id}")
+        self.setWindowTitle(f"Control - {plot_widget.plot_name}")
         self.resize(600, 300)
 
     def closeEvent(self, event):
         # Remove the control widget
         if self.plot_id in self.app_instance.plot_widgets:
             del self.app_instance.plot_widgets[self.plot_id]
+            del self.app_instance.plot_names[self.plot_id]
 
         # Remove the associated figure
         if self.plot_id in self.app_instance.figures_map:
@@ -261,6 +263,7 @@ def plot_data(plot_window_instance, app_instance):
     # Extracting data from the plot window instance
     selected_pairs      = plot_window_instance.selected_pairs
     number_plots        = plot_window_instance.number_plots
+    plot_name           = plot_window_instance.plot_name    
     dataframes          = app_instance.dataframes
     plot_customizations = plot_window_instance.plot_customizations
     logger              = app_instance.logger
@@ -294,7 +297,7 @@ def plot_data(plot_window_instance, app_instance):
 
         # Sub-window
         sub = QMdiSubWindow()
-        sub.setWindowTitle(f"Grafico {number_plots}")
+        sub.setWindowTitle(f"Plot - {plot_name}")
         sub.setWidget(plot_area)
         sub.resize(800, 600)
         app_instance.mdi_area.addSubWindow(sub)

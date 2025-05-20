@@ -338,7 +338,7 @@ class MainApp(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Navigatore Finestre")
-        dialog.setMinimumSize(600, 400)
+        dialog.setMinimumSize(1000, 600)
         layout = QHBoxLayout(dialog)
 
         # List of all windows
@@ -354,7 +354,8 @@ class MainApp(QMainWindow):
         right_layout.addWidget(QLabel("Anteprima finestra selezionata:"))
 
         preview_label = QLabel()
-        preview_label.setFixedSize(280, 220)
+        preview_label.setFixedSize(800, 500)
+
         preview_label.setStyleSheet("border: 1px solid gray; background: white;")
         preview_label.setAlignment(Qt.AlignCenter)
         right_layout.addWidget(preview_label)

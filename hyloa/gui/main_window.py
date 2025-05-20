@@ -142,6 +142,8 @@ class MainApp(QMainWindow):
     #==================== Application Functions ====================#
 
     def help(self):
+        ''' Function show a short guide
+        '''
         help_text = (
             "Per poter inziare l'analisi è necessario specificare un nome per il file di log. "
             "Se si carica una sessione precedente verrà usato il file di log della sessione. "

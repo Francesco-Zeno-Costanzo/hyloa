@@ -152,6 +152,7 @@ def load_previous_session(app_instance, parent_widget=None):
             widget.selected_pairs.clear()
 
             app_instance.plot_widgets[idx] = widget
+            app_instance.plot_names[idx]   = plot_name
 
             # Retrieve selected pairs ...
             for file_str, x_str, y_str in plot_info.get("selected_pairs", []):

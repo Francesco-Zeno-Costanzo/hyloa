@@ -463,7 +463,8 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
        
         if not (
             (all(y == 0 for y in y_data) and len(set(x_data)) > 1) or  # axhline(0)
-            (all(x == 0 for x in x_data) and len(set(y_data)) > 1)     # axvline(0)
+            (all(x == 0 for x in x_data) and len(set(y_data)) > 1) or  # axvline(0)
+            (line.get_gid() == "fit")
         ):
             filtered_lines.append(line)
             
@@ -596,8 +597,9 @@ def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizatio
     for line in lines:
         x_data, y_data = line.get_xdata(), line.get_ydata()
         if not (
-            (all(y == 0 for y in y_data) and len(set(x_data)) > 1) or
-            (all(x == 0 for x in x_data) and len(set(y_data)) > 1)
+            (all(y == 0 for y in y_data) and len(set(x_data)) > 1) or  # axhline(0)
+            (all(x == 0 for x in x_data) and len(set(y_data)) > 1) or  # axvline(0)
+            (line.get_gid() == "fit")
         ):
             filtered_lines.append(line)
 
@@ -646,14 +648,18 @@ def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizatio
     layout.addWidget(buttons)
 
     def apply_visibility():
-        for label, cb in checkboxes.items():
-            idx = label_to_index[label]
-            visible = cb.isChecked()
-            lines[idx * 2].set_visible(visible)
-            lines[idx * 2 + 1].set_visible(visible)
+        try : 
+            for label, cb in checkboxes.items():
+                idx = label_to_index[label]
+                visible = cb.isChecked()
+                # To avoid some problems with fit's plot
+                lines[idx * 2 + 1].set_visible(visible)
+                lines[idx * 2].set_visible(visible)
+
+        except Exception as e:
+            QMessageBox.critical(dialog, "Errore", f"Errore settaggio visibilità:\n{e}")
         
-        ax.relim()
-        ax.autoscale_view()
+
         # Recreate legend only for visible objects
         handles, labels = ax.get_legend_handles_labels()
         visible_handles_labels = [(h, l) for h, l in zip(handles, labels) if h.get_visible()]
@@ -807,7 +813,8 @@ def open_curve_fitting_window(app_instance, plot_widget):
 
             fig = plot_widget.figure
             ax  = plot_widget.ax
-            ax.plot(np.linspace(x_start, x_end, 500), y_plot, linestyle="--", color="green")
+            fit_line, = ax.plot(np.linspace(x_start, x_end, 500), y_plot, linestyle="--", color="green")
+            fit_line.set_gid("fit")
             plot_widget.canvas.draw()
 
             result_lines = []

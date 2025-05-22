@@ -31,7 +31,9 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QComboBox, QMessageBox, QDialog, QFormLayout,
-    QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy, QFrame
+    QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy, QFrame,
+    QCheckBox, QDialogButtonBox
+
 )
 
 from hyloa.data.processing import inv_single_branch_dialog
@@ -95,11 +97,25 @@ class PlotControlWidget(QWidget):
             bottom_button_layout.addWidget(btn)
         main_layout.addLayout(bottom_button_layout)
 
-        # Section for adding pairs
-        main_layout.addWidget(QLabel("Seleziona le coppie di colonne (x, y):"))
-        add_pair_button = QPushButton("Aggiungi Coppia x-y")
-        add_pair_button.clicked.connect(self.add_pair)
-        main_layout.addWidget(add_pair_button)
+        
+        main_layout.addWidget(QLabel("Seleziona dati, aggiungi togli o nascondi cicli:"))
+        # Section for adding data
+        add_pair_button = QPushButton("Add cycle")
+        add_pair_button.clicked.connect(lambda: [self.add_pair(), self.add_pair()])
+        # Section for remove data
+        remove_cycle_button = QPushButton("Remove last cycle")
+        remove_cycle_button.clicked.connect(self.remove_last_cycle)
+        # Section for hide data
+        toggle_cycle_button = QPushButton("Hide cycle")
+        toggle_cycle_button.clicked.connect(self.toggle_cycle_visibility)
+
+        # Row with button
+        cycle_buttons_layout = QHBoxLayout()
+        cycle_buttons_layout.addWidget(add_pair_button)
+        cycle_buttons_layout.addWidget(remove_cycle_button)
+        cycle_buttons_layout.addWidget(toggle_cycle_button)
+        main_layout.addLayout(cycle_buttons_layout)
+
 
         # Scroll area for dynamic pair selection
         self.scroll_area = QScrollArea()
@@ -171,6 +187,41 @@ class PlotControlWidget(QWidget):
             separator.setFrameShadow(QFrame.Sunken)
             separator.setStyleSheet("margin: 8px 0px;")
             self.pair_layout.addWidget(separator)
+    
+    def remove_last_cycle(self):
+        ''' Remove the last added cycle (pair of file/x/y selectors) from the layout
+        '''
+        if not self.selected_pairs:
+            return
+        
+        for _ in range(2):
+            
+            file_combo, _, _ = self.selected_pairs.pop()
+            parent_widget = file_combo.parent()  # QWidget that contains the row
+            self.pair_layout.removeWidget(parent_widget)
+            parent_widget.deleteLater()
+
+
+        count = self.pair_layout.count()
+        if count >= 1:
+            last_item = self.pair_layout.itemAt(count - 1).widget()
+            if isinstance(last_item, QFrame):
+                self.pair_layout.takeAt(count - 1)
+                last_item.deleteLater()
+                count -= 1
+
+        if count >= 1:
+            last_item = self.pair_layout.itemAt(count - 1).widget()
+            if isinstance(last_item, QLabel) and last_item.text().startswith("Ciclo"):
+                self.pair_layout.takeAt(count - 1)
+                last_item.deleteLater()
+
+
+
+    def toggle_cycle_visibility(self):
+        cycle_visibility(self, self.number_plots, 
+                         self.app_instance.figures_map,
+                         self.plot_customizations)
 
     def plot(self):
         ''' Call function to plot data
@@ -335,8 +386,8 @@ def plot_data(plot_window_instance, app_instance):
         if not plot_customizations:
             col = plt.cm.jet(np.linspace(0, 1, len(X)))
             for i in range(0, len(X), 2):
-                ax.plot(X[i],   Y[i],   color=col[i], marker="o", label=f"Ciclo {i//2 + 1}")
-                ax.plot(X[i+1], Y[i+1], color=col[i], marker="o")
+                ax.plot(X[i],   Y[i],   color=col[i], marker=".", label=f"Ciclo {i//2 + 1}")
+                ax.plot(X[i+1], Y[i+1], color=col[i], marker=".")
 
 
         else:
@@ -512,6 +563,113 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
     apply_button.clicked.connect(apply_style)
 
     dialog.exec_()
+
+#==============================================================================================#
+# Function to hide a plotted cycle                                                             #
+#==============================================================================================#
+
+def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizations):
+    '''
+    Opens a dialog to select which cycles to show/hide in the plot.
+
+    Parameters
+    ----------
+    parent_widget : QWidget
+        parent PyQt5 window
+    number_plots : list
+        list with one element, current plot number
+    figures_map : dict
+        dictionary to store all the matplotlib figures
+    plot_customizations : dict
+        dictionary with customizations (used to get labels)
+    '''
+
+    if parent_widget.figure is None:
+        QMessageBox.critical(parent_widget, "Errore", "Nessun grafico aperto! Crea prima un grafico.")
+        return
+
+    fig, ax = figures_map[number_plots]
+    lines = ax.lines
+
+    # Remove grid
+    filtered_lines = []
+    for line in lines:
+        x_data, y_data = line.get_xdata(), line.get_ydata()
+        if not (
+            (all(y == 0 for y in y_data) and len(set(x_data)) > 1) or
+            (all(x == 0 for x in x_data) and len(set(y_data)) > 1)
+        ):
+            filtered_lines.append(line)
+
+    lines = filtered_lines
+    if not lines:
+        QMessageBox.critical(parent_widget, "Errore", "Nessuna linea presente nel grafico!")
+        return
+
+    # === Cycle labels ===
+    cycles = []
+    label_to_index = {}
+    visibility_map = {}
+
+    for i in range(0, len(lines), 2): 
+        label = plot_customizations.get(i // 2, {}).get("label", f"Ciclo {i // 2 + 1}")
+        cycles.append(label)
+        label_to_index[label] = i // 2
+        visibility_map[label] = lines[i].get_visible()
+
+    # === Dialog ===
+    dialog = QDialog(parent_widget)
+    dialog.setWindowTitle("Mostra/Nascondi Cicli")
+
+    layout        = QVBoxLayout(dialog)
+    scroll_area   = QScrollArea()
+    scroll_widget = QWidget()
+    scroll_layout = QVBoxLayout(scroll_widget)
+
+    layout.addWidget(QLabel("Seleziona dati da mostrare:"))
+
+    checkboxes = {}
+
+    for label in cycles:
+        cb = QCheckBox(label)
+        cb.setChecked(visibility_map[label])
+        scroll_layout.addWidget(cb)
+        checkboxes[label] = cb
+
+    scroll_widget.setLayout(scroll_layout)
+    scroll_area.setWidgetResizable(True)
+    scroll_area.setWidget(scroll_widget)
+    layout.addWidget(scroll_area)
+
+    # Buttons
+    buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+    layout.addWidget(buttons)
+
+    def apply_visibility():
+        for label, cb in checkboxes.items():
+            idx = label_to_index[label]
+            visible = cb.isChecked()
+            lines[idx * 2].set_visible(visible)
+            lines[idx * 2 + 1].set_visible(visible)
+        
+        ax.relim()
+        ax.autoscale_view()
+        # Recreate legend only for visible objects
+        handles, labels = ax.get_legend_handles_labels()
+        visible_handles_labels = [(h, l) for h, l in zip(handles, labels) if h.get_visible()]
+        if visible_handles_labels:
+            handles, labels = zip(*visible_handles_labels)
+            ax.legend(handles, labels)
+        else:
+            ax.legend().remove()  # No visible line => remove legend
+
+        fig.canvas.draw_idle()
+        dialog.accept()
+
+    buttons.accepted.connect(apply_visibility)
+    buttons.rejected.connect(dialog.reject)
+
+    dialog.exec_() 
 
 #==============================================================================================#
 # Curve fitting function                                                                       #

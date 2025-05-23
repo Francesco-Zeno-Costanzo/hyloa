@@ -383,6 +383,9 @@ def plot_data(plot_window_instance, app_instance):
     dataframes          = app_instance.dataframes
     plot_customizations = plot_window_instance.plot_customizations
     logger              = app_instance.logger
+
+    # For Normalization or loop closure
+    app_instance.refresh_shell_variables()
     
     # Create a figure
     if plot_window_instance.figure is None:

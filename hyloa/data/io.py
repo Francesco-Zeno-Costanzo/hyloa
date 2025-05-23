@@ -388,7 +388,7 @@ def duplicate_file(parent_widget=None):
         parent_widget,
         "Seleziona il file da duplicare",
         "",
-        "All Files (*)"
+        "Text Files (*.txt);;All Files (*)"
     )
 
     if not file_path:

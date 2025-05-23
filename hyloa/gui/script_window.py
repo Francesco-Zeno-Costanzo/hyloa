@@ -20,6 +20,7 @@ Code for manage script's window
 """
 import io
 import sys
+import numpy as np
 
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
@@ -93,6 +94,13 @@ class ScriptEditor(QWidget):
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
+
+        for idx, df in enumerate(self.app_instance.dataframes):
+            for column in df.columns:
+                if column in shell.local_vars:
+                    modified_array = shell.local_vars[column]
+                    if not np.array_equal(df[column].values, modified_array):
+                        df[column] = modified_array
 
         output = output_capture.getvalue()
 
@@ -176,7 +184,7 @@ class PythonHighlighter(QSyntaxHighlighter):
             r"\belif\b", r"\bwhile\b", r"\bfor\b", r"\bin\b", r"\bimport\b",
             r"\bfrom\b", r"\bas\b", r"\bpass\b", r"\bNone\b", r"\bTrue\b", r"\bFalse\b",
             r"\band\b", r"\bnot\b", r"\bor\b", r"\bwith\b", r"\btry\b", r"\bexcept\b",
-            r"\bfinally\b",
+            r"\bfinally\b", r"\blambda\b",
         ]
 
         self.highlighting_rules = [(QRegExp(pattern), keyword_format) for pattern in keyword_patterns]

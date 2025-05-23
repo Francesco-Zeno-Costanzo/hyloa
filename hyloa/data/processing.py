@@ -135,7 +135,6 @@ def apply_norm(plot_instance, app_instance, file_index, selected_cols):
     '''
 
     parent_widget  = app_instance
-    dataframes     = app_instance.dataframes
     logger         = app_instance.logger
 
     try:

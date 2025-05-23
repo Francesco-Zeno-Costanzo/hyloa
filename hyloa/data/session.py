@@ -18,6 +18,7 @@
 """
 Code to save a session (i.e. alla dta loaded all plot crated and so on) in .pkl files
 """
+import os
 import pickle
 import logging
 
@@ -59,10 +60,11 @@ def save_current_session(app_instance, parent_widget=None):
     try:
         # Build the dictionary for saving data 
         session_data = {
-            "dataframes": app_instance.dataframes,
+            "dataframes":   app_instance.dataframes,
             "header_lines": app_instance.header_lines,
-            "logger_path": app_instance.logger_path,
-            "fit_results": app_instance.fit_results,
+            "logger_path":  app_instance.logger_path,
+            "log_filename": os.path.basename(app_instance.logger_path),
+            "fit_results":  app_instance.fit_results,
             "number_plots": app_instance.number_plots,
 
             "plot_widgets": {
@@ -124,12 +126,24 @@ def load_previous_session(app_instance, parent_widget=None):
         # Reload attributes of main app instance
         app_instance.dataframes     = session_data.get("dataframes", [])
         app_instance.header_lines   = session_data.get("header_lines", [])
-        app_instance.logger_path    = session_data.get("logger_path", None)
         app_instance.fit_results    = session_data.get("fit_results", {})
         app_instance.number_plots   = session_data.get("number_plots", 0)
 
-        # Recreate the logger
-        setup_logging(app_instance.logger_path)
+        try :
+            app_instance.logger_path = session_data.get("logger_path", None)
+            # Recreate the logger
+            setup_logging(app_instance.logger_path)
+        except :
+
+            log_filename = session_data.get("log_filename")
+            # To ensure compatibility with different OS
+            default_dir              = os.path.dirname(file_path)
+            reconstructed_path       = os.path.join(default_dir, log_filename)
+            app_instance.logger_path = reconstructed_path
+            # Recreate the logger
+            setup_logging(app_instance.logger_path)
+
+        
         app_instance.logger = logging.getLogger(__name__)
         app_instance.logger.info("Logger ripristinato da file di sessione.")
 

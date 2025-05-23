@@ -19,7 +19,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="hyloa", 
-    version="1.5.16",
+    version="1.6.16",
     author="Francesco Zeno Costanzo",
     author_email="zenofrancesco99@gmail.com",
     description="Un pacchetto per l'analisi dei cicli di isteresi",

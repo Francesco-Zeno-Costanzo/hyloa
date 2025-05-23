@@ -32,6 +32,7 @@ from PyQt5.QtWidgets import (
 
 # Code for data management
 from hyloa.data.io import load_files
+from hyloa.data.io import duplicate_file
 from hyloa.data.io import save_modified_data
 from hyloa.data.session import save_current_session
 from hyloa.data.session import load_previous_session
@@ -103,7 +104,8 @@ class MainApp(QMainWindow):
         layout.addWidget(self.make_group("Gestione File", [
             ("Carica File", self.load_data),
             ("Visualizza File", self.show_loaded_files),
-            ("Salva Dati", self.save_data)
+            ("Salva Dati", self.save_data),
+            ("Duplica dati", self.duplicate)
         ]))
 
         layout.addWidget(self.make_group("Analisi", [
@@ -162,10 +164,15 @@ class MainApp(QMainWindow):
         start_logging(self, parent_widget=self)
 
     def load_data(self):
-        ''' call load file to load data
+        ''' call load files to load data
         '''
         load_files(self)  # Pass the class instance as an argument
         self.refresh_shell_variables()
+    
+    def duplicate(self):
+        ''' For duplication file
+        '''
+        duplicate_file(self)
 
     def show_loaded_files(self):
         ''' Function that create a window to see all data aviable

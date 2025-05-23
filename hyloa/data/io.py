@@ -19,6 +19,7 @@
 Code to handle data input and output, i.e. loading and saving data
 """
 import os
+import shutil
 import numpy as np
 import pandas as pd
 
@@ -367,3 +368,39 @@ def save_to_file(df_idx, app_instance, parent_widget=None):
 
     except Exception as e:
         QMessageBox.critical(parent_widget, "Errore", f"Errore durante il salvataggio:\n{e}")
+
+#==============================================================================================#
+# Function that create a copy of a given file                                                  #
+#==============================================================================================#
+
+def duplicate_file(parent_widget=None):
+    '''
+    Duplicates a selected file by creating a copy named <original>_copy.ext.
+    Opens a file dialog to select a file and creates a duplicate
+    of it with '_copy' appended to the name.
+
+    Parameters:
+    -----------
+    parent_widget : (QWidget, optional)
+        The parent widget for dialogs. Defaults to None.
+    '''
+    file_path, _ = QFileDialog.getOpenFileName(
+        parent_widget,
+        "Seleziona il file da duplicare",
+        "",
+        "All Files (*)"
+    )
+
+    if not file_path:
+        return
+
+    base, ext = os.path.splitext(file_path)
+    copy_path = f"{base}_copy{ext}"
+
+    try:
+        shutil.copy2(file_path, copy_path)
+        QMessageBox.information(parent_widget, "Copia completata",
+                                f"File copiato come:\n{copy_path}")
+    except Exception as e:
+        QMessageBox.critical(parent_widget, "Errore",
+                             f"Errore durante la copia del file:\n{e}")

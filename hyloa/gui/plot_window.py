@@ -46,10 +46,26 @@ from hyloa.data.processing import norm_dialog, close_loop_dialog
 #==============================================================================================#
 
 class PlotControlWidget(QWidget):
-    ''' Main class for managing the plot window  
+    '''
+    Main widget for managing a single plot's interface and user interactions.
+
+    Allows the user to configure and customize data visualization options, including
+    selecting datasets, customizing styles, fitting curves, and toggling data visibility.
     '''
 
     def __init__(self, app_instance, number_plots, plot_name="Grafico"):
+        '''
+        Initialize the plot control widget and build the GUI layout.
+        
+        Parameters
+        ----------
+        app_instance : object
+            The main application instance that contains shared data and methods.
+        number_plots : int
+            Index or identifier of the current plot.
+        plot_name : str, optional
+            The display name of the plot window (default is "Grafico").
+        '''
         super().__init__()
         
         self.app_instance         = app_instance  # Instance of main app
@@ -66,6 +82,13 @@ class PlotControlWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        '''
+        Construct the user interface for the plot control panel.
+
+        Creates button layouts for plot interaction, including creation, customization,
+        and manipulation of data cycles. Also builds a scrollable area to add and manage
+        cycle pairs dynamically.
+        '''
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
@@ -131,6 +154,21 @@ class PlotControlWidget(QWidget):
         self.add_pair()
 
     def add_pair(self, file_text=None, x_col=None, y_col=None):
+        '''
+        Add a new data pair selector to the interface.
+
+        Each pair consists of a file selection dropdown and corresponding x/y column selectors.
+        Optionally pre-selects values for restoring saved sessions.
+
+        Parameters
+        ----------
+        file_text : str, optional
+            The name of the file to be preselected.
+        x_col : str, optional
+            The x-axis column name to be preselected.
+        y_col : str, optional
+            The y-axis column name to be preselected.
+        '''
 
         if len(self.selected_pairs) % 2 == 0:
             num   = len(self.selected_pairs) // 2 + 1
@@ -219,6 +257,8 @@ class PlotControlWidget(QWidget):
 
 
     def toggle_cycle_visibility(self):
+        ''' Call function to toggle the visibility of the data
+        '''
         cycle_visibility(self, self.number_plots, 
                          self.app_instance.figures_map,
                          self.plot_customizations)
@@ -270,10 +310,23 @@ class PlotControlWidget(QWidget):
 #==============================================================================================#
 
 class PlotSubWindow(QMdiSubWindow):
-    ''' Class to overwrite close event to remove discarded figures
+    ''' 
+    Class to overwrite close event to remove discarded figures
+    Associates a plot widget with a subwindow and handles cleanup upon closing by 
+    removing internal references to the widget and its figure.
     '''
 
     def __init__(self, app_instance, plot_widget, plot_id):
+        '''
+        Parameters
+        ----------
+        app_instance : MainApp
+            Main application instance containing the session data.
+        plot_widget : QWidget
+            The widget containing the plot to be displayed.
+        plot_id : int
+            current plot number
+        '''
         super().__init__()
         self.app_instance = app_instance
         self.plot_widget  = plot_widget
@@ -283,6 +336,18 @@ class PlotSubWindow(QMdiSubWindow):
         self.resize(600, 300)
 
     def closeEvent(self, event):
+        '''
+        Handle the window close event and remove associated plot references.
+
+        Removes the control widget and its corresponding figure
+        from the application's internal mappings.
+        Logs the removal of the figure.
+
+        Parameters
+        ----------
+        event : QCloseEvent
+            The close event triggered when the window is closed.
+        '''
         # Remove the control widget
         if self.plot_id in self.app_instance.plot_widgets:
             del self.app_instance.plot_widgets[self.plot_id]

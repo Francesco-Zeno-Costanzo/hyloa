@@ -291,7 +291,7 @@ class MainApp(QMainWindow):
         '''
         editor = ScriptEditor(self)
         sub = QMdiSubWindow()
-        sub.setWidget(editor)
+        sub.setWidget(editor.window)
         sub.setWindowTitle("Editor di Script")
         sub.resize(600, 600)
         self.mdi_area.addSubWindow(sub)

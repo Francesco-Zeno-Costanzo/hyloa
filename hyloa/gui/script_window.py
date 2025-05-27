@@ -22,14 +22,18 @@ import io
 import sys
 import numpy as np
 
-from PyQt5.QtCore import QRegExp
-from PyQt5.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
+from PyQt5.QtCore import QRegExp, QSize, Qt, QRect
+from PyQt5.QtGui import (
+    QSyntaxHighlighter, QTextCharFormat, QColor, QFont, QPainter,
+    QTextFormat
+)
 from PyQt5.QtWidgets import ( 
     QWidget, QVBoxLayout, QPushButton, QHBoxLayout,
-    QPlainTextEdit, QFileDialog, QMessageBox,
+    QPlainTextEdit, QFileDialog, QMessageBox, QTextEdit
 )
 
-class ScriptEditor(QWidget):
+
+class ScriptEditor(QPlainTextEdit):
     ''' Class to handle the scripting window
     '''
     def __init__(self, app_instance):
@@ -41,40 +45,45 @@ class ScriptEditor(QWidget):
         '''
         super().__init__()
         self.app_instance = app_instance
+        self.line_number_area = LineNumberArea(self)
 
-        self.setWindowTitle("Editor di Script Python")
+        self.setFont(QFont("Courier", 10))
+        self.setPlaceholderText("# Scrivi qui il tuo script Python...")
+        self.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.highlighter = PythonHighlighter(self.document())
 
-        layout = QVBoxLayout(self)
+        self.blockCountChanged.connect(self.update_line_number_area_width)
+        self.updateRequest.connect(self.update_line_number_area)
+        self.cursorPositionChanged.connect(self.highlight_current_line)
 
-        self.editor = QPlainTextEdit(self)
-        self.editor.setFont(QFont("Courier", 10))
-        self.editor.setPlaceholderText("# Scrivi qui il tuo script Python...")
-        self.editor.setLineWrapMode(QPlainTextEdit.NoWrap)
-        self.highlighter = PythonHighlighter(self.editor.document())
-        layout.addWidget(self.editor)
+        self.update_line_number_area_width(0)
+        self.highlight_current_line()
 
-        # Buttons
+        # Layout (buttons)
+        self.window = QWidget()
+        self.window.setWindowTitle("Editor di Script Python")
+        layout = QVBoxLayout(self.window)
+
+        layout.addWidget(self)
+
         button_layout = QHBoxLayout()
-
-        run_button = QPushButton("Esegui Script", self)
-        run_button.clicked.connect(self.run_script)
-        button_layout.addWidget(run_button)
-
-        save_button = QPushButton("Salva Script", self)
-        save_button.clicked.connect(self.save_script)
-        button_layout.addWidget(save_button)
-
-        load_button = QPushButton("Carica Script", self)
-        load_button.clicked.connect(self.load_script)
-        button_layout.addWidget(load_button)
+        for text, slot in [
+            ("Esegui Script", self.run_script),
+            ("Salva Script", self.save_script),
+            ("Carica Script", self.load_script)
+        ]:
+            btn = QPushButton(text)
+            btn.clicked.connect(slot)
+            button_layout.addWidget(btn)
 
         layout.addLayout(button_layout)
+        self.window.setLayout(layout)
 
 
     def run_script(self):
         ''' Function to run the script
         '''
-        script_text = self.editor.toPlainText()
+        script_text = self.toPlainText()
 
         # Find the shell of the app
         shell = self.app_instance.shell_widget if hasattr(self.app_instance, 'shell_widget') else None
@@ -138,7 +147,7 @@ class ScriptEditor(QWidget):
                 path += ".py"
             try:
                 with open(path, 'w') as f:
-                    f.write(self.editor.toPlainText())
+                    f.write(self.toPlainText())
                 QMessageBox.information(self, "Salvato", f"Script salvato in:\n{path}")
             except Exception as e:
                 QMessageBox.critical(self, "Errore", str(e))
@@ -150,9 +159,126 @@ class ScriptEditor(QWidget):
         if path:
             try:
                 with open(path, 'r') as f:
-                    self.editor.setPlainText(f.read())
+                    self.setPlainText(f.read())
             except Exception as e:
                 QMessageBox.critical(self, "Errore", str(e))
+    
+    def line_number_area_width(self):
+        '''
+        Calculate the width required for the line number area.
+
+        Returns
+        -------
+        space : int
+            The width in pixels needed to display the line numbers
+            based on the current number of text blocks (lines).
+        '''
+        digits = len(str(self.blockCount()))
+        space  = 3 + self.fontMetrics().width('9') * digits
+        return space
+
+    def update_line_number_area_width(self, _):
+        '''
+        Update the viewport margins to account for the line number area width.
+
+        Parameters
+        ----------
+        _ : Any
+            Unused parameter, often a placeholder for a signal.
+        '''
+        self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
+
+    def update_line_number_area(self, rect, dy):
+        '''
+        Update the display of the line number area
+        when the editor is scrolled or updated.
+
+        Parameters
+        ----------
+        rect : QRect
+            The region of the editor that needs updating.
+        dy : int
+            The number of pixels the view was vertically scrolled by
+        '''
+        if dy:
+            self.line_number_area.scroll(0, dy)
+        else:
+            self.line_number_area.update(0, rect.y(), self.line_number_area.width(), rect.height())
+
+        if rect.contains(self.viewport().rect()):
+            self.update_line_number_area_width(0)
+
+    def resizeEvent(self, event):
+        '''
+        Handle resize events and reposition the line number area accordingly.
+
+        Parameters
+        ----------
+        event : QResizeEvent
+            The event triggered when the editor is resized.
+        '''
+        super().resizeEvent(event)
+        cr = self.contentsRect()
+        self.line_number_area.setGeometry(
+            QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height())
+        )
+
+    def line_number_area_paint(self, event):
+        '''
+        Paint the line number area.
+
+        Parameters
+        ----------
+        event : QPaintEvent
+            The paint event containing the area to be redrawn.
+
+        Notes
+        -----
+        This method paints line numbers aligned to the right of the line number area,
+        highlighting only visible blocks.
+        '''
+        painter = QPainter(self.line_number_area)
+        painter.fillRect(event.rect(), QColor("#f0f0f0"))
+
+        block = self.firstVisibleBlock()
+        block_number = block.blockNumber()
+        top = int(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
+        bottom = top + int(self.blockBoundingRect(block).height())
+
+        while block.isValid() and top <= event.rect().bottom():
+            if block.isVisible() and bottom >= event.rect().top():
+                number = str(block_number + 1)
+                painter.setPen(Qt.black)
+                painter.drawText(0, top, self.line_number_area.width(), self.fontMetrics().height(),
+                                Qt.AlignRight, number)
+
+            block  = block.next()
+            top    = bottom
+            bottom = top + int(self.blockBoundingRect(block).height()
+            )
+            block_number += 1
+
+    def highlight_current_line(self):
+        '''
+        Highlight the background of the current line where the cursor is.
+
+        Notes
+        -----
+        Applies a translucent yellow background to the current line to help visually
+        locate the text cursor position. This does not affect the selection state.
+        '''
+        extra_selections = []
+        if not self.isReadOnly():
+            selection  = QTextEdit.ExtraSelection()
+            line_color = QColor(Qt.yellow).lighter(160)
+            line_color.setAlpha(100)
+            selection.format.setBackground(line_color)
+            selection.format.setProperty(QTextFormat.FullWidthSelection, True)
+            selection.cursor = self.textCursor()
+            selection.cursor.clearSelection()
+            extra_selections.append(selection)
+        self.setExtraSelections(extra_selections)
+
 
 
 class PythonHighlighter(QSyntaxHighlighter):
@@ -289,3 +415,49 @@ class PythonHighlighter(QSyntaxHighlighter):
             if self.currentBlockState() == 1:
                 break
             start_index = start_expr.indexIn(text, end_index)
+
+
+class LineNumberArea(QWidget):
+    """
+    A QWidget that displays line numbers for a code editor.
+
+    This widget is used to provide a visual line number area on the left.
+    """
+    def __init__(self, editor):
+        '''
+        Initialize the line number area.
+
+        Parameters
+        ----------
+        editor : QWidget
+            The code editor widget to which this line number area is attached.
+        '''
+        super().__init__(editor)
+        self.code_editor = editor
+
+    def sizeHint(self):
+        '''
+        Return the recommended size for the line number area.
+
+        Returns
+        -------
+        QSize
+            The preferred width calculated by the code editor and a height of 0.
+        '''
+        return QSize(self.code_editor.line_number_area_width(), 0)
+
+    def paintEvent(self, event):
+        '''
+        Paint the contents of the line number area.
+
+        Parameters
+        ----------
+        event : QPaintEvent
+            The paint event containing the region to be updated.
+
+        Notes
+        -----
+        This method delegates the painting logic to the parent code editor's
+        `line_number_area_paint` method.
+        '''
+        self.code_editor.line_number_area_paint(event)

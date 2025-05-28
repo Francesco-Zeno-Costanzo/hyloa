@@ -399,7 +399,7 @@ def plot_data(plot_window_instance, app_instance):
         app_instance.figures_map[number_plots] = (fig, ax)
 
         # Create canvas and show in sub-window
-        canvas = FigureCanvas(fig)
+        canvas  = FigureCanvas(fig)
         toolbar = NavigationToolbar(canvas, plot_window_instance)
 
         # Create layout
@@ -421,6 +421,8 @@ def plot_data(plot_window_instance, app_instance):
         sub.resize(800, 600)
         app_instance.mdi_area.addSubWindow(sub)
         sub.show()
+        # Save for session loading
+        app_instance.figure_subwindows[number_plots] = sub
 
 
     else:

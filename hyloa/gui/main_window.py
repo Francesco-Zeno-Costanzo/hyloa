@@ -73,6 +73,9 @@ class MainApp(QMainWindow):
         self.figures_map          = {}     # dict to store all figures
         self.plot_widgets         = {}     # {int: PlotControlWidget}
         self.plot_names           = {}     # {int: "name of the figure"}
+        self.plot_subwindows      = {}     # {plot_index: QMdiSubWindow for control panel}
+        self.figure_subwindows    = {}     # {plot_index: QMdiSubWindow for figure window}
+
 
         # Interface
         self.shell_sub = None
@@ -220,6 +223,9 @@ class MainApp(QMainWindow):
         sub = PlotSubWindow(self, plot_widget, self.number_plots)
         self.mdi_area.addSubWindow(sub)
         sub.show()
+        # Save for session loading
+        self.plot_subwindows[self.number_plots] = sub
+
     
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -405,6 +411,10 @@ class MainApp(QMainWindow):
                 win = subwindows[idx]
                 self.mdi_area.setActiveSubWindow(win)
                 win.showNormal()
+                if win.isMinimized:
+                    # Just some random default values to avoid problem
+                    win.resize(400, 400)
+                    win.move(self.width()//4, self.height()//4)
                 win.raise_()
                 dialog.accept()
 

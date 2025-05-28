@@ -83,8 +83,29 @@ def save_current_session(app_instance, parent_widget=None):
             },
             "plot_names": {
                 idx : name for idx, name in app_instance.plot_names.items()
+            },
+            "control_windows_geometry": {
+                idx: {
+                    "x": sub.x(),
+                    "y": sub.y(),
+                    "width":  sub.width(),
+                    "height": sub.height(),
+                    "minimized": sub.isMinimized()
+                }
+                for idx, sub in app_instance.plot_subwindows.items()
+            },
+            "plot_windows_geometry": {
+                idx: {
+                    "x": fig_sub.x(),
+                    "y": fig_sub.y(),
+                    "width":  fig_sub.width(),
+                    "height": fig_sub.height(),
+                    "minimized": fig_sub.isMinimized()
+                }
+                for idx, fig_sub in app_instance.figure_subwindows.items()
             }
         }
+        #print(session_data)
 
         with open(file_path, "wb") as f:
             pickle.dump(session_data, f)
@@ -180,9 +201,25 @@ def load_previous_session(app_instance, parent_widget=None):
             app_instance.mdi_area.addSubWindow(sub)
             sub.show()
 
-            # Force the plot
-            widget.plot()
+            # Restore size and position for control panels...
+            ctrl_geom = session_data.get("control_windows_geometry", {}).get(idx)
+            if ctrl_geom:
+                sub.setGeometry(ctrl_geom["x"], ctrl_geom["y"], ctrl_geom["width"], ctrl_geom["height"])
+                if ctrl_geom.get("minimized"):
+                    sub.showMinimized()
+            
+            app_instance.plot_subwindows[idx] = sub
 
+            widget.plot() # Force the plot
+            # ... and for plot windows
+            fig_geom = session_data.get("plot_windows_geometry", {}).get(idx)
+            fig_sub  = app_instance.figure_subwindows.get(idx)
+            if fig_geom and fig_sub:
+                fig_sub.setGeometry(fig_geom["x"], fig_geom["y"], fig_geom["width"], fig_geom["height"])
+                if fig_geom.get("minimized"):
+                    fig_sub.showMinimized()
+
+            
         QMessageBox.information(parent_widget, "Sessione Caricata",
                                 f"Sessione caricata dal file:\n{file_path}")
 

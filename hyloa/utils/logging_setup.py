@@ -32,6 +32,10 @@ def setup_logging(log_file):
         Path to the log file.
     '''
     try:
+        # Remove any existing handlers
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+
         logging.basicConfig(
             filename=log_file,
             level=logging.INFO,

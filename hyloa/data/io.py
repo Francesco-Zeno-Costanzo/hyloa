@@ -26,7 +26,7 @@ import pandas as pd
 from PyQt5.QtWidgets import (
     QFileDialog, QMessageBox, QWidget, QHBoxLayout, QLabel,
     QPushButton, QCheckBox, QLineEdit, QScrollArea, QTableWidget,
-    QTableWidgetItem, QDialog, QVBoxLayout, QComboBox
+    QTableWidgetItem, QDialog, QVBoxLayout, QComboBox,QListWidget
 )
 from PyQt5.QtCore import Qt
 
@@ -266,18 +266,16 @@ def save_modified_data(app_instance, parent_widget):
         QMessageBox.critical(parent_widget, "Errore", "Nessun dato da salvare.")
         return
     
-     # Instructions
     instructions = QLabel(
-        "Selezionare i file contenente i dati da salvare, se si vuole essere sicuri si può "
-        "verificare quali siano sati i file caricati vedendo anche i rispettivi dati.\n"
-        "Qualora fossero sate caricate meno colonne delle 8 disponibili verrano aggiunte "
-        "delle colonne di zeri per mantenere la compatibilià."
+        "Selezionare i file contenenti i dati da salvare."
+        " È possibile visualizzare le colonne disponibili per ogni file selezionato.\n"
+        "Se ci sono meno di 8 colonne, verranno aggiunte colonne di zeri per mantenere la compatibilità."
     )
     instructions.setWordWrap(True)
     
     dialog = QDialog(parent_widget)
     dialog.setWindowTitle("Seleziona il file da salvare")
-    dialog.setGeometry(100, 100, 400, 200)
+    dialog.setGeometry(100, 100, 500, 300)
 
     layout = QVBoxLayout(dialog)
     layout.addWidget(instructions)
@@ -285,10 +283,27 @@ def save_modified_data(app_instance, parent_widget):
 
     combo = QComboBox()
     for i in range(len(dataframes)):
-        # Add the filename to the combo box
         combo.addItem(f"File {i + 1}")
-
     layout.addWidget(combo)
+
+    layout.addWidget(QLabel("Colonne del file selezionato:"))
+    column_list = QListWidget()
+    layout.addWidget(column_list)
+
+    def update_column_list(index):
+        ''' Function to update the list of the columns
+        '''
+        column_list.clear()
+        if index < len(dataframes):
+            columns = dataframes[index].columns
+            for col in columns:
+                column_list.addItem(str(col))
+
+    # Connect file selection and columns list
+    combo.currentIndexChanged.connect(update_column_list)
+    
+    # Initialize the list
+    update_column_list(0)
 
     save_button = QPushButton("Salva")
     layout.addWidget(save_button)

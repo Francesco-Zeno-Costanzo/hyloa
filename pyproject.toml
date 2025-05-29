@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hyloa"
+version = "1.6.22"
+description = "Un pacchetto per l'analisi dei cicli di isteresi"
+readme = "README.md"
+requires-python = ">=3.10.12"
+license = { text = "GPL-3.0-or-later" }
+authors = [
+    { name = "Francesco Zeno Costanzo", email = "zenofrancesco99@gmail.com" }
+]
+dependencies = [
+    "PyQt5",
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib"
+]
+keywords = ["isteresi", "analisi", "materiali", "meccanica", "GUI"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent"
+]
+
+[project.urls]
+Homepage = "https://github.com/Francesco-Zeno-Costanzo/hyloa"
+
+[project.scripts]
+hyloa = "hyloa.main:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]

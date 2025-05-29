@@ -6,7 +6,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Documentation Status](https://readthedocs.org/projects/hysteresisanalysis/badge/?version=latest)](https://hysteresisanalysis.readthedocs.io/en/latest/?badge=latest)
-[![Tests](https://github.com/Francesco-Zeno-Costanzo/hyloa/actions/workflows/tests.yml/badge.svg)(https://github.com/Francesco-Zeno-Costanzo/hyloa/actions/workflows/test.yml)]
+[![Python Tests](https://github.com/Francesco-Zeno-Costanzo/hyloa/actions/workflows/test.yml/badge.svg)](https://github.com/Francesco-Zeno-Costanzo/hyloa/actions/workflows/test.yml)
 
 **Simple program for an analysis of hysteresis loops.**
 ---

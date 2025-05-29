@@ -1,4 +1,24 @@
+# This file is part of HYLOA - HYsteresis LOop Analyzer.
+# Copyright (C) 2024 Francesco Zeno Costanzo
+
+# HYLOA is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# HYLOA is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with HYLOA. If not, see <https://www.gnu.org/licenses/>.
+
+"""
+test for logger
+"""
 import time
+import pytest
 import logging
 from hyloa.utils.logging_setup import setup_logging, start_logging
 
@@ -26,6 +46,9 @@ def test_setup_logging(tmp_path):
     assert log_file.exists(), "Log file was not created"
     content = log_file.read_text()
     assert "Test message" in content, "Log message not found in file"
+
+    with pytest.raises(Exception) as e_info:
+        setup_logging(7)
 
 
 # Test start_logging() with QFileDialog mocked to return a known path
@@ -62,4 +85,17 @@ def test_start_logging_success(monkeypatch, tmp_path):
     assert selected_file.exists(), "Selected log file was not created"
     content = selected_file.read_text()
     assert "Test entry for file creation" in content, "Expected log content missing"
+
+    # Test for existing logger
+    start_logging(app)
+
+    # Test invalid file
+    selected_file = False
+    # Mock QFileDialog.getSaveFileName to return a known path
+    monkeypatch.setattr(
+        "PyQt5.QtWidgets.QFileDialog.getSaveFileName",
+        lambda *args, **kwargs: (selected_file, None)
+    )
+    app = FakeApp()
+    start_logging(app)
 

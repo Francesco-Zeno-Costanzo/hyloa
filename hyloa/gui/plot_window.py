@@ -771,7 +771,7 @@ def open_curve_fitting_window(app_instance, plot_widget):
         return
 
     window = QWidget()
-    window.setWindowTitle("Curve Fitting")
+    window.setWindowTitle("Quick Curve Fitting")
     layout = QHBoxLayout(window)
     window.setLayout(layout)
 
@@ -892,6 +892,10 @@ def open_curve_fitting_window(app_instance, plot_widget):
                 result_lines.append(f"{p} = {val:.3e} ± {err:.3e}")
                 fit_results[p] = val
                 fit_results[f"error_{p}"] = err
+            for i , pi in zip(range(len(params)), param_names):
+                for j , pj in zip(range(i+1, len(params)), param_names[i+1:]):
+                    corr_ij = pcov[i, j]/np.sqrt(pcov[i, i]*pcov[j, j])
+                    result_lines.append(f"corr({pi}, {pj}) = {corr_ij:.3f}")
 
             result = "\n".join(result_lines)
             output_box.setPlainText(result)

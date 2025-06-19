@@ -119,3 +119,127 @@ def test_close_loop_dialog(mock_apply_loop_closure, qapp):
 
     assert args[2] == 0  # selected file index
     assert args[3] == ["Y1", "Y2"]  # selected columns
+
+
+
+@patch("hyloa.data.processing.QMessageBox.information")
+def test_apply_norm_applies_normalization(mock_info):
+    # Data simulation
+    x = np.linspace(-1, 1, 200)  # Magnetic field
+    np.random.seed(69420)        # For reproducibility
+    noise = np.random.normal(0, 0.0005, size=x.shape)  # Gaussian error
+    """
+    # Creation of the two branches of the hysteresis loop
+    # The sigmoid function is used to simulate the hysteresis loop
+    # The noise is added to simulate the experimental error
+    # The last term is a linear trend to simulate a drift
+    # The -0.003 is due to the fact that the loop is always closed at one of the extreme points.
+    """
+    y_up = 0.025 + 0.015 * (1 / (1 + np.exp(-10 * (x-0.25)))) + noise + (0.003*x - 0.003)
+    y_dw = 0.025 + 0.015 * (1 / (1 + np.exp( 10 * (x-0.25))))[::-1] + noise[::-1]
+
+    df = pd.DataFrame({"Y1": y_up, "Y2": y_dw})
+
+    # Create mock app_instance with logger and dataframes
+    mock_logger = MagicMock()
+    app_instance = MagicMock()
+    app_instance.dataframes = [df.copy()]  # Use a copy to verify modification
+    app_instance.logger = mock_logger
+
+    # Create mock plot_instance with a plot method
+    plot_instance = MagicMock()
+
+    # Apply normalization
+    apply_norm(plot_instance, app_instance, file_index=0, selected_cols=["Y1", "Y2"])
+
+    # Assert that values have been updated in the dataframe
+    normed_y1 = app_instance.dataframes[0]["Y1"].values
+    normed_y2 = app_instance.dataframes[0]["Y2"].values
+    ampl_up   = abs(np.mean(normed_y1[:5])  + np.mean(normed_y2[:5]))/2
+    ampl_dw   = abs(np.mean(normed_y1[-5:]) + np.mean(normed_y2[-5:]))/2
+    assert ampl_up == pytest.approx(1, rel=1e-5)
+    assert ampl_dw == pytest.approx(1, rel=1e-5)
+
+    # Assert that plot was called
+    plot_instance.plot.assert_called_once()
+
+    # Assert that logger.info was called at least once for each column
+    assert mock_logger.info.call_count == 2
+    mock_logger.info.assert_any_call("Normalizzazione applicata a Y1.")
+    mock_logger.info.assert_any_call("Normalizzazione applicata a Y2.")
+
+    # Assert that success message was shown
+    mock_info.assert_called_once()
+    args, _ = mock_info.call_args
+   
+    assert "Normalizzazione applicata su File 1" in args[2]
+
+@patch("hyloa.data.processing.QMessageBox.critical")
+def test_apply_norm_handles_exception(mock_critical):
+    # App instance with no dataframe
+    app_instance = MagicMock()
+    app_instance.logger = MagicMock()
+    app_instance.dataframes = [None]  
+
+    # Create mock plot_instance with a plot method
+    plot_instance = MagicMock()
+
+    # selected_cols
+    selected_cols = ["Y1", "Y2"]
+
+    # Try to apply normalization
+    apply_norm(plot_instance, app_instance, file_index=0, selected_cols=selected_cols)
+
+    # Assert failure message
+    mock_critical.assert_called_once()
+    args, _ = mock_critical.call_args
+    assert "Errore durante la normalizzazione" in args[2]
+
+
+@patch("hyloa.data.processing.QMessageBox.information")
+def test_apply_loop_closure_success(mock_info):
+
+    # Data simulation
+    x = np.linspace(-1, 1, 200)  # Magnetic field
+    np.random.seed(69420)        # For reproducibility
+    noise = np.random.normal(0, 0.0005, size=x.shape)  # Gaussian error
+    """
+    # Creation of the two branches of the hysteresis loop
+    # The sigmoid function is used to simulate the hysteresis loop
+    # The noise is added to simulate the experimental error
+    # The last term is a linear trend to simulate a drift
+    # The -0.003 is due to the fact that the loop is always closed at one of the extreme points.
+    """
+    y_up = 0.025 + 0.015 * (1 / (1 + np.exp(-10 * (x-0.25)))) + noise + (0.003*x - 0.003)
+    y_dw = 0.025 + 0.015 * (1 / (1 + np.exp( 10 * (x-0.25))))[::-1] + noise[::-1]
+
+    # Create a sample dataframe with a simple loop structure
+    df = pd.DataFrame({
+        "Y1": y_up,
+        "Y2": y_dw
+    })
+
+    # Prepare the mock application instance
+    app_instance = MagicMock()
+    app_instance.logger = MagicMock()
+    app_instance.dataframes = [df.copy()]
+
+    # Plot instance mock
+    plot_instance = MagicMock()
+
+    # Call the function
+    apply_loop_closure(plot_instance, app_instance, file_index=0, selected_cols=["Y1", "Y2"])
+
+    print(df["Y1"].values, df["Y2"].values,)
+
+    # Ensure that values have been updated
+    assert app_instance.dataframes[0]["Y1"].values[0] == pytest.approx(
+           app_instance.dataframes[0]["Y2"].values[0], rel=1e-3)
+
+    # Check that the plot was called
+    plot_instance.plot.assert_called_once()
+
+    # Check if the success message was shown
+    mock_info.assert_called_once()
+    args, _ = mock_info.call_args
+    assert "Correzione applicata su File 1" in args[2]

@@ -60,12 +60,12 @@ def load_files(app_instance):
     app_instance : instance of MainApp from main_window.py
     '''
     if app_instance.logger is None:
-        QMessageBox.critical(None, "Errore", "Impossibile iniziare l'analisi senza avviare il log")
+        QMessageBox.critical(None, "Error", "Cannot start analysis without starting log")
         return
 
     file_paths, _ = QFileDialog.getOpenFileNames(
         None,
-        "Seleziona i file",
+        "Select a file",
         "",
         "Text Files (*.txt);;All Files (*)"
     )
@@ -83,8 +83,8 @@ def load_files(app_instance):
         if filename in existing_names:
             reply = QMessageBox.question(
                 None,
-                "File già caricato",
-                f"Il file '{filename}' è già stato caricato.\nVuoi sovrascriverlo?",
+                "File already uploaded",
+                f"The file '{filename}' has already been uploaded.\nDo you want to overwrite it?",
                 QMessageBox.Yes | QMessageBox.No
             )
             if reply == QMessageBox.No:
@@ -102,7 +102,7 @@ def load_files(app_instance):
             show_column_selection(app_instance, file_path, header, index_to_replace)
 
         except Exception as e:
-            QMessageBox.critical(None, "Errore", f"Errore durante il caricamento del file: {file_path}\n{e}")
+            QMessageBox.critical(None, "Error", f"Error loading file: {file_path}\n{e}")
 
 #==============================================================================================#
 
@@ -120,14 +120,14 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
     '''
     # Create a dialog window
     dialog = QWidget()
-    dialog.setWindowTitle(f"Seleziona Colonne: {os.path.basename(file_path)}")
+    dialog.setWindowTitle(f"Select Columns: {os.path.basename(file_path)}")
     dialog.setGeometry(100, 100, 900, 750)
     main_layout = QVBoxLayout(dialog)
 
     # Instructions
     instructions = QLabel(
-        "Seleziona le colonne da caricare e assegna un nome. Se il nome è vuoto verrà usato il default.\n"
-        "Scorri in basso per visualizzare i dati."
+        "Select columns to load and name them. If the name is empty, the default will be used.\n"
+        "Scroll down to view data."
     )
     instructions.setWordWrap(True)
     main_layout.addWidget(instructions)
@@ -163,7 +163,7 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
         checkbox.setChecked(True)
         selected_columns[i] = checkbox
         custom_names[i] = QLineEdit()
-        custom_names[i].setPlaceholderText("Nome colonna personalizzato")
+        custom_names[i].setPlaceholderText("Custom column name")
         box.addWidget(checkbox)
         box.addWidget(custom_names[i])
         scroll_layout.addLayout(box)
@@ -188,26 +188,26 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
             df_data.columns = column_names
             df_data = df_data.drop([0, 1, 2])
 
-            app_instance.logger.info(f"Dal file: {file_path}, caricate le colonne: {columns_to_load}")
+            app_instance.logger.info(f"From: {file_path}, load: {columns_to_load}")
 
             df_data.attrs["filename"] = os.path.basename(file_path)
 
             if index_to_replace is not None:
                 app_instance.dataframes[index_to_replace]   = df_data
                 app_instance.header_lines[index_to_replace] = df_header
-                app_instance.logger.info(f"File '{file_path}' sovrascritto in posizione {index_to_replace}")
+                app_instance.logger.info(f"File '{file_path}' overwrite in position {index_to_replace}")
             else:
                 app_instance.dataframes.append(df_data)
                 app_instance.header_lines.append(df_header)
-                app_instance.logger.info(f"File '{file_path}' aggiunto")
+                app_instance.logger.info(f"File '{file_path}' added")
 
-            QMessageBox.information(dialog, "Successo", f"Dati caricati da {file_path}!")
+            QMessageBox.information(dialog, "Success", f"Data loaded form {file_path}!")
             app_instance.refresh_shell_variables()
             dialog.close()
         except Exception as e:
-            QMessageBox.critical(dialog, "Errore", f"Errore durante il caricamento:\n{e}")
+            QMessageBox.critical(dialog, "Error", f"Error while loading:\n{e}")
 
-    confirm_button = QPushButton("Carica")
+    confirm_button = QPushButton("Load")
     confirm_button.clicked.connect(submit_selection)
     main_layout.addWidget(confirm_button)
 
@@ -241,10 +241,10 @@ def save_header(app_instance, df, file_path):
             for _, row in df.iterrows():
                 line = "\t".join(row.astype(str).fillna("").replace("nan", "").values)
                 f.write(line.strip() + "\n")
-        app_instance.logger.info(f"File salvato correttamente in: {file_path}")
+        app_instance.logger.info(f"File saved successfully in: {file_path}")
 
     except Exception as e:
-        app_instance.logger.info(f"Errore durante il salvataggio: {e}")
+        app_instance.logger.info(f"Error while saving: {e}")
 
 #==============================================================================================#
 
@@ -263,30 +263,30 @@ def save_modified_data(app_instance, parent_widget):
     dataframes = app_instance.dataframes
 
     if not dataframes:
-        QMessageBox.critical(parent_widget, "Errore", "Nessun dato da salvare.")
+        QMessageBox.critical(parent_widget, "Error", "No data aviable.")
         return
     
     instructions = QLabel(
-        "Selezionare i file contenenti i dati da salvare."
-        " È possibile visualizzare le colonne disponibili per ogni file selezionato.\n"
-        "Se ci sono meno di 8 colonne, verranno aggiunte colonne di zeri per mantenere la compatibilità."
+        "Select the files containing the data you want to save."
+        " You can see the available columns for each selected file.\n"
+        "If there are less than 8 columns, columns of zeros will be added to maintain compatibility."
     )
     instructions.setWordWrap(True)
     
     dialog = QDialog(parent_widget)
-    dialog.setWindowTitle("Seleziona il file da salvare")
+    dialog.setWindowTitle("Select the file to save")
     dialog.setGeometry(100, 100, 500, 300)
 
     layout = QVBoxLayout(dialog)
     layout.addWidget(instructions)
-    layout.addWidget(QLabel("Scegli il file da salvare:"))
+    layout.addWidget(QLabel("Select the file to save:"))
 
     combo = QComboBox()
     for i in range(len(dataframes)):
         combo.addItem(f"File {i + 1}")
     layout.addWidget(combo)
 
-    layout.addWidget(QLabel("Colonne del file selezionato:"))
+    layout.addWidget(QLabel("Columns of the selected file:"))
     column_list = QListWidget()
     layout.addWidget(column_list)
 
@@ -305,7 +305,7 @@ def save_modified_data(app_instance, parent_widget):
     # Initialize the list
     update_column_list(0)
 
-    save_button = QPushButton("Salva")
+    save_button = QPushButton("Save")
     layout.addWidget(save_button)
 
     def on_save_clicked():
@@ -347,13 +347,13 @@ def save_to_file(df_idx, app_instance, parent_widget=None):
         # Dialog to choose the name of the new file
         file_path, _ = QFileDialog.getSaveFileName(
             parent_widget,
-            "Salva il file modificato",
+            "Save modified file",
             "",
             "File di Testo (*.txt);;CSV (*.csv);;Tutti i file (*)"
         )
     
         if not file_path:
-            QMessageBox.warning(parent_widget, "Annullato", "Operazione annullata.")
+            QMessageBox.warning(parent_widget, "Canceled", "Operation cancelled.")
             return
 
         save_header(app_instance, header, file_path)
@@ -379,10 +379,10 @@ def save_to_file(df_idx, app_instance, parent_widget=None):
 
             np.savetxt(f, expanded_data, delimiter="\t", fmt="%s")
 
-        QMessageBox.information(parent_widget, "Successo", f"Dati salvati con successo in:\n{file_path}")
+        QMessageBox.information(parent_widget, "Success", f"Data successfully saved in:\n{file_path}")
 
     except Exception as e:
-        QMessageBox.critical(parent_widget, "Errore", f"Errore durante il salvataggio:\n{e}")
+        QMessageBox.critical(parent_widget, "Error", f"Error while saving:\n{e}")
 
 #==============================================================================================#
 # Function that create a copy of a given file                                                  #
@@ -401,7 +401,7 @@ def duplicate_file(parent_widget=None):
     '''
     file_path, _ = QFileDialog.getOpenFileName(
         parent_widget,
-        "Seleziona il file da duplicare",
+        "Select the file to duplicate",
         "",
         "Text Files (*.txt);;All Files (*)"
     )
@@ -414,8 +414,8 @@ def duplicate_file(parent_widget=None):
 
     try:
         shutil.copy2(file_path, copy_path)
-        QMessageBox.information(parent_widget, "Copia completata",
-                                f"File copiato come:\n{copy_path}")
+        QMessageBox.information(parent_widget, "Copy completed",
+                                f"File copied as:\n{copy_path}")
     except Exception as e:
-        QMessageBox.critical(parent_widget, "Errore",
-                             f"Errore durante la copia del file:\n{e}")
+        QMessageBox.critical(parent_widget, "Error",
+                             f"Error copying file:\n{e}")

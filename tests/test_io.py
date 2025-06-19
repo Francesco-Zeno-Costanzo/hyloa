@@ -108,7 +108,7 @@ def test_load_files_cancel_dialog(mock_getfiles, fake_app):
 
 @patch("hyloa.data.io.QFileDialog.getOpenFileNames")
 @patch("hyloa.data.io.QMessageBox.critical")
-@patch("hyloa.data.io.open", side_effect=Exception("Errore di test"))
+@patch("hyloa.data.io.open", side_effect=Exception("Test error"))
 def test_load_files_open_raises(mock_open_fn, mock_critical, mock_getfiles, fake_app):
     # Fake file
     mock_getfiles.return_value = (["/fake/path/data1.txt"], "")
@@ -121,6 +121,6 @@ def test_load_files_open_raises(mock_open_fn, mock_critical, mock_getfiles, fake
     # exception handling test
     mock_critical.assert_called_once()
     error_message = mock_critical.call_args[0][2]
-    assert "errore" in error_message.lower()
+    assert "error" in error_message.lower()
     assert "data1.txt" in error_message
 

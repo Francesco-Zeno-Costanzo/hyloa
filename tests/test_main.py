@@ -39,7 +39,7 @@ def test_main_window_launch(app):
     window = MainApp()
     
     assert window is not None
-    assert window.windowTitle() == "Analisi Cicli di Isteresi"
+    assert window.windowTitle() == "Hysteresis Loop Analyzer"
     
     # Verify that the MDI area is set correctly
     assert window.centralWidget() is window.mdi_area

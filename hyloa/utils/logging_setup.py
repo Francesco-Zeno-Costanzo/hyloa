@@ -42,10 +42,10 @@ def setup_logging(log_file):
             format="%(asctime)s -  %(name)s - %(levelname)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S"
         )
-        logging.info("Inizio sessione di log.")
-        logging.info(f"Logging configurato: scrittura su {log_file}")
+        logging.info("Start of log session.")
+        logging.info(f"Logging configured: write on {log_file}")
     except Exception as e:
-        raise Exception(f"Errore durante la configurazione del logging: {e}")
+        raise Exception(f"Error while configuring logging: {e}")
 
 
 def start_logging(app_instance, parent_widget=None):
@@ -63,20 +63,20 @@ def start_logging(app_instance, parent_widget=None):
         QMessageBox.information(
             parent_widget,
             "Info",
-            "Logger già configurato."
+            "Logger already configured."
         )
         return
     # Inform the user that the file will be appended to if it already exists
     QMessageBox.information(
         parent_widget,
         "Info",
-        "Se si sceglie un file già esistente, la scrittura sarà in coda, senza sovrascrizioni."
+        "If you choose an existing file, writing will be queued, without overwriting."
     )
 
     # Let the user choose the file
     log_file, _ = QFileDialog.getSaveFileName(
         parent_widget,
-        "Seleziona il file di log",
+        "Select the log file",
         "",
         "Log Files (*.log);;Tutti i file (*)"
     )
@@ -85,13 +85,13 @@ def start_logging(app_instance, parent_widget=None):
         try:
             setup_logging(log_file)
             app_instance.logger = logging.getLogger(__name__)
-            app_instance.logger.info("Logging configurato con successo.")
+            app_instance.logger.info("Logging configured successfully.")
             app_instance.logger_path = log_file
 
             QMessageBox.information(
                 parent_widget,
-                "Logging Avviato",
-                f"Il log sarà scritto nel file:\n{log_file}"
+                "Logging Started",
+                f"The log will be written on the file:\n{log_file}"
             )
 
             app_instance.open_default_panels()
@@ -99,12 +99,12 @@ def start_logging(app_instance, parent_widget=None):
         except Exception as e:
             QMessageBox.critical(
                 parent_widget,
-                "Errore",
-                f"Errore durante la configurazione del logging:\n{e}"
+                "Error",
+                f"Error while configuring logging:\n{e}"
             )
     else:
         QMessageBox.critical(
             parent_widget,
-            "Errore",
-            "Per favore seleziona un file valido per il log."
+            "Error",
+            "Please select a valid file for the log."
         )

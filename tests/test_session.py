@@ -74,7 +74,7 @@ def test_save_cancelled_by_user(fake_app_instance):
          patch("hyloa.data.session.QMessageBox.warning") as warning_mock:
         save_current_session(fake_app_instance)
         warning_mock.assert_called_once()
-        assert "Nessun file" in warning_mock.call_args[0][2]
+        assert "No file selected" in warning_mock.call_args[0][2]
 
 
 def test_save_successful(tmp_path, fake_app_instance):
@@ -104,7 +104,7 @@ def test_save_raises_exception(fake_app_instance):
 
         save_current_session(fake_app_instance)
         critical_mock.assert_called_once()
-        assert "Errore" in critical_mock.call_args[0][2]
+        assert "Error while saving" in critical_mock.call_args[0][2]
 
 
 
@@ -142,7 +142,7 @@ def test_load_session_success(mock_get_open, mock_open, mock_pickle_load,
             }
         },
         "plot_names": {
-            0: "Grafico 0"
+            0: "Graph 0"
         },
         "log_filename": "log.txt"
     }
@@ -169,7 +169,7 @@ def test_load_session_success(mock_get_open, mock_open, mock_pickle_load,
 
 
 @patch("hyloa.data.session.QMessageBox.critical")
-@patch("hyloa.data.session.pickle.load", side_effect=Exception("Errore fittizio"))
+@patch("hyloa.data.session.pickle.load", side_effect=Exception("fake error"))
 @patch("builtins.open", create=True)
 @patch("hyloa.data.session.QFileDialog.getOpenFileName")
 def test_load_session_exception(mock_get_open, mock_open, mock_pickle_load, mock_critical):

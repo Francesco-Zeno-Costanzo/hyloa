@@ -42,18 +42,18 @@ def norm_dialog(plot_instance, app_instance):
     '''
     dataframes = app_instance.dataframes
     if not dataframes:
-        QMessageBox.warning(plot_instance, "Errore", "Non ci sono dati caricati.")
+        QMessageBox.warning(plot_instance, "Error", "No data loaded")
         return
 
     dialog = QDialog(plot_instance)
-    dialog.setWindowTitle("Normalizza Cicli")
+    dialog.setWindowTitle("Normalie Cycle")
     layout = QVBoxLayout(dialog)
 
-    layout.addWidget(QLabel("Seleziona il file:"))
+    layout.addWidget(QLabel("Select the file:"))
     file_combo = QComboBox()
     file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
     layout.addWidget(file_combo)
-    layout.addWidget(QLabel("Seleziona le colonne Y da normalizzare (a coppie):"))
+    layout.addWidget(QLabel("Select Y columns to normalize (in pairs):"))
 
 
     column_checks = {}
@@ -103,12 +103,12 @@ def norm_dialog(plot_instance, app_instance):
         selected_file_idx = file_combo.currentIndex()
         selected_cols = [col for col, cb in column_checks.items() if cb.isChecked()]
         if len(selected_cols) % 2 != 0 or len(selected_cols) == 0:
-            QMessageBox.critical(dialog, "Errore", "Seleziona un numero pari di colonne.")
+            QMessageBox.critical(dialog, "Error", "Select an even number of columns.")
             return
         dialog.accept()
         apply_norm(plot_instance, app_instance, selected_file_idx, selected_cols)
 
-    apply_button = QPushButton("Applica")
+    apply_button = QPushButton("Apply")
     apply_button.clicked.connect(on_apply)
     layout.addWidget(apply_button)
 
@@ -171,16 +171,16 @@ def apply_norm(plot_instance, app_instance, file_index, selected_cols):
 
         for col, new_values in N_Y:
             df[col] = new_values
-            logger.info(f"Normalizzazione applicata a {col}.")
+            logger.info(f"Normalization applied to {col}.")
 
         # Re-plot
         plot_instance.plot()
 
-        QMessageBox.information(plot_instance, "Successo",
-                                f"Normalizzazione applicata su File {file_index + 1}.")
+        QMessageBox.information(plot_instance, "Success",
+                                f"Normalization applied on File {file_index + 1}.")
         
     except Exception as e:
-        QMessageBox.critical(parent_widget, "Errore", f"Errore durante la normalizzazione:\n{e}")
+        QMessageBox.critical(parent_widget, "Error", f"Error during normalization:\n{e}")
 
 
 #==============================================================================================#
@@ -200,19 +200,19 @@ def close_loop_dialog(plot_instance, app_instance):
     '''
     dataframes = app_instance.dataframes
     if not dataframes:
-        QMessageBox.warning(plot_instance, "Errore", "Non ci sono dati caricati.")
+        QMessageBox.warning(plot_instance, "Error", "No data loaded.")
         return
 
     dialog = QDialog(plot_instance)
-    dialog.setWindowTitle("Chiudi Loop")
+    dialog.setWindowTitle("Close Loop")
 
     layout = QVBoxLayout(dialog)
 
-    layout.addWidget(QLabel("Seleziona il file:"))
+    layout.addWidget(QLabel("Select the file:"))
     file_combo = QComboBox()
     file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
     layout.addWidget(file_combo)
-    layout.addWidget(QLabel("Seleziona le colonne da correggere (una coppia alla volta):"))
+    layout.addWidget(QLabel("Select Y columns to close (in pairs)::"))
 
     column_checks = {}  # col_name -> QCheckBox
 
@@ -267,7 +267,7 @@ def close_loop_dialog(plot_instance, app_instance):
         )
         dialog.accept()
 
-    apply_button = QPushButton("Applica")
+    apply_button = QPushButton("Apply")
     apply_button.clicked.connect(on_apply)
     layout.addWidget(apply_button)
 
@@ -307,11 +307,11 @@ def apply_loop_closure(plot_instance, app_instance, file_index, selected_cols):
         logger = app_instance.logger
 
         if len(selected_cols) < 2:
-            QMessageBox.warning(plot_instance, "Errore", "Devi selezionare la coppia di dati che crea il ciclo")
+            QMessageBox.warning(plot_instance, "Error", "You must select the data pair that creates the cycle.")
             return
 
         if len(selected_cols) % 2 != 0:
-            QMessageBox.warning(plot_instance, "Errore", "Devi selezionare la coppia di dati che crea il ciclo.")
+            QMessageBox.warning(plot_instance, "Error", "You must select the data pair that creates the cycle.")
             return
 
         N_Y = []
@@ -348,17 +348,17 @@ def apply_loop_closure(plot_instance, app_instance, file_index, selected_cols):
 
         for col, new_values in N_Y:
             df[col] = new_values
-            logger.info(f"Chiusura del ciclo applicata a {col}.")
+            logger.info(f"Loop Closure Applied to {col}.")
 
         # Re-plot
         plot_instance.plot()
 
-        QMessageBox.information(plot_instance, "Successo",
-                                f"Correzione applicata su File {file_index + 1}.")
+        QMessageBox.information(plot_instance, "Success",
+                                f"Closure applied on File {file_index + 1}.")
 
     except Exception as e:
-        QMessageBox.critical(plot_instance, "Errore",
-                             f"Errore durante la chiusura del ciclo:\n{e}")
+        QMessageBox.critical(plot_instance, "Error",
+                             f"Error while closing loop:\n{e}")
 
 #==============================================================================================#
 # Function to invert axis                                                                      #
@@ -391,22 +391,22 @@ def apply_inversion(axis, file_index, selected_pairs, dataframes, logger, plot_i
                 x_col = x_combo.currentText()
                 if x_col in df.columns:
                     df[x_col] = df[x_col].astype(float) * -1
-                    logger.info(f"Inversione asse x -> colonna {x_col}.")
+                    logger.info(f"Flip x-axis -> column {x_col}.")
 
             if axis in ("y", "both"):
                 y_col = y_combo.currentText()
                 if y_col in df.columns:
                     df[y_col] = df[y_col].astype(float) * -1
-                    logger.info(f"Inversione asse y -> colonna {y_col}.")
+                    logger.info(f"Flip y-axis -> column {y_col}.")
 
         plot_instance.plot()
 
-        QMessageBox.information(plot_instance, "Successo",
-                                f"Inversione asse {axis.upper()} applicata su File {file_index + 1}!")
+        QMessageBox.information(plot_instance, "Success",
+                                f"Axis flip {axis.upper()} applied on File {file_index + 1}")
 
     except Exception as e:
-        QMessageBox.critical(plot_instance, "Errore",
-                             f"Errore durante l'inversione:\n{e}")
+        QMessageBox.critical(plot_instance, "Error",
+                             f"Error while reversing:\n{e}")
 
 def inv_x_dialog(plot_instance, app_instance):
     '''
@@ -420,20 +420,17 @@ def inv_x_dialog(plot_instance, app_instance):
         Main application instance with session state.
     '''
     dataframes = app_instance.dataframes
-    if not dataframes:
-        QMessageBox.warning(plot_instance, "Errore", "Non ci sono dati caricati.")
-        return
-
+    
     dialog = QDialog(plot_instance)
-    dialog.setWindowTitle("Inverti Asse X")
+    dialog.setWindowTitle("Flip X-Axis")
     layout = QVBoxLayout(dialog)
 
-    layout.addWidget(QLabel("Seleziona il file:"))
+    layout.addWidget(QLabel("Select the file:"))
     file_combo = QComboBox()
     file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
     layout.addWidget(file_combo)
 
-    apply_btn = QPushButton("Applica")
+    apply_btn = QPushButton("Apply")
     layout.addWidget(apply_btn)
 
     def on_apply():
@@ -460,20 +457,17 @@ def inv_y_dialog(plot_instance, app_instance):
         Main application instance with session state.
     '''
     dataframes = app_instance.dataframes
-    if not dataframes:
-        QMessageBox.warning(plot_instance, "Errore", "Non ci sono dati caricati.")
-        return
-
+ 
     dialog = QDialog(plot_instance)
-    dialog.setWindowTitle("Inverti Asse Y")
+    dialog.setWindowTitle("Flip Y-Axis")
     layout = QVBoxLayout(dialog)
 
-    layout.addWidget(QLabel("Seleziona il file:"))
+    layout.addWidget(QLabel("Select the file:"))
     file_combo = QComboBox()
     file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
     layout.addWidget(file_combo)
 
-    apply_btn = QPushButton("Applica")
+    apply_btn = QPushButton("Apply")
     layout.addWidget(apply_btn)
 
     def on_apply():
@@ -493,7 +487,7 @@ def inv_y_dialog(plot_instance, app_instance):
 
 def inv_single_branch_dialog(parent_widget, app_instance):
     '''
-    Crea la finestra per selezionare il file e le colonne da invertire.
+    Creates the window to select the file and columns to reverse.
 
     Parameters
     ----------
@@ -506,10 +500,10 @@ def inv_single_branch_dialog(parent_widget, app_instance):
     dataframes = app_instance.dataframes
 
     dialog = QDialog(parent_widget)
-    dialog.setWindowTitle("Inverti Singolo Ramo")
+    dialog.setWindowTitle("Flip Single Branch")
     layout = QVBoxLayout(dialog)
 
-    layout.addWidget(QLabel("Seleziona il file:"))
+    layout.addWidget(QLabel("Select the file:"))
     file_combo = QComboBox()
     file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
     layout.addWidget(file_combo)
@@ -542,7 +536,7 @@ def inv_single_branch_dialog(parent_widget, app_instance):
     file_combo.currentIndexChanged.connect(update_checkboxes)
     update_checkboxes()
 
-    apply_btn = QPushButton("Applica")
+    apply_btn = QPushButton("Apply")
     layout.addWidget(apply_btn)
 
     apply_btn.clicked.connect(
@@ -579,17 +573,17 @@ def apply_column_inversion(file_index, selected_columns, dataframes, logger, plo
         selected = [col for col, cb in selected_columns.items() if cb.isChecked()]
 
         if not selected:
-            QMessageBox.warning(plot_instance, "Errore", "Seleziona almeno una colonna.")
+            QMessageBox.warning(plot_instance, "Error", "Select at least one column.")
             return
 
         for col in selected:
             if col in df.columns:
                 df[col] = df[col].astype(float) * -1
-                logger.info(f"Inversione colonna {col} nel file {file_index + 1}.")
+                logger.info(f"Reversing column {col} in file {file_index + 1}.")
 
         plot_instance.plot()
-        QMessageBox.information(plot_instance, "Successo",
-                                f"Inversione applicata su: {', '.join(selected)}")
+        QMessageBox.information(plot_instance, "Success",
+                                f"Inversion applied on: {', '.join(selected)}")
     except Exception as e:
-        QMessageBox.critical(plot_instance, "Errore", f"Errore durante l'inversione:\n{e}")
+        QMessageBox.critical(plot_instance, "Error", f"Error while reversing:\n{e}")
 

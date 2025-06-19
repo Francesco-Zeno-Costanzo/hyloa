@@ -72,7 +72,7 @@ def _click_apply_button():
     
     # Find the "Applica" button and click it
     for btn in QApplication.allWidgets():
-        if isinstance(btn, QPushButton) and btn.text() == "Applica":
+        if isinstance(btn, QPushButton) and btn.text() == "Apply":
             QTest.mouseClick(btn, Qt.LeftButton)
             break
     return 1 # simulate dialog accepted
@@ -94,7 +94,7 @@ def test_norm_dialog_odd_columns(mock_critical, qapp):
     # Check that error message was shown
     assert mock_critical.called
     args, _ = mock_critical.call_args
-    assert "numero pari di colonne" in args[2]
+    assert "even number of columns" in args[2]
 
 
 @patch("hyloa.data.processing.apply_loop_closure")
@@ -165,14 +165,14 @@ def test_apply_norm_applies_normalization(mock_info):
 
     # Assert that logger.info was called at least once for each column
     assert mock_logger.info.call_count == 2
-    mock_logger.info.assert_any_call("Normalizzazione applicata a Y1.")
-    mock_logger.info.assert_any_call("Normalizzazione applicata a Y2.")
+    mock_logger.info.assert_any_call("Normalization applied to Y1.")
+    mock_logger.info.assert_any_call("Normalization applied to Y2.")
 
     # Assert that success message was shown
     mock_info.assert_called_once()
     args, _ = mock_info.call_args
    
-    assert "Normalizzazione applicata su File 1" in args[2]
+    assert "Normalization applied on File 1" in args[2]
 
 @patch("hyloa.data.processing.QMessageBox.critical")
 def test_apply_norm_handles_exception(mock_critical):
@@ -193,7 +193,7 @@ def test_apply_norm_handles_exception(mock_critical):
     # Assert failure message
     mock_critical.assert_called_once()
     args, _ = mock_critical.call_args
-    assert "Errore durante la normalizzazione" in args[2]
+    assert "Error during normalization" in args[2]
 
 
 @patch("hyloa.data.processing.QMessageBox.information")
@@ -230,8 +230,6 @@ def test_apply_loop_closure_success(mock_info):
     # Call the function
     apply_loop_closure(plot_instance, app_instance, file_index=0, selected_cols=["Y1", "Y2"])
 
-    print(df["Y1"].values, df["Y2"].values,)
-
     # Ensure that values have been updated
     assert app_instance.dataframes[0]["Y1"].values[0] == pytest.approx(
            app_instance.dataframes[0]["Y2"].values[0], rel=1e-3)
@@ -242,4 +240,4 @@ def test_apply_loop_closure_success(mock_info):
     # Check if the success message was shown
     mock_info.assert_called_once()
     args, _ = mock_info.call_args
-    assert "Correzione applicata su File 1" in args[2]
+    assert "Closure applied on File 1" in args[2]

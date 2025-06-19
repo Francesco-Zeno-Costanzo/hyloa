@@ -43,18 +43,18 @@ def save_current_session(app_instance, parent_widget=None):
         Optional parent for the dialog windows.
     '''
     if app_instance.logger is None:
-        QMessageBox.critical(parent_widget, "Errore", "Impossibile iniziare l'analisi senza avviare il log.")
+        QMessageBox.critical(parent_widget, "Error", "Cannot start analysis without starting log.")
         return
 
     file_path, _ = QFileDialog.getSaveFileName(
         parent_widget,
-        "Salva sessione",
+        "Save session",
         "",
         "Pickle Files (*.pkl)"
     )
 
     if not file_path:
-        QMessageBox.warning(parent_widget, "Attenzione", "Nessun file selezionato per il salvataggio.")
+        QMessageBox.warning(parent_widget, "Warning", "No file selected for saving.")
         return
 
     try:
@@ -105,15 +105,14 @@ def save_current_session(app_instance, parent_widget=None):
                 for idx, fig_sub in app_instance.figure_subwindows.items()
             }
         }
-        #print(session_data)
 
         with open(file_path, "wb") as f:
             pickle.dump(session_data, f)
 
-        QMessageBox.information(parent_widget, "Sessione Salvata",
-                                f"Sessione salvata nel file:\n{file_path}")
+        QMessageBox.information(parent_widget, "Session saved",
+                                f"Session saved in file:\n{file_path}")
     except Exception as e:
-        QMessageBox.critical(parent_widget, "Errore", f"Errore durante il salvataggio:\n{e}")
+        QMessageBox.critical(parent_widget, "Error", f"Error while saving:\n{e}")
 
 
 def load_previous_session(app_instance, parent_widget=None):
@@ -130,14 +129,14 @@ def load_previous_session(app_instance, parent_widget=None):
     options = QFileDialog.Options()
     file_path, _ = QFileDialog.getOpenFileName(
         parent_widget,
-        "Carica sessione",
+        "Load session",
         "",
         "Pickle Files (*.pkl)",
         options=options
     )
 
     if not file_path:
-        QMessageBox.warning(parent_widget, "Errore", "Nessun file selezionato per il caricamento della sessione.")
+        QMessageBox.warning(parent_widget, "Error", "No file selected for session loading.")
         return
 
     try:
@@ -166,7 +165,7 @@ def load_previous_session(app_instance, parent_widget=None):
 
         
         app_instance.logger = logging.getLogger(__name__)
-        app_instance.logger.info("Logger ripristinato da file di sessione.")
+        app_instance.logger.info("Logger restored from session file.")
 
         app_instance.open_default_panels()
 
@@ -178,7 +177,7 @@ def load_previous_session(app_instance, parent_widget=None):
         for idx_str, plot_info in plot_widgets_data.items():
             
             idx       = int(idx_str)
-            plot_name = plot_names_data.get(idx, f"Grafico {idx}")
+            plot_name = plot_names_data.get(idx, f"Graph {idx}")
 
             widget = PlotControlWidget(app_instance, idx, plot_name)
             
@@ -220,9 +219,9 @@ def load_previous_session(app_instance, parent_widget=None):
                     fig_sub.showMinimized()
 
             
-        QMessageBox.information(parent_widget, "Sessione Caricata",
-                                f"Sessione caricata dal file:\n{file_path}")
+        QMessageBox.information(parent_widget, "Session Loaded",
+                                f"Session loaded from file:\n{file_path}")
 
     except Exception as e:
-        QMessageBox.critical(parent_widget, "Errore",
-                             f"Errore durante il caricamento della sessione:\n{e}")
+        QMessageBox.critical(parent_widget, "Error",
+                             f"Error while loading session:\n{e}")

@@ -103,13 +103,12 @@ def detect_header_length(file_path, sep='\t'):
     file_path : string
         path of the file to read
     sep : string
-        separetor, optional, default \t
+        separetor, optional, default a tab
 
     Return
     ------
     data_start : int
         number of the not empty lines of the file's header
-    
     '''
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()

@@ -37,23 +37,9 @@ from PyQt5.QtCore import Qt
 
 def load_files(app_instance):
     '''
-    Function to upload one or more files chosen by the user.
-    The code is currently designed to read data files created
-    by labview that have the following structure:
-
-    ::
-
-        FieldUp	UpRot	UpEllipt	IzeroUp	FieldDw	DwRot	DwEllipt	IzeroDw
-        MaxV 30.00	V_bias 0.00	Steps 180	Loops 10
-        Sen1(mV) 5.0E-1	Sen2(mV) 2.0E-2	TC(ms) 10	Scaling 0.0E+0	ThetaPol 5.0	Polarization s
-        Rot Ell Izero Parameters3.478239E-3	-1.249859E-2	3.036712E-1
-
-        -2682.1	6.775420E-1	4.515580E-2	0.30287	-2665.8	6.798780E-1	4.842054E-2	0.30286
-        -2668.2	6.778833E-1	4.509845E-2	0.30275	-2635.3	6.794771E-1	4.826985E-2	0.30291
-        -2641.9	6.778411E-1	4.516041E-2	0.30290	-2605.8	6.798262E-1	4.843232E-2	0.30289
-
-    This same structure will then be preserved when the data is saved
-    to a new file, so that it can be reopened for further analysis.
+    Function to upload a file chosen by the user.
+    If the file has an header, this will be preserved when the data is
+    saved to a new file.
 
     Parameters
     ----------
@@ -106,6 +92,59 @@ def load_files(app_instance):
 
 #==============================================================================================#
 
+def detect_header_length(file_path, sep='\t'):
+    '''
+    Function to calculate the length of the header and therefore,
+    the number of rows to exclude from the dataframe to obtain a
+    dataframe that has for each column only the data of interest
+
+    Parameters
+    ----------
+    file_path : string
+        path of the file to read
+    sep : string
+        separetor, optional, default \t
+
+    Return
+    ------
+    data_start : int
+        number of the not empty lines of the file's header
+    
+    '''
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    data_start  = None
+    empty_lines = 0
+    
+    def is_float(s):
+        try:
+            float(s)
+            return True
+        except Exception:
+            return False
+
+    # Find the first row with no letter
+    for i, line in enumerate(lines):
+        parts         = [x.strip() for x in line.strip().split(sep)]
+        numeric_parts = [x for x in parts if is_float(x)]
+        
+        if parts[0] == '':
+            empty_lines += 1
+        
+        if len(numeric_parts) == len(parts) and len(parts) > 1:
+            data_start = i
+            break
+
+    if data_start is None:
+        raise ValueError("No valid data found.")
+    
+    data_start = data_start - 1 - empty_lines
+    
+    return data_start
+
+#==============================================================================================#
+
 def show_column_selection(app_instance, file_path, header, index_to_replace=None):
     '''
     Dialog window to select columns to load.
@@ -135,8 +174,13 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
     selected_columns = {}
     custom_names     = {}
 
+    header_length = detect_header_length(file_path)
+
     # Preview Data Table
-    all_df = pd.read_csv(file_path, sep="\t").drop([0, 1, 2])
+    if header_length > 0:
+        all_df = pd.read_csv(file_path, sep="\t").drop(list(range(header_length)))
+    else:
+        all_df = pd.read_csv(file_path, sep="\t")
     table = QTableWidget()
     table.setRowCount(len(all_df))
     table.setColumnCount(len(all_df.columns))
@@ -181,12 +225,14 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
                 for i in range(len(header)) if selected_columns[i].isChecked()
             ]
 
-            df_header = pd.read_csv(file_path, sep="\t", nrows=3)
-            app_instance.header_lines.append(df_header)
+            header_length = detect_header_length(file_path)
 
+            df_header = pd.read_csv(file_path, sep="\t", nrows=header_length)
+            
             df_data = pd.read_csv(file_path, sep="\t", usecols=columns_to_load)
             df_data.columns = column_names
-            df_data = df_data.drop([0, 1, 2])
+            if header_length > 0 :
+                df_data = df_data.drop(list(range(header_length)))
 
             app_instance.logger.info(f"From: {file_path}, load: {columns_to_load}")
 
@@ -267,9 +313,8 @@ def save_modified_data(app_instance, parent_widget):
         return
     
     instructions = QLabel(
-        "Select the files containing the data you want to save."
-        " You can see the available columns for each selected file.\n"
-        "If there are less than 8 columns, columns of zeros will be added to maintain compatibility."
+        "Select the files containing the data you want to save.\n"
+        "You can see the available columns for each selected file."
     )
     instructions.setWordWrap(True)
     
@@ -349,7 +394,7 @@ def save_to_file(df_idx, app_instance, parent_widget=None):
             parent_widget,
             "Save modified file",
             "",
-            "File di Testo (*.txt);;CSV (*.csv);;Tutti i file (*)"
+            "Text file (*.txt);;CSV (*.csv);;Tutti i file (*)"
         )
     
         if not file_path:
@@ -360,24 +405,7 @@ def save_to_file(df_idx, app_instance, parent_widget=None):
         # Save the data in the new file in text format
         with open(file_path, "a", encoding='utf-8') as f:
 
-            data = np.array(df)
-            rows, cols = data.shape
-
-            # Create a zero matrix with 8 columns
-            expanded_data = np.zeros((rows, 8))
-
-            if cols == 4:
-                # Intersperses each original column with a column of zeros
-                expanded_data[:, ::2] = data
-            elif cols == 6:
-                # Inserts a column of zeros as the fourth and final column
-                expanded_data[:, :3]  = data[:, :3]
-                expanded_data[:, 4:7] = data[:, 3:]
-            elif cols == 8:
-                # All data
-                expanded_data = data
-
-            np.savetxt(f, expanded_data, delimiter="\t", fmt="%s")
+            np.savetxt(f, np.array(df), delimiter="\t", fmt="%s")
 
         QMessageBox.information(parent_widget, "Success", f"Data successfully saved in:\n{file_path}")
 

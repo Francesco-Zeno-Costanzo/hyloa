@@ -94,16 +94,16 @@ def load_files(app_instance):
 
 def detect_header_length(file_path, sep='\t'):
     '''
-    Function to calculate the length of the header and therefore,
+    Function to compute the length of the header and therefore,
     the number of rows to exclude from the dataframe to obtain a
-    dataframe that has for each column only the data of interest
+    dataframe that has for each column only the data of interest.
 
     Parameters
     ----------
     file_path : string
         path of the file to read
     sep : string
-        separetor, optional, default a tab
+        separetor, optional, default a tabulation
 
     Return
     ------

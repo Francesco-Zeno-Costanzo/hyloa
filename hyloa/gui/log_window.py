@@ -66,4 +66,4 @@ class LogWindow(QPlainTextEdit):
                 self.moveCursor(QTextCursor.End)
 
         except Exception as e:
-            self.appendPlainText(f"\n[Errore] {e}")
+            self.appendPlainText(f"\n[Error] {e}")

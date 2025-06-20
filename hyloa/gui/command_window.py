@@ -93,7 +93,7 @@ class CommandWindow(QWidget):
         self.fit_results = app_instance.fit_results
         self.logger = app_instance.logger
 
-        self.setWindowTitle("Shell Interattiva Python")
+        self.setWindowTitle("Python shell")
 
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Only in-line command", self))
@@ -168,7 +168,7 @@ class CommandWindow(QWidget):
         self.history_index = len(self.command_history)
 
         if self.logger:
-            self.logger.info(f"Esecuzione del comando: {command}")
+            self.logger.info(f"Execution of the command: {command}")
 
         old_stdout, old_stderr = sys.stdout, sys.stderr
         sys.stdout = output_capture = io.StringIO()
@@ -178,7 +178,7 @@ class CommandWindow(QWidget):
             exec(command, globals(), self.local_vars)
             output = output_capture.getvalue()
         except Exception as e:
-            output = f"Errore: {str(e)}\n"
+            output = f"Error: {str(e)}\n"
         finally:
             sys.stdout, sys.stderr = old_stdout, old_stderr
 

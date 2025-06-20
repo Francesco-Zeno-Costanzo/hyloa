@@ -93,38 +93,38 @@ class MainApp(QMainWindow):
         layout = QVBoxLayout(control_panel)
 
         description = QLabel(
-            "Per poter inziare l'analisi è necessario specificare un nome per il file di log.\n"
-            "Per maggiori informazioni usare il tasto help.\n"
+            "To start the analysis, you need to specify a name for the log file.\n"
+            "For more information, use the help button.\n"
         )
         description.setWordWrap(True)
         layout.addWidget(description)
 
-        layout.addWidget(self.make_group("Inizio", [
+        layout.addWidget(self.make_group("Strat", [
             ("Help", self.help),
-            ("Avvia Logging", self.conf_logging)
+            ("Start Logging", self.conf_logging)
         ]))
 
-        layout.addWidget(self.make_group("Gestione File", [
-            ("Carica File", self.load_data),
-            ("Visualizza File", self.show_loaded_files),
-            ("Salva Dati", self.save_data),
-            ("Duplica dati", self.duplicate)
+        layout.addWidget(self.make_group("File Management", [
+            ("Load file", self.load_data),
+            ("Show file", self.show_loaded_files),
+            ("Save file", self.save_data),
+            ("Duplicate file", self.duplicate)
         ]))
 
-        layout.addWidget(self.make_group("Analisi", [
-            ("Crea Grafico", self.plot),
+        layout.addWidget(self.make_group("Analysis", [
+            ("Create plot", self.plot),
             ("Script", self.open_script_editor),
-            ("Appunti", self.open_comment_window)
+            ("Annotation", self.open_comment_window)
         ]))
 
-        layout.addWidget(self.make_group("Sessione", [
-            ("Carica Sessione", self.load_session),
-            ("Elenco finestre", self.show_window_navigator),
-            ("Salva Sessione", self.save_session)
+        layout.addWidget(self.make_group("Session", [
+            ("Load session", self.load_session),
+            ("list of windows", self.show_window_navigator),
+            ("Save session", self.save_session)
         ]))
 
         layout.addWidget(self.make_group("Exit", [
-            ("Esci", self.exit_app)
+            ("Exit", self.exit_app)
         ]))
 
         dock.setWidget(control_panel)
@@ -151,15 +151,17 @@ class MainApp(QMainWindow):
         ''' Function show a short guide
         '''
         help_text = (
-            "Per poter inziare l'analisi è necessario specificare un nome per il file di log. "
-            "Se si carica una sessione precedente verrà usato il file di log della sessione. "
-            "File di log e file della sessione devono essere nella stessa cartella. "
-            "In caso il file di log non fosse più presente ne verrà creato uno nuovo con lo stesso "
-            "nome e stesso path del precedente. \n\n"
-
+            "#================ Starting ================#\n"
+            "In order to start the analysis, you need to specify a name for the log file. "
+            "If you load a previous session, the session log file will be used. "
+            "Log files and session files must be in the same folder. "
+            "If the log file is no longer present, a new one will be created with the same "
+            "name and path as the previous one. \n\n"
+            "#================= Usage =================#\n"
+            "TO DO"
         )
 
-        QMessageBox.information(self.mdi_area, "Breve guida ad hyloa", help_text)
+        QMessageBox.information(self.mdi_area, "A Short Guide to Hyloa", help_text)
 
     def conf_logging(self):
         ''' Function that call the logging configuration
@@ -181,11 +183,11 @@ class MainApp(QMainWindow):
         ''' Function that create a window to see all data aviable
         '''
         sub = QMdiSubWindow()
-        sub.setWindowTitle("File Caricati")
+        sub.setWindowTitle("Loaded files")
         txt = QTextEdit()
         txt.setText("\n".join(
             [f'File {i+1}: '+', '.join(df.columns) for i, df in enumerate(self.dataframes)]
-            ) or "Nessun file caricato")
+            ) or "No files loaded")
         sub.setWidget(txt)
         self.mdi_area.addSubWindow(sub)
         sub.show()
@@ -200,15 +202,15 @@ class MainApp(QMainWindow):
         '''
 
         if self.logger is None:
-            QMessageBox.critical(None, "Errore", "Impossibile iniziare l'analisi senza avviare il log")
+            QMessageBox.critical(None, "Error", "Cannot start analysis without starting log")
             return
         
         if len(self.dataframes) == 0:
-            QMessageBox.critical(None, "Errore", "Nessun file caricato")
+            QMessageBox.critical(None, "Error", "No files loaded")
             return
         
         # Ask a name for the plot
-        text, ok = QInputDialog.getText(self, "Nome Grafico", "Inserisci un nome per il grafico:")
+        text, ok = QInputDialog.getText(self, "Plot's name", "Enter a name for the plot:")
         if not ok or not text.strip():
             return  # cancel if empty or canceled
 
@@ -307,18 +309,18 @@ class MainApp(QMainWindow):
         ''' Function to open a window to write some comments about the data or something else
         '''
         dialog = QDialog(self)
-        dialog.setWindowTitle("Appunti dell'analisi")
+        dialog.setWindowTitle("Analysis notes")
 
         layout = QVBoxLayout(dialog)
 
-        layout.addWidget(QLabel("Gli appunti scritti verranno salvati nel file di log:"))
+        layout.addWidget(QLabel("The written notes will be saved in the log file:"))
 
         text_edit = QTextEdit()
         layout.addWidget(text_edit)
 
         btn_layout  = QHBoxLayout()
-        confirm_btn = QPushButton("Salva")
-        cancel_btn  = QPushButton("Annulla")
+        confirm_btn = QPushButton("Save")
+        cancel_btn  = QPushButton("Cancel")
         btn_layout.addWidget(confirm_btn)
         btn_layout.addWidget(cancel_btn)
         layout.addLayout(btn_layout)
@@ -327,11 +329,11 @@ class MainApp(QMainWindow):
             comment = text_edit.toPlainText().strip()
             if comment:
                 if self.logger:
-                    self.logger.info(f"[Commento] {comment}")
-                QMessageBox.information(dialog, "Salvato", "Commento salvato nel log.")
+                    self.logger.info(f"[Comment] {comment}")
+                QMessageBox.information(dialog, "Saved", "Comment saved in log.")
                 dialog.accept()
             else:
-                QMessageBox.warning(dialog, "Vuoto", "Il commento è vuoto.")
+                QMessageBox.warning(dialog, "Empty", "The annotation is empty.")
 
         confirm_btn.clicked.connect(save_comment)
         cancel_btn.clicked.connect(dialog.reject)
@@ -356,11 +358,11 @@ class MainApp(QMainWindow):
         '''
         subwindows = self.mdi_area.subWindowList()
         if not subwindows:
-            QMessageBox.information(self, "Nessuna Finestra", "Non ci sono finestre aperte.")
+            QMessageBox.information(self, "No Window", "There are no open windows.")
             return
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("Navigatore Finestre")
+        dialog.setWindowTitle("Windows Navigator")
         dialog.setMinimumSize(1000, 600)
         layout = QHBoxLayout(dialog)
 
@@ -369,12 +371,12 @@ class MainApp(QMainWindow):
         list_widget = QListWidget()
         for win in subwindows:
             list_widget.addItem(win.windowTitle())
-        left_layout.addWidget(QLabel("Finestre aperte:"))
+        left_layout.addWidget(QLabel("Open windows:"))
         left_layout.addWidget(list_widget)
 
         # Preview of selected windows
         right_layout = QVBoxLayout()
-        right_layout.addWidget(QLabel("Anteprima finestra selezionata:"))
+        right_layout.addWidget(QLabel("Preview selected window:"))
 
         preview_label = QLabel()
         preview_label.setFixedSize(800, 500)
@@ -384,7 +386,7 @@ class MainApp(QMainWindow):
         right_layout.addWidget(preview_label)
 
         # Button to bring window to the foreground
-        activate_button = QPushButton("Attiva finestra selezionata")
+        activate_button = QPushButton("Activate selected window")
         right_layout.addWidget(activate_button)
 
         # Merge layout
@@ -428,7 +430,7 @@ class MainApp(QMainWindow):
     def exit_app(self):
         ''' Function for exit button
         '''
-        reply = QMessageBox.question(self, "Esci", "Vuoi uscire e salvare la sessione?",
+        reply = QMessageBox.question(self, "Exit", "Do you want to exit and save your session?",
                                      QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
         if reply == QMessageBox.Yes:
             self.save_session()
@@ -445,7 +447,7 @@ class MainApp(QMainWindow):
             event.accept()
             return
         
-        reply = QMessageBox.question(self, "Esci", "Vuoi uscire e salvare la sessione?",
+        reply = QMessageBox.question(self, "Exit", "Do you want to exit and save your session?",
                                     QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
 
         if reply == QMessageBox.Yes:

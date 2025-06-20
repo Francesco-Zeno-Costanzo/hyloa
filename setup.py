@@ -17,12 +17,18 @@
 
 from setuptools import setup, find_packages
 
+import re
+
+with open("yourpackage/__init__.py") as f:
+    version = re.search(r'__version__ = "(.*?)"', f.read()).group(1)
+
+
 setup(
     name="hyloa", 
-    version="1.7.0",
+    version=version,
     author="Francesco Zeno Costanzo",
     author_email="zenofrancesco99@gmail.com",
-    description="Un pacchetto per l'analisi dei cicli di isteresi",
+    description="A package for analyzing hysteresis loops",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/Francesco-Zeno-Costanzo/hyloa",

@@ -48,7 +48,7 @@ class ScriptEditor(QPlainTextEdit):
         self.line_number_area = LineNumberArea(self)
 
         self.setFont(QFont("Courier", 10))
-        self.setPlaceholderText("# Scrivi qui il tuo script Python...")
+        self.setPlaceholderText("# Write your Python script here...")
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.highlighter = PythonHighlighter(self.document())
 
@@ -61,16 +61,16 @@ class ScriptEditor(QPlainTextEdit):
 
         # Layout (buttons)
         self.window = QWidget()
-        self.window.setWindowTitle("Editor di Script Python")
+        self.window.setWindowTitle("Python Script Editor")
         layout = QVBoxLayout(self.window)
 
         layout.addWidget(self)
 
         button_layout = QHBoxLayout()
         for text, slot in [
-            ("Esegui Script", self.run_script),
-            ("Salva Script", self.save_script),
-            ("Carica Script", self.load_script)
+            ("Run Script",  self.run_script),
+            ("Save Script", self.save_script),
+            ("Load Script", self.load_script)
         ]:
             btn = QPushButton(text)
             btn.clicked.connect(slot)
@@ -88,7 +88,7 @@ class ScriptEditor(QPlainTextEdit):
         # Find the shell of the app
         shell = self.app_instance.shell_widget if hasattr(self.app_instance, 'shell_widget') else None
         if not shell:
-            QMessageBox.critical(self, "Errore", "Shell non trovata.")
+            QMessageBox.critical(self, "Error", "Shell not found.")
             return
 
         # Redirection of standard output and error
@@ -99,7 +99,7 @@ class ScriptEditor(QPlainTextEdit):
         try:
             exec(script_text, globals(), shell.local_vars)
         except Exception as e:
-            output_capture.write(f"\nErrore: {str(e)}\n")
+            output_capture.write(f"\nError: {str(e)}\n")
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
@@ -148,14 +148,14 @@ class ScriptEditor(QPlainTextEdit):
             try:
                 with open(path, 'w') as f:
                     f.write(self.toPlainText())
-                QMessageBox.information(self, "Salvato", f"Script salvato in:\n{path}")
+                QMessageBox.information(self, "Salvato", f"Script saved in:\n{path}")
             except Exception as e:
-                QMessageBox.critical(self, "Errore", str(e))
+                QMessageBox.critical(self, "Error", str(e))
 
     def load_script(self):
         ''' Function to load a pre written script
         '''
-        path, _ = QFileDialog.getOpenFileName(self, "Carica Script", "", "Python Files (*.py)")
+        path, _ = QFileDialog.getOpenFileName(self, "Load Script", "", "Python Files (*.py)")
         if path:
             try:
                 with open(path, 'r') as f:
@@ -254,8 +254,8 @@ class ScriptEditor(QPlainTextEdit):
 
             block  = block.next()
             top    = bottom
-            bottom = top + int(self.blockBoundingRect(block).height()
-            )
+            bottom = top + int(self.blockBoundingRect(block).height())
+            
             block_number += 1
 
     def highlight_current_line(self):
@@ -270,7 +270,7 @@ class ScriptEditor(QPlainTextEdit):
         extra_selections = []
         if not self.isReadOnly():
             selection  = QTextEdit.ExtraSelection()
-            line_color = QColor(Qt.yellow).lighter(160)
+            line_color = QColor(Qt.white).lighter(160)
             line_color.setAlpha(100)
             selection.format.setBackground(line_color)
             selection.format.setProperty(QTextFormat.FullWidthSelection, True)

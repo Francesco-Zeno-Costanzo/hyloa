@@ -53,7 +53,7 @@ class PlotControlWidget(QWidget):
     selecting datasets, customizing styles, fitting curves, and toggling data visibility.
     '''
 
-    def __init__(self, app_instance, number_plots, plot_name="Grafico"):
+    def __init__(self, app_instance, number_plots, plot_name="Graph"):
         '''
         Initialize the plot control widget and build the GUI layout.
         
@@ -64,7 +64,7 @@ class PlotControlWidget(QWidget):
         number_plots : int
             Index or identifier of the current plot.
         plot_name : str, optional
-            The display name of the plot window (default is "Grafico").
+            The display name of the plot window (default is "Graph").
         '''
         super().__init__()
         
@@ -95,10 +95,10 @@ class PlotControlWidget(QWidget):
         # Top buttons row
         top_button_layout = QHBoxLayout()
         top_buttons = [
-            ("Crea Grafico",       self.plot),
-            ("Personalizza Stile", self.customize_plot_style),
-            ("Curve Fitting",      self.curve_fitting),
-            ("Normalize",          self.normalize),
+            ("Create plot",   self.plot),
+            ("Customization", self.customize_plot_style),
+            ("Curve Fitting", self.curve_fitting),
+            ("Normalize",     self.normalize),
         ]
         for text, func in top_buttons:
             btn = QPushButton(text)
@@ -109,10 +109,10 @@ class PlotControlWidget(QWidget):
         # Bottom buttons row
         bottom_button_layout = QHBoxLayout()
         bottom_buttons = [
-            ("Close loop",     self.close_loop),
-            ("Inverti Campi",  self.x_inversion),
-            ("Inverti asse y", self.y_inversion),
-            ("Inverti ramo",   self.revert_branch),
+            ("Close loop",   self.close_loop),
+            ("Flip x axis",  self.x_inversion),
+            ("Flip y axis",  self.y_inversion),
+            ("Flip a brach", self.revert_branch),
         ]
         for text, func in bottom_buttons:
             btn = QPushButton(text)
@@ -121,7 +121,7 @@ class PlotControlWidget(QWidget):
         main_layout.addLayout(bottom_button_layout)
 
         
-        main_layout.addWidget(QLabel("Seleziona dati, aggiungi togli o nascondi cicli:"))
+        main_layout.addWidget(QLabel("Select data, add to or hide cycles:"))
         # Section for adding data
         add_pair_button = QPushButton("Add cycle")
         add_pair_button.clicked.connect(lambda: [self.add_pair(), self.add_pair()])
@@ -250,7 +250,7 @@ class PlotControlWidget(QWidget):
 
         if count >= 1:
             last_item = self.pair_layout.itemAt(count - 1).widget()
-            if isinstance(last_item, QLabel) and last_item.text().startswith("Ciclo"):
+            if isinstance(last_item, QLabel) and last_item.text().startswith("Cycle"):
                 self.pair_layout.takeAt(count - 1)
                 last_item.deleteLater()
 
@@ -356,7 +356,7 @@ class PlotSubWindow(QMdiSubWindow):
         # Remove the associated figure
         if self.plot_id in self.app_instance.figures_map:
             del self.app_instance.figures_map[self.plot_id]
-            self.app_instance.logger.info(f"Figura {self.plot_id} rimossa da figures_map.")
+            self.app_instance.logger.info(f"Figure {self.plot_id} removed from figures_map.")
 
         event.accept()
         
@@ -446,24 +446,24 @@ def plot_data(plot_window_instance, app_instance):
             y_col = y_var.currentText()
 
             if not x_col or not y_col:
-                QMessageBox.critical(None, "Errore", "Devi selezionare tutte le coppie di colonne!")
+                QMessageBox.critical(None, "Error", "You must select all column pairs!")
                 return
 
             X.append(dataframes[df_idx][x_col].astype(float).values)
             Y.append(dataframes[df_idx][y_col].astype(float).values)
-            logger.info(f"Plot di: {x_col} vs {y_col}")
+            logger.info(f"Plot of: {x_col} vs {y_col}")
 
         if not plot_customizations:
             col = plt.cm.jet(np.linspace(0, 1, len(X)))
             for i in range(0, len(X), 2):
-                ax.plot(X[i],   Y[i],   color=col[i], marker=".", label=f"Ciclo {i//2 + 1}")
+                ax.plot(X[i],   Y[i],   color=col[i], marker=".", label=f"Cycle {i//2 + 1}")
                 ax.plot(X[i+1], Y[i+1], color=col[i], marker=".")
 
 
         else:
             for i, (x, y) in enumerate(zip(X, Y)):
                 if i % 2 == 0:
-                    line1, = ax.plot(x, y, label=f"Ciclo {i // 2 + 1}")
+                    line1, = ax.plot(x, y, label=f"Cycle {i // 2 + 1}")
                 else:
                     line2, = ax.plot(x, y)
 
@@ -473,7 +473,7 @@ def plot_data(plot_window_instance, app_instance):
                     line1.set_color(customization.get("color", line1.get_color()))
                     line1.set_marker(customization.get("marker", line1.get_marker()))
                     line1.set_linestyle(customization.get("linestyle", line1.get_linestyle()))
-                    line1.set_label(customization.get("label", f"Ciclo {i // 2 + 1}"))
+                    line1.set_label(customization.get("label", f"Cycle {i // 2 + 1}"))
 
                     if i % 2 == 1:
                         line2.set_color(customization.get("color", line1.get_color()))
@@ -482,7 +482,7 @@ def plot_data(plot_window_instance, app_instance):
                         line2.set_label("_nolegend_")
 
                 except Exception as e:
-                    print(f"Errore applicando lo stile: {e}")
+                    print(f"Error applying style: {e}")
 
         ax.set_xlabel("H [Oe]", fontsize=15)
         ax.set_ylabel(r"M/M$_{sat}$", fontsize=15)
@@ -496,7 +496,7 @@ def plot_data(plot_window_instance, app_instance):
         canvas.draw()
 
     except Exception as e:
-        QMessageBox.critical(None, "Errore", f"Errore durante la creazione del grafico: {e}")
+        QMessageBox.critical(None, "Error", f"Error creating plot: {e}")
 
 #==============================================================================================#
 # Function to customize the style of the plot                                                  #
@@ -519,7 +519,7 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
     '''
     
     if parent_widget.figure is None:
-        QMessageBox.critical(parent_widget, "Errore", "Nessun grafico aperto! Crea prima un grafico.")
+        QMessageBox.critical(parent_widget, "Error", "No plot open! Create a plot first.")
         return
 
     fig, ax = figures_map[number_plots]
@@ -541,7 +541,7 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
     lines = filtered_lines
 
     if not lines:
-        QMessageBox.critical(parent_widget, "Errore", "Nessuna linea presente nel grafico!")
+        QMessageBox.critical(parent_widget, "Error", "No lines present in the graph!")
         return
 
     # === All possible customization options ===
@@ -553,13 +553,13 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
     cycles = []
     label_to_index = {}
     for i in range(0, len(lines), 2):
-        label = plot_customizations.get(i // 2, {}).get("label", f"Ciclo {i // 2 + 1}")
+        label = plot_customizations.get(i // 2, {}).get("label", f"Cycle {i // 2 + 1}")
         cycles.append(label)
         label_to_index[label] = i // 2
 
     # === Dialog ===
     dialog = QDialog(parent_widget)
-    dialog.setWindowTitle("Personalizza Stile Grafico")
+    dialog.setWindowTitle("Customize Graphic Style")
     dialog.setFixedSize(400, 360)
 
     layout = QVBoxLayout(dialog)
@@ -586,14 +586,14 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
     label_edit.setText(cycles[0])
 
     # === Add to form ===
-    form_layout.addRow("Ciclo:", cycle_combo)
-    form_layout.addRow("Colore:", color_combo)
+    form_layout.addRow("Cycle:", cycle_combo)
+    form_layout.addRow("Color:", color_combo)
     form_layout.addRow("Marker:", marker_combo)
-    form_layout.addRow("Stile Linea:", linestyle_combo)
-    form_layout.addRow("Nome in legenda:", label_edit)
+    form_layout.addRow("Linestyle:", linestyle_combo)
+    form_layout.addRow("Legend label:", label_edit)
 
     # === Apply button ===
-    apply_button = QPushButton("Applica")
+    apply_button = QPushButton("Apply")
     layout.addWidget(apply_button)
 
     def apply_style():
@@ -629,7 +629,7 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
             dialog.accept()
 
         except Exception as e:
-            QMessageBox.critical(dialog, "Errore", f"Errore durante l'applicazione dello stile:\n{e}")
+            QMessageBox.critical(dialog, "Error", f"Error applying style:\n{e}")
 
     apply_button.clicked.connect(apply_style)
 
@@ -656,7 +656,7 @@ def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizatio
     '''
 
     if parent_widget.figure is None:
-        QMessageBox.critical(parent_widget, "Errore", "Nessun grafico aperto! Crea prima un grafico.")
+        QMessageBox.critical(parent_widget, "Error", "No plot open! Create a plot first.")
         return
 
     fig, ax = figures_map[number_plots]
@@ -675,7 +675,7 @@ def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizatio
 
     lines = filtered_lines
     if not lines:
-        QMessageBox.critical(parent_widget, "Errore", "Nessuna linea presente nel grafico!")
+        QMessageBox.critical(parent_widget, "Error", "No lines present in the graph!")
         return
 
     # === Cycle labels ===
@@ -684,21 +684,21 @@ def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizatio
     visibility_map = {}
 
     for i in range(0, len(lines), 2): 
-        label = plot_customizations.get(i // 2, {}).get("label", f"Ciclo {i // 2 + 1}")
+        label = plot_customizations.get(i // 2, {}).get("label", f"Cycle {i // 2 + 1}")
         cycles.append(label)
         label_to_index[label] = i // 2
         visibility_map[label] = lines[i].get_visible()
 
     # === Dialog ===
     dialog = QDialog(parent_widget)
-    dialog.setWindowTitle("Mostra/Nascondi Cicli")
+    dialog.setWindowTitle("Show/Hide Cycles")
 
     layout        = QVBoxLayout(dialog)
     scroll_area   = QScrollArea()
     scroll_widget = QWidget()
     scroll_layout = QVBoxLayout(scroll_widget)
 
-    layout.addWidget(QLabel("Seleziona dati da mostrare:"))
+    layout.addWidget(QLabel("Select data to display:"))
 
     checkboxes = {}
 
@@ -727,7 +727,7 @@ def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizatio
                 lines[idx * 2].set_visible(visible)
 
         except Exception as e:
-            QMessageBox.critical(dialog, "Errore", f"Errore settaggio visibilità:\n{e}")
+            QMessageBox.critical(dialog, "Error", f"Visibility setting error:\n{e}")
         
 
         # Recreate legend only for visible objects
@@ -767,7 +767,7 @@ def open_curve_fitting_window(app_instance, plot_widget):
     logger        = app_instance.logger
 
     if not dataframes:
-        QMessageBox.critical(app_instance, "Errore", "Non ci sono dati caricati!")
+        QMessageBox.critical(app_instance, "Error", "No data loaded!")
         return
 
     window = QWidget()
@@ -777,17 +777,17 @@ def open_curve_fitting_window(app_instance, plot_widget):
 
     def show_help_dialog():
         help_text = (
-            "La funzione di fit deve essere una funzione della variabile 'x' e "
-            "i nomi dei parametri devono essere specificati nel campo apposito.\n\n"
-            "Per stabilire il range basta la lettura del cursore sul grafico, i valori sono in alto a destra.\n\n"
-            "Come PROMEMORIA, il ramo 'Up' è quello più a destra a meno che non si sia invertito l'asse x; "
-            "in tal caso sarà quello a sinistra.\n\n"
-            "ACHTUNG: la funzione va scritta in Python, quindi ad esempio |x| è abs(x), x^2 è x**2, e tutte "
-            "le altre funzioni vanno scritte con np. davanti (i.e. np.cos(x), np.exp(x)), tranne per le funzioni speciali, "
-            "per le quali va usato il nome che usa la libreria scipy.special (i.e. scipy.special.erf diventa erf)"
+            "The fit function must be a function of the variable 'x' and "
+            "the parameter names must be specified in the appropriate field.\n\n"
+            "To establish the range, just read the cursor on the graph, the values are at the top right.\n\n"
+            "AS A REMINDER, the 'Up' branch is the one on the right unless the x-axis has been inverted; "
+            "in that case it will be the one on the left.\n\n"
+            "ACHTUNG: the function must be written in Python, so for example |x| is abs(x), x^2 is x**2, and all "
+            "other functions must be written with np. in front (i.e. np.cos(x), np.exp(x)), except for special functions, "
+            "for which you must use the name used by the scipy.special library (i.e. scipy.special.erf becomes erf)"
         )
 
-        QMessageBox.information(window, "Guida al Fitting", help_text)
+        QMessageBox.information(window, "Fitting Guide", help_text)
 
     # Left: selection
     selection_layout = QVBoxLayout()
@@ -798,16 +798,16 @@ def open_curve_fitting_window(app_instance, plot_widget):
     selection_layout.addWidget(help_button, alignment=Qt.AlignLeft)
 
 
-    selection_layout.addWidget(QLabel("Seleziona il file:"))
+    selection_layout.addWidget(QLabel("Select the file:"))
     file_combo = QComboBox()
     file_combo.addItems([f"File {i+1}" for i in range(len(dataframes))])
     selection_layout.addWidget(file_combo)
 
-    selection_layout.addWidget(QLabel("Colonna X:"))
+    selection_layout.addWidget(QLabel("Column X:"))
     x_combo = QComboBox()
     selection_layout.addWidget(x_combo)
 
-    selection_layout.addWidget(QLabel("Colonna Y:"))
+    selection_layout.addWidget(QLabel("Column Y:"))
     y_combo = QComboBox()
     selection_layout.addWidget(y_combo)
 
@@ -834,15 +834,15 @@ def open_curve_fitting_window(app_instance, plot_widget):
     x_end_edit = QLineEdit("1")
     param_layout.addWidget(x_end_edit)
 
-    param_layout.addWidget(QLabel("Nomi parametri (es. a,b):"))
+    param_layout.addWidget(QLabel("Parameter names (es. a,b):"))
     param_names_edit = QLineEdit("a,b")
     param_layout.addWidget(param_names_edit)
 
-    param_layout.addWidget(QLabel("Parametri iniziali (es. 1,1):"))
+    param_layout.addWidget(QLabel("Initial values (es. 1,1):"))
     initial_params_edit = QLineEdit("1,1")
     param_layout.addWidget(initial_params_edit)
 
-    param_layout.addWidget(QLabel("Funzione di fitting (es. a*(x-b)):"))
+    param_layout.addWidget(QLabel("Fitting function (es. a*(x-b)):"))
     function_edit = QLineEdit("a*(x - b)")
     param_layout.addWidget(function_edit)
 
@@ -869,7 +869,7 @@ def open_curve_fitting_window(app_instance, plot_widget):
             y_fit   = y_data[mask]
 
             if len(x_fit) == 0:
-                QMessageBox.warning(window, "Errore", "Nessun dato nel range selezionato!")
+                QMessageBox.warning(window, "Error", "No data in the selected range!")
                 return
 
             param_names    = [p.strip() for p in param_names_edit.text().split(",")]
@@ -899,22 +899,22 @@ def open_curve_fitting_window(app_instance, plot_widget):
 
             result = "\n".join(result_lines)
             output_box.setPlainText(result)
-            logger.info("Fit completato con successo.")
+            logger.info("Fit completed successfully.")
             # Explicit cast to avoid newline issues in log file
-            logger.info(f"Il fit ha portato i seguenti risultati: {str(result).replace(chr(10), ' ')}.")
+            logger.info(f"The fit brought the following results: {str(result).replace(chr(10), ' ')}.")
             app_instance.refresh_shell_variables()
 
         except Exception as e:
-            QMessageBox.critical(window, "Errore", f"Errore durante il fitting: {e}")
+            QMessageBox.critical(window, "Error", f"Error in fitting: {e}")
            
-    fit_button = QPushButton("Esegui Fit")
+    fit_button = QPushButton("Run Fit")
     fit_button.clicked.connect(perform_fit)
     param_layout.addWidget(fit_button)
 
     # Sub-window for fitting panel
     sub = QMdiSubWindow()
     sub.setWidget(window)
-    sub.setWindowTitle("Curve Fitting")
+    sub.setWindowTitle("Quick Curve Fitting")
     sub.resize(600, 300)
     app_instance.mdi_area.addSubWindow(sub)
     sub.show()

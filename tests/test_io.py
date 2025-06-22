@@ -124,3 +124,75 @@ def test_load_files_open_raises(mock_open_fn, mock_critical, mock_getfiles, fake
     assert "error" in error_message.lower()
     assert "data1.txt" in error_message
 
+
+def test_detect_header_length_with_clean_header(tmp_path):
+    #Create a tmp file
+    content = """
+        # File example
+        # created: 2024
+        # columns: time\tvalue
+        1.0\t2.0
+        2.0\t3.0
+    """
+    file = tmp_path / "test1.txt"
+    file.write_text(content)
+
+    result = detect_header_length(file)
+    # Header with 3 rows, no empty row → data_start = 3 - 1 - 0 = 2
+    assert result == 2
+
+def test_detect_header_length_with_empty_lines(tmp_path):
+    #Create a tmp file
+    content = """
+        # Header line
+        # Unit: s\tm
+            
+        0.0\t0.5
+        1.0\t0.6
+    """
+    file = tmp_path / "test2.txt"
+    file.write_text(content)
+
+    result = detect_header_length(file)
+    # Header with 2 rows, 1 empty row → data_start = 3 - 1 - 1 = 1
+    assert result == 1
+
+def test_detect_header_length_with_no_numeric_data(tmp_path):
+    # Create a tmp file with no numerical values
+    content = """
+        # just text
+        text\tmoretext
+        ---\t---
+        nope\tagain
+    """
+    file = tmp_path / "test3.txt"
+    file.write_text(content)
+
+    with pytest.raises(ValueError, match="No valid data found"):
+        detect_header_length(file)
+
+def test_detect_header_length_custom_separator(tmp_path):
+    # Create a tmp file csv
+    content = """
+        #Header A,B,C
+        #units,V,A
+        1.0,2.0,3.0
+        4.0,5.0,6.0
+    """
+    file = tmp_path / "test4.csv"
+    file.write_text(content)
+
+    result = detect_header_length(file, sep=',')
+    # Header with 2 rows, no empty row → data_start = 2 - 1 - 0 = 1
+    assert result == 1
+
+def test_detect_header_is_numeric_row(tmp_path):
+    # Create a tmp file only numeric
+    content = "1.0\t2.0\t3.0\n4.0\t5.0\t6.0\n"
+    file = tmp_path / "numeric_data.txt"
+    file.write_text(content)
+
+    result = detect_header_length(file)
+    # No header, no empty lines → 0 - 1 - 0 = -1
+    assert result == -1
+

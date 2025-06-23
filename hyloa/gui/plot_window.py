@@ -172,7 +172,7 @@ class PlotControlWidget(QWidget):
 
         if len(self.selected_pairs) % 2 == 0:
             num   = len(self.selected_pairs) // 2 + 1
-            title = QLabel(f"Ciclo {num}")
+            title = QLabel(f"Cycle {num}")
             title.setStyleSheet("font-weight: bold; margin-top: 10px; margin-bottom: 5px;")
             self.pair_layout.addWidget(title)
 

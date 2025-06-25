@@ -196,3 +196,139 @@ def test_detect_header_is_numeric_row(tmp_path):
     # No header, no empty lines → 0 - 1 - 0 = -1
     assert result == -1
 
+#======================================================================#
+#======================================================================#
+#======================================================================#
+
+
+class DummyApp:
+    """Fake app_instance with minimal structure."""
+    def __init__(self, dataframe, header_lines):
+        self.dataframes = [dataframe]
+        self.header_lines = [header_lines]
+        self.logger = MagicMock()
+
+
+@patch("hyloa.data.io.QFileDialog.getSaveFileName")
+@patch("hyloa.data.io.QMessageBox.information")
+@patch("hyloa.data.io.QMessageBox.warning")
+@patch("hyloa.data.io.QMessageBox.critical")
+@patch("hyloa.data.io.save_header")
+def test_save_to_file_success(mock_save_header, mock_critical, mock_warning, mock_info, mock_dialog, tmp_path):
+    # Arrange
+    test_df = pd.DataFrame({
+        "A": [1.0, 2.0],
+        "B": [3.0, 4.0]
+    })
+    header_lines = ["# test header\n"]
+    app_instance = DummyApp(test_df, header_lines)
+
+    fake_file = tmp_path / "output.txt"
+    mock_dialog.return_value = (str(fake_file), "Text file (*.txt)")
+
+    # Call function to test
+    save_to_file(0, app_instance, parent_widget=None)
+
+    # Assert all is working fine
+    assert fake_file.exists()
+
+    with open(fake_file, encoding="utf-8") as f:
+        content = f.read()
+        assert "1.0" in content
+        assert "3.0" in content
+
+    # Assert: save_header was called
+    mock_save_header.assert_called_once_with(app_instance, header_lines, str(fake_file))
+    mock_info.assert_called_once()
+    mock_warning.assert_not_called()
+    mock_critical.assert_not_called()
+
+
+@patch("hyloa.data.io.QFileDialog.getSaveFileName")
+@patch("hyloa.data.io.QMessageBox.warning")
+def test_save_to_file_cancel(mock_warning, mock_dialog):
+    # Arrange: simulate user cancels dialog
+    mock_dialog.return_value = ("", "")
+    df = pd.DataFrame({"A": [1, 2]})
+    app = DummyApp(df, ["# header\n"])
+
+    # Act
+    save_to_file(0, app, parent_widget=None)
+
+    # Assert: warning called, no file created
+    mock_warning.assert_called_once()
+
+
+
+def test_save_header_success(tmp_path):
+    # Arrange
+    df = pd.DataFrame({
+        "col1": ["val1", "val2"],
+        "col2": ["val3", np.nan],
+    })
+    app = DummyApp(None, None)
+    file_path = tmp_path / "output.txt"
+
+    # Call
+    save_header(app, df, str(file_path))
+
+    # Assert
+    assert file_path.exists()
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    assert lines[0].strip() == "col1\tcol2"
+    assert lines[1].strip() == "val1\tval3"
+    assert lines[2].strip() == "val2"  # la col2 era NaN → deve risultare vuoto
+
+    # Logger call
+    app.logger.info.assert_called_with(f"File saved successfully in: {file_path}")
+
+
+def test_save_header_exception(tmp_path):
+    
+    app = DummyApp(None, None)
+    bad_path = tmp_path / "nonexistent" / "file.txt"
+    df = pd.DataFrame({"col": ["val"]})
+
+    # Call
+    save_header(app, df, str(bad_path))
+
+    # Assert "Error while saving"
+    called_msg = app.logger.info.call_args[0][0]
+    assert "Error while saving" in called_msg
+
+
+def test_duplicate_file_success(tmp_path):
+    # create a tmp file
+    original_file = tmp_path / "example.txt"
+    original_file.write_text("Test content")
+
+    expected_copy = tmp_path / "example_copy.txt"
+
+    with patch("hyloa.data.io.QFileDialog.getOpenFileName") as mock_dialog, \
+         patch("hyloa.data.io.QMessageBox.information") as mock_info, \
+         patch("hyloa.data.io.QMessageBox.critical") as mock_critical :
+
+        mock_dialog.return_value = (str(original_file), "Text Files (*.txt)")
+
+        # Call
+        duplicate_file()
+
+        # Assert
+        assert expected_copy.exists()
+        assert expected_copy.read_text() == "Test content"
+        mock_info.assert_called_once()
+        mock_critical.assert_not_called()
+
+def test_duplicate_file_cancel():
+    with patch("hyloa.data.io.QFileDialog.getOpenFileName") as mock_dialog, \
+         patch("hyloa.data.io.QMessageBox.information") as mock_info, \
+         patch("hyloa.data.io.QMessageBox.critical") as mock_critical:
+
+        mock_dialog.return_value = ("", "")  # Cancel dialog
+        duplicate_file()
+
+        mock_info.assert_not_called()
+        mock_critical.assert_not_called()

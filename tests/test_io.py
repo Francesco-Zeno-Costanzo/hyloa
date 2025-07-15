@@ -30,6 +30,7 @@ def fake_app():
         logger=MagicMock()
     )
 
+
 def test_load_files_logger_missing():
     fake_app = MagicMock()
     fake_app.logger = None
@@ -42,7 +43,8 @@ def test_load_files_logger_missing():
 @patch("hyloa.data.io.QFileDialog.getOpenFileNames")
 @patch("hyloa.data.io.open", new_callable=mock_open, read_data="FieldUp\tUpRot\tUpEllipt\tIzeroUp\n")
 @patch("hyloa.data.io.show_column_selection")
-def test_load_files_success(mock_show_columns, mock_open_fn, mock_getfiles, fake_app):
+@patch("hyloa.data.io.detect_header_length", return_value=2)
+def test_load_files_success(mock_dhl, mock_show_columns, mock_open_fn, mock_getfiles, fake_app):
     # Mock selection of the file
     mock_getfiles.return_value = (["/fake/path/data1.txt"], "")
 
@@ -72,9 +74,10 @@ def test_load_files_success(mock_show_columns, mock_open_fn, mock_getfiles, fake
 @patch("hyloa.data.io.QFileDialog.getOpenFileNames")
 @patch("hyloa.data.io.open", new_callable=mock_open, read_data="FieldUp\tUpRot\tUpEllipt\tIzeroUp\n")
 @patch("hyloa.data.io.show_column_selection")
+@patch("hyloa.data.io.detect_header_length", return_value=2)
 def test_load_files_file_already_loaded(
-    mock_show_columns, mock_open_fn, mock_getfiles, mock_question, fake_app
-):
+    mock_dhl, mock_show_columns, mock_open_fn, mock_getfiles, mock_question, fake_app
+    ):
     # Simulates selection of existing file
     mock_getfiles.return_value = (["/fake/path/data1.txt"], "")
     mock_question.return_value = QMessageBox.Yes 
@@ -109,7 +112,8 @@ def test_load_files_cancel_dialog(mock_getfiles, fake_app):
 @patch("hyloa.data.io.QFileDialog.getOpenFileNames")
 @patch("hyloa.data.io.QMessageBox.critical")
 @patch("hyloa.data.io.open", side_effect=Exception("Test error"))
-def test_load_files_open_raises(mock_open_fn, mock_critical, mock_getfiles, fake_app):
+@patch("hyloa.data.io.detect_header_length", return_value=2)
+def test_load_files_open_raises(mock_dhl, mock_open_fn, mock_critical, mock_getfiles, fake_app):
     # Fake file
     mock_getfiles.return_value = (["/fake/path/data1.txt"], "")
 
@@ -280,7 +284,7 @@ def test_save_header_success(tmp_path):
 
     assert lines[0].strip() == "col1\tcol2"
     assert lines[1].strip() == "val1\tval3"
-    assert lines[2].strip() == "val2"  # la col2 era NaN → deve risultare vuoto
+    assert lines[2].strip() == "val2"  # la col2 was NaN → must be empty
 
     # Logger call
     app.logger.info.assert_called_with(f"File saved successfully in: {file_path}")

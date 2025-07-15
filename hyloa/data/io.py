@@ -81,8 +81,13 @@ def load_files(app_instance):
             index_to_replace = None  # new file
 
         try:
-            with open(file_path, "r", encoding='utf-8') as f:
-                header = f.readline().strip().split("\t")
+            if detect_header_length(file_path) == -1:
+                data   = np.loadtxt(file_path, max_rows=1)
+                n_col  = data.size
+                header = [f"col_{i}" for i in range(n_col)]
+            else:
+                with open(file_path, "r", encoding='utf-8') as f:
+                    header = f.readline().strip().split("\t")
 
             app_instance.logger.info(f"Apertura file {file_path}")
             show_column_selection(app_instance, file_path, header, index_to_replace)
@@ -178,8 +183,15 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
     # Preview Data Table
     if header_length > 0:
         all_df = pd.read_csv(file_path, sep="\t").drop(list(range(header_length)))
+        
+    elif header_length == -1:
+        data     = np.loadtxt(file_path)
+        _, n_col = data.shape
+        col      = [f"col_{i}" for i in range(n_col)]
+        all_df   = pd.DataFrame(data, columns=col)
     else:
         all_df = pd.read_csv(file_path, sep="\t")
+
     table = QTableWidget()
     table.setRowCount(len(all_df))
     table.setColumnCount(len(all_df.columns))
@@ -226,10 +238,17 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
 
             header_length = detect_header_length(file_path)
 
-            df_header = pd.read_csv(file_path, sep="\t", nrows=header_length)
+            if header_length > 0:
+                df_header = pd.read_csv(file_path, sep="\t", nrows=header_length)
+                df_data   = pd.read_csv(file_path, sep="\t", usecols=columns_to_load)
+
+                df_data.columns = column_names
+
+            elif header_length == -1:
+                df_header = header
+                data      = np.loadtxt(file_path)
+                df_data   = pd.DataFrame(data, columns=column_names)
             
-            df_data = pd.read_csv(file_path, sep="\t", usecols=columns_to_load)
-            df_data.columns = column_names
             if header_length > 0 :
                 df_data = df_data.drop(list(range(header_length)))
 

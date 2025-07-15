@@ -17,11 +17,10 @@
 
 from setuptools import setup, find_packages
 
-import re
 
 setup(
     name="hyloa", 
-    version="1.7.0",
+    version="1.7.1",
     author="Francesco Zeno Costanzo",
     author_email="zenofrancesco99@gmail.com",
     description="A package for analyzing hysteresis loops",

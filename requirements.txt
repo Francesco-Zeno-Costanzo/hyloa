@@ -2,4 +2,5 @@ PyQt5
 numpy
 scipy
 pandas
+requests
 matplotlib

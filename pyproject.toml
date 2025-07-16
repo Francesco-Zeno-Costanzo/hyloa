@@ -17,6 +17,7 @@ dependencies = [
     "numpy",
     "scipy",
     "pandas",
+    "requests",
     "matplotlib"
 ]
 keywords = ["hysteresis", "analysis", "materials", "mechanics", "GUI"]

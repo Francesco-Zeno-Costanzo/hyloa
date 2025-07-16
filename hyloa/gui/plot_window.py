@@ -112,7 +112,7 @@ class PlotControlWidget(QWidget):
             ("Close loop",   self.close_loop),
             ("Flip x axis",  self.x_inversion),
             ("Flip y axis",  self.y_inversion),
-            ("Flip a brach", self.revert_branch),
+            ("Flip a branch", self.revert_branch),
         ]
         for text, func in bottom_buttons:
             btn = QPushButton(text)

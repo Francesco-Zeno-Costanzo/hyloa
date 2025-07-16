@@ -1,57 +1,57 @@
 @echo off
 setlocal
 
-REM === Nome della cartella del progetto ===
+REM === Project folder name ===
 set PROJECT_NAME=hyloa
 
-REM === Percorso assoluto di questa cartella ===
+REM === Absolute path of this folder ===
 set BASE_DIR=%~dp0
 
-REM === Percorso ambiente virtuale ===
+REM === Virtual environment path ===
 set VENV_DIR=%BASE_DIR%venv
 
-REM === Percorso a Python dentro l'ambiente virtuale ===
+REM === Path to Python within the virtual environment ===
 set PYTHON_EXE=%VENV_DIR%\Scripts\python.exe
 
-REM === Percorso allo script main ===
+REM === Path to the main script ===
 set MAIN_SCRIPT=%BASE_DIR%hyloa\main.py
 
-REM === Percorso alla shortcut da creare sul Desktop ===
+REM === Path to the shortcut to create on the Desktop ===
 set SHORTCUT_NAME=hyloa.lnk
 set DESKTOP=%USERPROFILE%\Desktop
 set SHORTCUT_PATH=%DESKTOP%\%SHORTCUT_NAME%
 
-REM === Percorso all'icona del pacchetto ===
+REM === Path to the package icon ===
 set ICON_PATH=%BASE_DIR%hyloa\resources\icon.ico
 
-REM === Percorso al launcher VBS ===
+REM === Path to the VBS launcher ===
 set LAUNCH_VBS=%BASE_DIR%launch_hyloa.vbs
 
 echo ================================
-echo Creazione ambiente virtuale...
+echo Creation of virtual environment...
 python -m venv "%VENV_DIR%"
 
 echo ================================
-echo Attivazione ambiente virtuale...
+echo Activating virtual environment...
 call "%VENV_DIR%\Scripts\activate.bat"
 
 echo ================================
-echo Installazione dipendenze...
+echo Installing dependencies...
 "%PYTHON_EXE%" -m pip install --upgrade pip
 "%PYTHON_EXE%" -m pip install -r requirements.txt
 "%PYTHON_EXE%" -m pip install .
 
 echo ================================
-echo Creazione script VBS di avvio...
-REM === Salva un file .vbs che avvia il programma senza mostrare il terminale
+echo Creating VBS launcher...
+REM === Save a .vbs file that launches the program without showing the terminal
 echo Set WshShell = CreateObject("WScript.Shell") > "%LAUNCH_VBS%"
 echo WshShell.Run Chr(34) ^& "%PYTHON_EXE%" ^& Chr(34) ^& " " ^& Chr(34) ^& "%MAIN_SCRIPT%" ^& Chr(34), 0 >> "%LAUNCH_VBS%"
 echo Set WshShell = Nothing >> "%LAUNCH_VBS%"
 
 echo ================================
-echo Creazione shortcut sul Desktop...
+echo Creating shortcut on Desktop...
 
-REM === Crea la scorciatoia alla VBS
+REM === Create the shortcut to VBS
 echo Set oWS = WScript.CreateObject("WScript.Shell") > temp.vbs
 echo sLinkFile = "%SHORTCUT_PATH%" >> temp.vbs
 echo Set oLink = oWS.CreateShortcut(sLinkFile) >> temp.vbs
@@ -66,6 +66,6 @@ cscript //nologo temp.vbs
 del temp.vbs
 
 echo ================================
-echo Installazione completata!
-echo Scorciatoia creata sul Desktop.
+echo Installation complete!
+echo You can now run the application by double-clicking the shortcut on your Desktop.
 pause

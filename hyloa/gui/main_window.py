@@ -46,7 +46,7 @@ from hyloa.gui.plot_window import PlotControlWidget
 
 # Auxiliary code
 from hyloa.utils.logging_setup import start_logging
-
+from hyloa.utils.check_version import check_for_updates
 
 
 class MainApp(QMainWindow):
@@ -100,6 +100,7 @@ class MainApp(QMainWindow):
         layout.addWidget(description)
 
         layout.addWidget(self.make_group("Strat", [
+            ("Version", check_for_updates),
             ("Help", self.help),
             ("Start Logging", self.conf_logging)
         ]))

@@ -238,7 +238,7 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
 
             header_length = detect_header_length(file_path)
 
-            if header_length > 0:
+            if header_length >= 0:
                 df_header = pd.read_csv(file_path, sep="\t", nrows=header_length)
                 df_data   = pd.read_csv(file_path, sep="\t", usecols=columns_to_load)
 
@@ -249,7 +249,7 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
                 data      = np.loadtxt(file_path)
                 df_data   = pd.DataFrame(data, columns=column_names)
             
-            if header_length > 0 :
+            if header_length >= 0 :
                 df_data = df_data.drop(list(range(header_length)))
 
             app_instance.logger.info(f"From: {file_path}, load: {columns_to_load}")

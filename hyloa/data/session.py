@@ -218,6 +218,10 @@ def load_previous_session(app_instance, parent_widget=None):
                 if fig_geom.get("minimized"):
                     fig_sub.showMinimized()
 
+        # Rename main window to reflect the loaded session
+        base_name = os.path.basename(file_path)
+        name, _   = os.path.splitext(base_name)
+        app_instance.setWindowTitle(f"HYLOA - {name}")
             
         QMessageBox.information(parent_widget, "Session Loaded",
                                 f"Session loaded from file:\n{file_path}")

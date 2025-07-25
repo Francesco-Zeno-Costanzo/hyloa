@@ -56,7 +56,7 @@ class MainApp(QMainWindow):
     def __init__(self):
 
         super().__init__()
-        self.setWindowTitle("Hysteresis Loop Analyzer")
+        self.setWindowTitle("Hysteresis Loop Analyzer - tmp session")
         self.setGeometry(100, 100, 1000, 700)
 
         # MDI area

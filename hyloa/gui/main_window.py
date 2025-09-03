@@ -43,6 +43,7 @@ from hyloa.gui.plot_window import PlotSubWindow
 from hyloa.gui.script_window import ScriptEditor
 from hyloa.gui.command_window import CommandWindow
 from hyloa.gui.plot_window import PlotControlWidget
+from hyloa.gui.worksheet import WorksheetWindow
 
 # Auxiliary code
 from hyloa.utils.logging_setup import start_logging
@@ -100,28 +101,29 @@ class MainApp(QMainWindow):
         layout.addWidget(description)
 
         layout.addWidget(self.make_group("Strat", [
-            ("Version", check_for_updates),
-            ("Help", self.help),
+            ("Version",       check_for_updates),
+            ("Help",          self.help),
             ("Start Logging", self.conf_logging)
         ]))
 
         layout.addWidget(self.make_group("File Management", [
-            ("Load file", self.load_data),
-            ("Show file", self.show_loaded_files),
-            ("Save file", self.save_data),
+            ("Load file",      self.load_data),
+            ("Show file",      self.show_loaded_files),
+            ("Save file",      self.save_data),
             ("Duplicate file", self.duplicate)
         ]))
 
         layout.addWidget(self.make_group("Analysis", [
             ("Create plot", self.plot),
-            ("Script", self.open_script_editor),
-            ("Annotation", self.open_comment_window)
+            ("Worksheet",   self.worksheet),
+            ("Script",      self.open_script_editor),
+            ("Annotation",  self.open_comment_window)
         ]))
 
         layout.addWidget(self.make_group("Session", [
-            ("Load session", self.load_session),
+            ("Load session",    self.load_session),
             ("list of windows", self.show_window_navigator),
-            ("Save session", self.save_session)
+            ("Save session",    self.save_session)
         ]))
 
         layout.addWidget(self.make_group("Exit", [
@@ -225,6 +227,12 @@ class MainApp(QMainWindow):
         '''
         save_modified_data(self, parent_widget=self) # Pass the class instance as an argument
     
+
+    def worksheet(self):
+        ws = WorksheetWindow(self.mdi_area)
+        self.mdi_area.addSubWindow(ws)
+        ws.show()
+
     def plot(self):
         ''' Function that create a instance for plot's control panel
         '''

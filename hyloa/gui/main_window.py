@@ -76,6 +76,10 @@ class MainApp(QMainWindow):
         self.plot_names           = {}     # {int: "name of the figure"}
         self.plot_subwindows      = {}     # {plot_index: QMdiSubWindow for control panel}
         self.figure_subwindows    = {}     # {plot_index: QMdiSubWindow for figure window}
+        self.number_worksheets    = 0      # Number of all created worksheets
+        self.worksheet_windows    = {}     # {int: WorksheetWindow}
+        self.worksheet_names      = {}     # {int: str}
+        self.worksheet_subwindows = {}     # {int: QMdiSubWindow}
 
 
         # Interface
@@ -232,6 +236,32 @@ class MainApp(QMainWindow):
         ws = WorksheetWindow(self.mdi_area)
         self.mdi_area.addSubWindow(ws)
         ws.show()
+
+    def worksheet(self):
+        if self.logger is None:
+            QMessageBox.critical(None, "Error", "Cannot create worksheet without starting log")
+            return
+
+        text, ok = QInputDialog.getText(self, "Worksheet name", "Enter a name for the worksheet:")
+        if not ok or not text.strip():
+            return
+        
+        self.number_worksheets += 1
+        ws_idx  = self.number_worksheets
+        ws_name = text.strip()
+
+        worksheet = WorksheetWindow(self.mdi_area, name=ws_name)
+        
+        worksheet.setWindowTitle(f"Worksheet - {ws_name}")
+        self.mdi_area.addSubWindow(worksheet)
+        worksheet.show()
+
+        # Save for session restore
+        self.worksheet_subwindows[ws_idx] = worksheet
+        self.worksheet_windows[ws_idx]    = worksheet
+        self.worksheet_names[ws_idx]      = ws_name
+
+
 
     def plot(self):
         ''' Function that create a instance for plot's control panel

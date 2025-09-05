@@ -22,6 +22,8 @@ import os
 import pickle
 import logging
 
+from PyQt5.QtCore import QTimer
+
 from PyQt5.QtWidgets import (
     QMdiSubWindow, QMessageBox, QFileDialog
 )
@@ -30,6 +32,7 @@ from hyloa.utils.logging_setup import setup_logging
 
 from hyloa.gui.plot_window import PlotSubWindow
 from hyloa.gui.plot_window import PlotControlWidget
+from hyloa.gui.worksheet import WorksheetWindow
 
 def save_current_session(app_instance, parent_widget=None):
     '''
@@ -103,7 +106,15 @@ def save_current_session(app_instance, parent_widget=None):
                     "minimized": fig_sub.isMinimized()
                 }
                 for idx, fig_sub in app_instance.figure_subwindows.items()
-            }
+            },
+            "worksheets": {
+                idx: {
+                    "name":    app_instance.worksheet_names.get(idx, f"Worksheet {idx}"),
+                    "content": app_instance.worksheet_windows[idx].to_session_data()
+                }
+                for idx in app_instance.worksheet_windows
+            },
+
         }
 
         with open(file_path, "wb") as f:
@@ -217,6 +228,34 @@ def load_previous_session(app_instance, parent_widget=None):
                 fig_sub.setGeometry(fig_geom["x"], fig_geom["y"], fig_geom["width"], fig_geom["height"])
                 if fig_geom.get("minimized"):
                     fig_sub.showMinimized()
+
+        # --- restore worksheets  ---
+        worksheet_data = session_data.get("worksheets", {})
+        for idx_key, ws_info in worksheet_data.items():
+            try:
+                idx = int(idx_key)
+            except:
+                idx = idx_key
+
+            ws_name = ws_info.get("name", f"Worksheet {idx}")
+
+            # create worksheet instance with name
+            ws = WorksheetWindow(app_instance.mdi_area, name=ws_name)
+
+            # add to mdi area BEFORE restoring content (important!)
+            app_instance.mdi_area.addSubWindow(ws)
+
+            # restore content & plots; from_session_data will set geometry and schedule show
+            ws.from_session_data(ws_info.get("content", {}))
+
+            # save references in app_instance
+            app_instance.worksheet_windows[idx]    = ws
+            app_instance.worksheet_names[idx]      = ws_name
+            app_instance.worksheet_subwindows[idx] = ws
+
+            # ensure it's visible (from_session_data schedules showNormal/showMinimized)
+            QTimer.singleShot(0, lambda w=ws: w.show())
+
 
         # Rename main window to reflect the loaded session
         base_name = os.path.basename(file_path)

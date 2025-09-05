@@ -20,6 +20,10 @@ Code for the worksheet window, allowing data table manipulation and plotting.
 
 import numpy as np
 import pandas as pd
+
+        
+from PyQt5.QtCore import QTimer, Qt
+
 from PyQt5.QtWidgets import (
     QFileDialog, QMessageBox, QMdiSubWindow,
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
@@ -33,7 +37,7 @@ from hyloa.data.io import detect_header_length
 class WorksheetWindow(QMdiSubWindow):
     """ A worksheet subwindow for managing tabular data and plotting.
     """
-    def __init__(self, mdi_area, parent=None):
+    def __init__(self, mdi_area, parent=None, name="worksheet"):
         """
         Initialize the worksheet window.
 
@@ -43,10 +47,13 @@ class WorksheetWindow(QMdiSubWindow):
             The main MDI area where this window will be added.
         parent : QWidget, optional
             The parent widget (default is None).
+        name : str, optional
+            Name of the worksheet (default is "worksheet").
         """
         super().__init__(parent)
         self.mdi_area = mdi_area
-        self.setWindowTitle("Worksheet")
+        self.name = name
+        self.setWindowTitle(f"Worksheet - {self.name}")
         self.resize(600, 600)
 
         # Create an initial table with 20 rows and 4 columns
@@ -75,6 +82,12 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_plot.clicked.connect(self.create_plot)
         self.btn_add_col.clicked.connect(self.add_column)
         self.btn_load.clicked.connect(self.load_file_into_table)
+
+        # Attributes to memorize plot windows
+        self.plots      = {}      # {int: {"x":..., "y":..., "x_err":..., "y_err":..., "geom":...}}
+        self.plot_count = 0
+        self.plot_subwindows = {} # {int: QMdiSubWindow}
+
 
     def load_file_into_table(self):
         """
@@ -118,12 +131,14 @@ class WorksheetWindow(QMdiSubWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error in loading file:\n{e}")
 
+
     def add_column(self):
         """ Add a new empty column to the table.
         """
         col_count = self.table.columnCount()
         self.table.insertColumn(col_count)
         self.table.setHorizontalHeaderItem(col_count, QTableWidgetItem(f"Col {col_count+1}"))
+
 
     def auto_expand_rows(self, row, col):
         """
@@ -138,6 +153,7 @@ class WorksheetWindow(QMdiSubWindow):
         """
         if row == self.table.rowCount() - 1:
             self.table.insertRow(self.table.rowCount())
+
 
     def to_dataframe(self):
         """
@@ -166,6 +182,7 @@ class WorksheetWindow(QMdiSubWindow):
             data[col_name] = values
         return pd.DataFrame(data)
 
+
     def create_plot(self):
         """
         Open a dialog to select columns and create a plot.
@@ -178,7 +195,8 @@ class WorksheetWindow(QMdiSubWindow):
             x_col, y_col, y_err_col, x_err_col = dialog.get_selection()
             self.open_plot_window(df, x_col, y_col, y_err_col, x_err_col)
 
-    def open_plot_window(self, df, x_col, y_col, y_err_col=None, x_err_col=None):
+
+    def open_plot_window(self, df, x_col, y_col, y_err_col=None, x_err_col=None, show=True, plot_id=None):
         """
         Open a new subwindow with a plot of the selected columns.
 
@@ -194,6 +212,11 @@ class WorksheetWindow(QMdiSubWindow):
             Column name for Y-axis error bars (default is None).
         x_err_col : str, optional
             Column name for X-axis error bars (default is None).
+        
+        Returns
+        -------
+        QMdiSubWindow
+            The subwindow containing the plot.
         """
         fig = Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
@@ -204,7 +227,7 @@ class WorksheetWindow(QMdiSubWindow):
         if y_err_col or x_err_col:
             xerr = df[x_err_col].values if x_err_col else None
             yerr = df[y_err_col].values if y_err_col else None
-            ax.errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o", label=y_col)
+            ax.errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o", linestyle='--', label=y_col)
         else:
             ax.plot(x, y, "o-", label=y_col)
 
@@ -215,11 +238,145 @@ class WorksheetWindow(QMdiSubWindow):
 
         canvas = FigureCanvas(fig)
 
+        # --- handle plot_id ---
+        if plot_id is None:
+            self.plot_count += 1
+            plot_id = self.plot_count
+        else:
+            # keep track of highest id
+            try:
+                pid_int = int(plot_id)
+                if pid_int > self.plot_count:
+                    self.plot_count = pid_int
+            except Exception:
+                pass
+
         sub = QMdiSubWindow()
-        sub.setWindowTitle(f"Plot: {y_col} vs {x_col}")
+        sub.setWindowTitle(f"From {self.name} plot {plot_id}: {y_col} vs {x_col}")
         sub.setWidget(canvas)
         self.mdi_area.addSubWindow(sub)
-        sub.show()
+        
+        # show only if requested
+        if show:
+            # show after addSubWindow: the MDI may apply a default cascading; caller can still reposition if desired
+            sub.show()
+
+
+        # Save plot info for session management
+        self.plot_subwindows[plot_id] = sub
+        self.plots[plot_id] = {
+            "x_col": x_col,
+            "y_col": y_col,
+            "x_err_col": x_err_col,
+            "y_err_col": y_err_col,
+            "geometry": {
+                "x": sub.x(),
+                "y": sub.y(),
+                "width": sub.width(),
+                "height": sub.height(),
+                "minimized": sub.isMinimized()
+            }
+        }
+
+        return sub
+    
+    def to_session_data(self):
+        # Current geometry of the worksheet window
+        ws_geom = {
+            "x": self.x(),
+            "y": self.y(),
+            "width":  self.width(),
+            "height": self.height(),
+            "minimized": self.isMinimized()
+        }
+
+        # Retrieve geometry of all plot windows
+        for pid, sub in self.plot_subwindows.items():
+            if sub is None:
+                continue
+            self.plots.setdefault(pid, {})
+            self.plots[pid]["geometry"] = {
+                "x": sub.x(),
+                "y": sub.y(),
+                "width":  sub.width(),
+                "height": sub.height(),
+                "minimized": sub.isMinimized()
+            }
+
+        return {
+            "name": self.name,
+            "data": self.to_dataframe(),
+            "geometry": ws_geom,
+            "plots": self.plots
+        }
+
+
+    def from_session_data(self, data_dict):
+        df = data_dict.get("data")
+        if df is not None:
+            self.table.setRowCount(len(df))
+            self.table.setColumnCount(len(df.columns))
+            self.table.setHorizontalHeaderLabels([str(c) for c in df.columns])
+            for r in range(len(df)):
+                for c in range(len(df.columns)):
+                    val = str(df.iat[r, c])
+                    self.table.setItem(r, c, QTableWidgetItem(val))
+
+
+        # restore worksheet geometry: apply move/resize after being added to MDI
+        geom = data_dict.get("geometry")
+        if geom:
+            # Ensure no special window states interfere
+            self.setWindowState(Qt.WindowNoState)
+            # Move/resize while hidden or already in MDI; if needed, delay minimize
+            self.move(geom["x"], geom["y"])
+            self.resize(geom["width"], geom["height"])
+            if geom.get("minimized"):
+                QTimer.singleShot(0, self.showMinimized)
+            else:
+                # ensure it's visible in normal state
+                QTimer.singleShot(0, self.showNormal)
+
+        # recreate plots (do not show immediately; set geometry then show)
+        plots_dict = data_dict.get("plots", {}) or {}
+        # sort by numeric plot id if possible
+        def keyf(k):
+            try:
+                return int(k)
+            except:
+                return k
+        for plot_id in sorted(plots_dict.keys(), key=keyf):
+            plot_info = plots_dict[plot_id]
+            x_col = plot_info.get("x_col")
+            y_col = plot_info.get("y_col")
+            x_err = plot_info.get("x_err_col")
+            y_err = plot_info.get("y_err_col")
+
+            # create sub but don't show it yet
+            sub = self.open_plot_window(df, x_col, y_col, y_err, x_err, show=False, plot_id=int(plot_id))
+
+            # apply geometry (do this before showing to avoid MDI cascading override)
+            pgeom = plot_info.get("geometry")
+            if pgeom and sub:
+                def apply_geom_and_show(sub=sub, pgeom=pgeom):
+                    try:
+                        sub.setWindowState(Qt.WindowNoState)
+                        sub.setGeometry(pgeom["x"], pgeom["y"], pgeom["width"], pgeom["height"])
+                        if pgeom.get("minimized"):
+                            sub.showMinimized()
+                        else:
+                            sub.showNormal()
+                    except Exception:
+                        # fallback: show normally
+                        sub.show()
+                # schedule after event loop to be sure MDI is ready
+                QTimer.singleShot(0, apply_geom_and_show)
+            else:
+                # if no geom info, just show it
+                QTimer.singleShot(0, sub.show)
+
+
+                
 
 
 class ColumnSelectionDialog(QDialog):

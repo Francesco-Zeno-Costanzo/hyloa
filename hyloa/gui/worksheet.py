@@ -30,6 +30,8 @@ from PyQt5.QtWidgets import (
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox, QDialogButtonBox
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+
 from matplotlib.figure import Figure
 
 from hyloa.data.io import detect_header_length
@@ -62,11 +64,13 @@ class WorksheetWindow(QMdiSubWindow):
         self.table.cellChanged.connect(self.auto_expand_rows)
 
         self.btn_add_col = QPushButton("Add column")
+        self.btn_rmv_col = QPushButton("Remove column")
         self.btn_load    = QPushButton("Load Data")
         self.btn_plot    = QPushButton("Create Plot")
 
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self.btn_add_col)
+        btn_layout.addWidget(self.btn_rmv_col)
         btn_layout.addWidget(self.btn_load)
         btn_layout.addWidget(self.btn_plot)
 
@@ -81,12 +85,14 @@ class WorksheetWindow(QMdiSubWindow):
         # Connect button actions
         self.btn_plot.clicked.connect(self.create_plot)
         self.btn_add_col.clicked.connect(self.add_column)
+        self.btn_rmv_col.clicked.connect(self.remove_column)
         self.btn_load.clicked.connect(self.load_file_into_table)
 
         # Attributes to memorize plot windows
-        self.plots      = {}      # {int: {"x":..., "y":..., "x_err":..., "y_err":..., "geom":...}}
-        self.plot_count = 0
-        self.plot_subwindows = {} # {int: QMdiSubWindow}
+        self.plots           = {}   # {int: {"x":..., "y":..., "x_err":..., "y_err":..., "geom":...}}
+        self.plot_count      = 0    # to assign unique plot IDs
+        self.plot_subwindows = {}   # {int: QMdiSubWindow}
+        self._plot_widgets   = {}   # {plot_id: {"sub": sub, "container": widget, "canvas": canvas, "toolbar": toolbar}}
 
 
     def load_file_into_table(self):
@@ -125,8 +131,12 @@ class WorksheetWindow(QMdiSubWindow):
             # Populate table with data
             for r in range(len(df)):
                 for c in range(len(df.columns)):
-                    val = str(df.iat[r, c])
-                    self.table.setItem(r, c, QTableWidgetItem(val))
+                    val = df.iat[r, c]
+                    if pd.isna(val):
+                        item = QTableWidgetItem("")
+                    else:
+                        item = QTableWidgetItem(str(val))
+                    self.table.setItem(r, c, item)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error in loading file:\n{e}")
@@ -139,6 +149,16 @@ class WorksheetWindow(QMdiSubWindow):
         self.table.insertColumn(col_count)
         self.table.setHorizontalHeaderItem(col_count, QTableWidgetItem(f"Col {col_count+1}"))
 
+    def remove_column(self):
+        """ Remove the currently selected column(s) from the table.
+        """
+        selected = self.table.selectionModel().selectedColumns()
+        if not selected:
+            return  # Nothing selected to remove so return
+        
+        # Remove columns in reverse order to avoid index shifting
+        for col in sorted([c.column() for c in selected], reverse=True):
+            self.table.removeColumn(col)
 
     def auto_expand_rows(self, row, col):
         """
@@ -163,7 +183,7 @@ class WorksheetWindow(QMdiSubWindow):
         -------
         pd.DataFrame
             DataFrame containing the numeric values from the table.
-            Non-numeric values are replaced with NaN.
+            Non-numeric values are replaced with an empty string.
         """
         rows = self.table.rowCount()
         cols = self.table.columnCount()
@@ -174,11 +194,13 @@ class WorksheetWindow(QMdiSubWindow):
             values = []
             for r in range(rows):
                 item = self.table.item(r, c)
-                try:
-                    val = float(item.text()) if item else np.nan
-                except:
-                    val = np.nan
-                values.append(val)
+                if item is None or item.text().strip() == "":
+                    values.append(np.nan)
+                else:
+                    try:
+                        values.append(float(item.text()))
+                    except ValueError:
+                        values.append(np.nan)
             data[col_name] = values
         return pd.DataFrame(data)
 
@@ -192,11 +214,11 @@ class WorksheetWindow(QMdiSubWindow):
         df = self.to_dataframe()
         dialog = ColumnSelectionDialog(df.columns, self)
         if dialog.exec_() == QDialog.Accepted:
-            x_col, y_col, y_err_col, x_err_col = dialog.get_selection()
-            self.open_plot_window(df, x_col, y_col, y_err_col, x_err_col)
+            selections = dialog.get_selection()
+            self.open_plot_window(df, selections)
 
 
-    def open_plot_window(self, df, x_col, y_col, y_err_col=None, x_err_col=None, show=True, plot_id=None):
+    def open_plot_window(self, df, selections, show=True, plot_id=None):
         """
         Open a new subwindow with a plot of the selected columns.
 
@@ -204,14 +226,13 @@ class WorksheetWindow(QMdiSubWindow):
         ----------
         df : pd.DataFrame
             The DataFrame containing the data.
-        x_col : str
-            Column name for X-axis values.
-        y_col : str
-            Column name for Y-axis values.
-        y_err_col : str, optional
-            Column name for Y-axis error bars (default is None).
-        x_err_col : str, optional
-            Column name for X-axis error bars (default is None).
+        selections : list of dict
+            List of selections, each a dict with keys:
+            'x', 'y', 'x_err', 'y_err' for column names.
+        show : bool, optional
+            Whether to show the plot window immediately (default is True).
+        plot_id : int or None, optional
+            If provided, use this as the plot ID; otherwise, auto-increment (default is
         
         Returns
         -------
@@ -221,22 +242,33 @@ class WorksheetWindow(QMdiSubWindow):
         fig = Figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
 
-        x = df[x_col].values
-        y = df[y_col].values
+        for i, sel in enumerate(selections, start=1):
+            x = df[sel["x"]].values
+            y = df[sel["y"]].values
+            xerr = df[sel["x_err"]].values if sel["x_err"] else None
+            yerr = df[sel["y_err"]].values if sel["y_err"] else None
 
-        if y_err_col or x_err_col:
-            xerr = df[x_err_col].values if x_err_col else None
-            yerr = df[y_err_col].values if y_err_col else None
-            ax.errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o", linestyle='--', label=y_col)
-        else:
-            ax.plot(x, y, "o-", label=y_col)
+            label = sel["y"] if len(selections) == 1 else f"{sel['y']}"
 
-        ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
+            if xerr is not None or yerr is not None:
+                ax.errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o-", label=label)
+            else:
+                ax.plot(x, y, "o-", label=label)
+
+        ax.set_xlabel(selections[0]["x"]) 
+        ax.set_ylabel("Values")
         ax.legend()
         ax.grid(True)
 
         canvas = FigureCanvas(fig)
+        plot_container = QWidget()
+        vlayout = QVBoxLayout(plot_container)
+        vlayout.setContentsMargins(0, 0, 0, 0)
+
+        toolbar = NavigationToolbar(canvas, plot_container)
+        vlayout.addWidget(toolbar)
+        vlayout.addWidget(canvas)
+        plot_container.setLayout(vlayout)
 
         # --- handle plot_id ---
         if plot_id is None:
@@ -250,25 +282,37 @@ class WorksheetWindow(QMdiSubWindow):
                     self.plot_count = pid_int
             except Exception:
                 pass
-
-        sub = QMdiSubWindow()
-        sub.setWindowTitle(f"From {self.name} plot {plot_id}: {y_col} vs {x_col}")
-        sub.setWidget(canvas)
-        self.mdi_area.addSubWindow(sub)
         
+        sub = QMdiSubWindow()
+        sub.setWindowTitle(f"From {self.name} plot {plot_id}")
+        sub.setWidget(plot_container)
+        self.mdi_area.addSubWindow(sub)
+
+        self._plot_widgets[plot_id] = {
+            "sub": sub,
+            "container": plot_container,
+            "canvas": canvas,
+            "toolbar": toolbar
+        }
+
+        canvas.draw_idle()
         # show only if requested
         if show:
             # show after addSubWindow: the MDI may apply a default cascading; caller can still reposition if desired
             sub.show()
 
+        # Cleanup references when the subwindow is closed
+        def _cleanup(pid=plot_id):
+            self._plot_widgets.pop(pid, None)
+            self.plot_subwindows.pop(pid, None)
+
+        # connect the destroyed signal to cleanup
+        sub.destroyed.connect(lambda _=None, pid=plot_id: _cleanup(pid))
 
         # Save plot info for session management
         self.plot_subwindows[plot_id] = sub
         self.plots[plot_id] = {
-            "x_col": x_col,
-            "y_col": y_col,
-            "x_err_col": x_err_col,
-            "y_err_col": y_err_col,
+            "selections": selections,
             "geometry": {
                 "x": sub.x(),
                 "y": sub.y(),
@@ -291,18 +335,19 @@ class WorksheetWindow(QMdiSubWindow):
         }
 
         # Retrieve geometry of all plot windows
-        for pid, sub in self.plot_subwindows.items():
+        for pid, sub in list(self.plot_subwindows.items()):
             if sub is None:
                 continue
-            self.plots.setdefault(pid, {})
+            geom = sub.geometry()
+            if pid not in self.plots:
+                continue
             self.plots[pid]["geometry"] = {
-                "x": sub.x(),
-                "y": sub.y(),
-                "width":  sub.width(),
-                "height": sub.height(),
+                "x": geom.x(),
+                "y": geom.y(),
+                "width": geom.width(),
+                "height": geom.height(),
                 "minimized": sub.isMinimized()
             }
-
         return {
             "name": self.name,
             "data": self.to_dataframe(),
@@ -319,11 +364,16 @@ class WorksheetWindow(QMdiSubWindow):
             self.table.setHorizontalHeaderLabels([str(c) for c in df.columns])
             for r in range(len(df)):
                 for c in range(len(df.columns)):
-                    val = str(df.iat[r, c])
-                    self.table.setItem(r, c, QTableWidgetItem(val))
+                    val = df.iat[r, c]
+                    if pd.isna(val):
+                        item = QTableWidgetItem("")
+                    else:
+                        item = QTableWidgetItem(str(val))
+                    self.table.setItem(r, c, item)
 
 
-        # restore worksheet geometry: apply move/resize after being added to MDI
+
+        # Restore worksheet geometry: apply move/resize after being added to MDI
         geom = data_dict.get("geometry")
         if geom:
             # Ensure no special window states interfere
@@ -334,12 +384,12 @@ class WorksheetWindow(QMdiSubWindow):
             if geom.get("minimized"):
                 QTimer.singleShot(0, self.showMinimized)
             else:
-                # ensure it's visible in normal state
+                # Ensure it's visible in normal state
                 QTimer.singleShot(0, self.showNormal)
 
-        # recreate plots (do not show immediately; set geometry then show)
+        # Recreate plots (do not show immediately; set geometry then show)
         plots_dict = data_dict.get("plots", {}) or {}
-        # sort by numeric plot id if possible
+        # Sort by numeric plot id if possible
         def keyf(k):
             try:
                 return int(k)
@@ -347,15 +397,14 @@ class WorksheetWindow(QMdiSubWindow):
                 return k
         for plot_id in sorted(plots_dict.keys(), key=keyf):
             plot_info = plots_dict[plot_id]
-            x_col = plot_info.get("x_col")
-            y_col = plot_info.get("y_col")
-            x_err = plot_info.get("x_err_col")
-            y_err = plot_info.get("y_err_col")
+            selections = plot_info.get("selections", [])
+            if not selections:
+                continue
 
-            # create sub but don't show it yet
-            sub = self.open_plot_window(df, x_col, y_col, y_err, x_err, show=False, plot_id=int(plot_id))
+            # Create sub but don't show it yet
+            sub = self.open_plot_window(df, selections, show=False, plot_id=int(plot_id))
 
-            # apply geometry (do this before showing to avoid MDI cascading override)
+            # Apply geometry (do this before showing to avoid MDI cascading override)
             pgeom = plot_info.get("geometry")
             if pgeom and sub:
                 def apply_geom_and_show(sub=sub, pgeom=pgeom):
@@ -369,14 +418,11 @@ class WorksheetWindow(QMdiSubWindow):
                     except Exception:
                         # fallback: show normally
                         sub.show()
-                # schedule after event loop to be sure MDI is ready
+                # Schedule after event loop to be sure MDI is ready
                 QTimer.singleShot(0, apply_geom_and_show)
             else:
-                # if no geom info, just show it
+                # If no geom info, just show it
                 QTimer.singleShot(0, sub.show)
-
-
-                
 
 
 class ColumnSelectionDialog(QDialog):
@@ -397,49 +443,65 @@ class ColumnSelectionDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Select columns for Plotting")
 
-        self.x_combo = QComboBox()
-        self.x_combo.addItems(columns)
+        self.columns = columns
+        self.curve_rows = []
 
-        self.y_combo = QComboBox()
-        self.y_combo.addItems(columns)
+        self.layout = QVBoxLayout()
 
-        self.y_err_combo = QComboBox()
-        self.y_err_combo.addItem("None")
-        self.y_err_combo.addItems(columns)
+        # Area for curve selections
+        self.curves_layout = QVBoxLayout()
+        self.layout.addLayout(self.curves_layout)
 
-        self.x_err_combo = QComboBox()
-        self.x_err_combo.addItem("None")
-        self.x_err_combo.addItems(columns)
+        # Button to add more curves
+        btn_add = QPushButton("Add curve")
+        btn_add.clicked.connect(self.add_curve_row)
+        self.layout.addWidget(btn_add)
 
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("X axis:"))
-        layout.addWidget(self.x_combo)
-        layout.addWidget(QLabel("Y axis"))
-        layout.addWidget(self.y_combo)
-        layout.addWidget(QLabel("Y error (optional):"))
-        layout.addWidget(self.y_err_combo)
-        layout.addWidget(QLabel("X error (optional):"))
-        layout.addWidget(self.x_err_combo)
-
+        # OK/Cancel buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
+        self.layout.addWidget(buttons)
 
-        layout.addWidget(buttons)
-        self.setLayout(layout)
+        self.setLayout(self.layout)
+
+        # Add the first curve selection row
+        self.add_curve_row()
+    
+    def add_curve_row(self):
+        ''' Add a new row for selecting X, Y, Xerr, Yerr columns.
+        '''
+        row_layout = QHBoxLayout()
+
+        x_combo = QComboBox(); x_combo.addItems(self.columns)
+        y_combo = QComboBox(); y_combo.addItems(self.columns)
+
+        xerr_combo = QComboBox(); xerr_combo.addItem("None"); xerr_combo.addItems(self.columns)
+        yerr_combo = QComboBox(); yerr_combo.addItem("None"); yerr_combo.addItems(self.columns)
+
+        row_layout.addWidget(QLabel("X:")); row_layout.addWidget(x_combo)
+        row_layout.addWidget(QLabel("Y:")); row_layout.addWidget(y_combo)
+        row_layout.addWidget(QLabel("Xerr:")); row_layout.addWidget(xerr_combo)
+        row_layout.addWidget(QLabel("Yerr:")); row_layout.addWidget(yerr_combo)
+
+        self.curves_layout.addLayout(row_layout)
+        self.curve_rows.append((x_combo, y_combo, xerr_combo, yerr_combo))
+
 
     def get_selection(self):
-        """
-        Get the selected columns.
+        ''' Get the list of selected columns for all curves.
+        '''
+        selections = []
+        for x_combo, y_combo, xerr_combo, yerr_combo in self.curve_rows:
+            x = x_combo.currentText()
+            y = y_combo.currentText()
+            x_err = xerr_combo.currentText()
+            y_err = yerr_combo.currentText()
 
-        Returns
-        -------
-        tuple
-            (x, y, y_err, x_err), where `y_err` and `x_err` are None if not selected.
-        """
-        x     = self.x_combo.currentText()
-        y     = self.y_combo.currentText()
-        y_err = self.y_err_combo.currentText()
-        x_err = self.x_err_combo.currentText()
-
-        return x, y, (None if y_err == "None" else y_err), (None if x_err == "None" else x_err)
+            selections.append({
+                "x": x,
+                "y": y,
+                "x_err": None if x_err == "None" else x_err,
+                "y_err": None if y_err == "None" else y_err,
+            })
+        return selections

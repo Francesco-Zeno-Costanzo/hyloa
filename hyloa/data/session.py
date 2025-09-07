@@ -239,21 +239,21 @@ def load_previous_session(app_instance, parent_widget=None):
 
             ws_name = ws_info.get("name", f"Worksheet {idx}")
 
-            # create worksheet instance with name
+            # Create worksheet instance with name
             ws = WorksheetWindow(app_instance.mdi_area, name=ws_name)
 
-            # add to mdi area BEFORE restoring content (important!)
+            # Add to mdi area BEFORE restoring content (important!)
             app_instance.mdi_area.addSubWindow(ws)
 
-            # restore content & plots; from_session_data will set geometry and schedule show
+            # Restore content & plots; from_session_data will set geometry and schedule show
             ws.from_session_data(ws_info.get("content", {}))
 
-            # save references in app_instance
+            # Save references in app_instance
             app_instance.worksheet_windows[idx]    = ws
             app_instance.worksheet_names[idx]      = ws_name
             app_instance.worksheet_subwindows[idx] = ws
 
-            # ensure it's visible (from_session_data schedules showNormal/showMinimized)
+            # Ensure it's visible (from_session_data schedules showNormal/showMinimized)
             QTimer.singleShot(0, lambda w=ws: w.show())
 
 

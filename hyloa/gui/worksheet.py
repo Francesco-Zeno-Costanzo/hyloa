@@ -333,7 +333,7 @@ class WorksheetWindow(QMdiSubWindow):
             self._plot_widgets.pop(pid, None)
             self.plot_subwindows.pop(pid, None)
 
-        # connect the destroyed signal to cleanup
+        # Connect the destroyed signal to cleanup
         sub.destroyed.connect(lambda _=None, pid=plot_id: _cleanup(pid))
 
         # Save plot info for session management
@@ -390,13 +390,19 @@ class WorksheetWindow(QMdiSubWindow):
             self.table.setColumnCount(len(df.columns))
             self.table.setHorizontalHeaderLabels([str(c) for c in df.columns])
             for r in range(len(df)):
+                # Counter to check an empty row
+                count = 0
                 for c in range(len(df.columns)):
                     val = df.iat[r, c]
                     if pd.isna(val):
                         item = QTableWidgetItem("")
+                        count += 1
                     else:
                         item = QTableWidgetItem(str(val))
                     self.table.setItem(r, c, item)
+                if count == len(df.columns):
+                    # All empty, remove the row
+                    self.table.removeRow(r)
 
 
 

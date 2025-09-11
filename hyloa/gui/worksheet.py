@@ -273,6 +273,8 @@ class WorksheetWindow(QMdiSubWindow):
                 result = series_a * series_b
             elif op == "/":
                 result = series_a / series_b
+            elif op == "mean":
+                result = (series_a + series_b) / 2.
             else:
                 raise ValueError("Unknown operation")
 
@@ -625,7 +627,7 @@ class ColumnMathDialog(QDialog):
         self.col_b = QComboBox(); self.col_b.addItems(["<Constant>"] + list(columns))
         self.constant_edit = QLineEdit(); self.constant_edit.setPlaceholderText("Constant value")
 
-        self.op       = QComboBox(); self.op.addItems(["+", "-", "*", "/"])
+        self.op       = QComboBox(); self.op.addItems(["+", "-", "*", "/", "mean"])
         self.new_name = QLineEdit(); self.new_name.setPlaceholderText("New column name")
 
         layout = QVBoxLayout()

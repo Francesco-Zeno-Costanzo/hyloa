@@ -27,7 +27,8 @@ from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import (
     QFileDialog, QMessageBox, QMdiSubWindow,
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
-    QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox, QDialogButtonBox
+    QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
+     QDialogButtonBox, QAbstractItemView, QHeaderView, QInputDialog
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -62,6 +63,15 @@ class WorksheetWindow(QMdiSubWindow):
         self.table = QTableWidget(20, 4) 
         self.table.setHorizontalHeaderLabels([f"Col {i+1}" for i in range(4)])
         self.table.cellChanged.connect(self.auto_expand_rows)
+
+        # Allow to rename columns by double-clicking header
+        self.table.horizontalHeader().setSectionsClickable(True)
+        self.table.horizontalHeader().setSectionsMovable(True)
+        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignCenter)
+
+        # Makes title editable
+        self.table.horizontalHeader().setSectionsMovable(True)
+        self.table.horizontalHeader().sectionDoubleClicked.connect(self.edit_column_name)
 
         self.btn_add_col = QPushButton("Add column")
         self.btn_rmv_col = QPushButton("Remove column")
@@ -173,6 +183,23 @@ class WorksheetWindow(QMdiSubWindow):
         """
         if row == self.table.rowCount() - 1:
             self.table.insertRow(self.table.rowCount())
+
+    def edit_column_name(self, index):
+        """
+        Open a dialog to edit the name of the column at the given index.
+
+        Parameters
+        ----------
+        index : int
+            The index of the column to rename.
+        """
+        current_name = self.table.horizontalHeaderItem(index).text()
+        new_name, ok = QInputDialog.getText(
+            self, "Rename column", "New column name:", text=current_name
+        )
+        if ok and new_name.strip():
+            self.table.setHorizontalHeaderItem(index, QTableWidgetItem(new_name.strip()))
+
 
 
     def to_dataframe(self):

@@ -25,10 +25,10 @@ import pandas as pd
 from PyQt5.QtCore import QTimer, Qt
 
 from PyQt5.QtWidgets import (
-    QFileDialog, QMessageBox, QMdiSubWindow,
+    QFileDialog, QMessageBox, QMdiSubWindow, QLineEdit,
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
-     QDialogButtonBox, QAbstractItemView, QHeaderView, QInputDialog
+    QDialogButtonBox, QAbstractItemView, QHeaderView, QInputDialog
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -77,12 +77,17 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_rmv_col = QPushButton("Remove column")
         self.btn_load    = QPushButton("Load Data")
         self.btn_plot    = QPushButton("Create Plot")
+        self.btn_math    = QPushButton("Column Math")
+
+
 
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self.btn_add_col)
         btn_layout.addWidget(self.btn_rmv_col)
         btn_layout.addWidget(self.btn_load)
         btn_layout.addWidget(self.btn_plot)
+        btn_layout.addWidget(self.btn_math)
+
 
         layout = QVBoxLayout()
         layout.addLayout(btn_layout)
@@ -97,6 +102,7 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_add_col.clicked.connect(self.add_column)
         self.btn_rmv_col.clicked.connect(self.remove_column)
         self.btn_load.clicked.connect(self.load_file_into_table)
+        self.btn_math.clicked.connect(self.open_math_dialog)
 
         # Attributes to memorize plot windows
         self.plots           = {}   # {int: {"x":..., "y":..., "x_err":..., "y_err":..., "geom":...}}
@@ -230,6 +236,57 @@ class WorksheetWindow(QMdiSubWindow):
                         values.append(np.nan)
             data[col_name] = values
         return pd.DataFrame(data)
+    
+
+    def open_math_dialog(self):
+        """ Open a dialog to perform arithmetic operations between columns.
+        """
+        columns = [self.table.horizontalHeaderItem(c).text() for c in range(self.table.columnCount())]
+        if not columns:
+            return
+
+        dlg = ColumnMathDialog(columns, self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+
+        col_a, op, col_b, const_str, new_name = dlg.get_selection()
+        if not new_name:
+            QMessageBox.warning(self, "Error", "Please enter a name for the new column.")
+            return
+
+        df = self.to_dataframe()
+
+        try:
+            if col_b:
+                series_b = df[col_b].astype(float)
+            else:
+                const = float(const_str)
+                series_b = const
+
+            series_a = df[col_a].astype(float)
+
+            if op == "+":
+                result = series_a + series_b
+            elif op == "-":
+                result = series_a - series_b
+            elif op == "*":
+                result = series_a * series_b
+            elif op == "/":
+                result = series_a / series_b
+            else:
+                raise ValueError("Unknown operation")
+
+            # Add new column to the table
+            new_col_index = self.table.columnCount()
+            self.table.insertColumn(new_col_index)
+            self.table.setHorizontalHeaderItem(new_col_index, QTableWidgetItem(new_name))
+            for r, val in enumerate(result):
+                if pd.notna(val):
+                    self.table.setItem(r, new_col_index, QTableWidgetItem(str(val)))
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Operation failed:\n{e}")
+
 
 
     def create_plot(self):
@@ -457,6 +514,10 @@ class WorksheetWindow(QMdiSubWindow):
                 # If no geom info, just show it
                 QTimer.singleShot(0, sub.show)
 
+#===========================================================================================#
+#===========================================================================================#
+#===========================================================================================#
+
 
 class ColumnSelectionDialog(QDialog):
     """
@@ -538,3 +599,73 @@ class ColumnSelectionDialog(QDialog):
                 "y_err": None if y_err == "None" else y_err,
             })
         return selections
+
+#===========================================================================================#
+#===========================================================================================#
+#===========================================================================================#
+
+class ColumnMathDialog(QDialog):
+    """ Dialog for performing arithmetic operations between columns.
+    """
+    def __init__(self, columns, parent=None):
+        """
+        Initialize the column math dialog.
+
+        Parameters
+        ----------
+        columns : list of str
+            List of column names available for selection.
+        parent : QWidget, optional
+            The parent widget (default is None).
+        """
+        super().__init__(parent)
+        self.setWindowTitle("Column Math")
+
+        self.col_a = QComboBox(); self.col_a.addItems(columns)
+        self.col_b = QComboBox(); self.col_b.addItems(["<Constant>"] + list(columns))
+        self.constant_edit = QLineEdit(); self.constant_edit.setPlaceholderText("Constant value")
+
+        self.op       = QComboBox(); self.op.addItems(["+", "-", "*", "/"])
+        self.new_name = QLineEdit(); self.new_name.setPlaceholderText("New column name")
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Column A:")) ; layout.addWidget(self.col_a)
+        layout.addWidget(QLabel("Operation:")); layout.addWidget(self.op)
+        layout.addWidget(QLabel("Column B or constant:")); layout.addWidget(self.col_b)
+        layout.addWidget(self.constant_edit)
+        layout.addWidget(QLabel("New column name:")); layout.addWidget(self.new_name)
+
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(self.accept); btns.rejected.connect(self.reject)
+        layout.addWidget(btns)
+        self.setLayout(layout)
+
+        self.col_b.currentTextChanged.connect(self._toggle_constant)
+
+    def _toggle_constant(self, text):
+        """ 
+        Enable/disable constant input based on selection.
+
+        Parameters
+        ----------
+        text : str
+            The current text of the col_b combo box.
+        """
+        self.constant_edit.setEnabled(text == "<Constant>")
+
+    def get_selection(self):
+        """
+        Get the selected columns, operation, constant, and new column name.
+        
+        Returns
+        -------
+        tuple
+            (col_a, operation, col_b or None, constant or None, new_name)
+        """
+        return (
+            self.col_a.currentText(),
+            self.op.currentText(),
+            None if self.col_b.currentText() == "<Constant>" else self.col_b.currentText(),
+            self.constant_edit.text(),
+            self.new_name.text().strip()
+        )

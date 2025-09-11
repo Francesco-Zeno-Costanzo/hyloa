@@ -23,13 +23,15 @@ import pandas as pd
 
         
 from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtGui import QKeySequence
 
 from PyQt5.QtWidgets import (
     QFileDialog, QMessageBox, QMdiSubWindow, QLineEdit,
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
-    QDialogButtonBox, QAbstractItemView, QHeaderView, QInputDialog
+    QDialogButtonBox, QInputDialog, QAction, QApplication
 )
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
@@ -63,6 +65,20 @@ class WorksheetWindow(QMdiSubWindow):
         self.table = QTableWidget(20, 4) 
         self.table.setHorizontalHeaderLabels([f"Col {i+1}" for i in range(4)])
         self.table.cellChanged.connect(self.auto_expand_rows)
+
+        # Enable copy/paste functionality with ctrl+c / ctrl+v
+        self.table.setContextMenuPolicy(Qt.ActionsContextMenu)
+
+        copy_action = QAction("Copy", self.table)
+        copy_action.setShortcut(QKeySequence.Copy)
+        copy_action.triggered.connect(self.copy_selection)
+        self.table.addAction(copy_action)
+
+        paste_action = QAction("Paste", self.table)
+        paste_action.setShortcut(QKeySequence.Paste)
+        paste_action.triggered.connect(self.paste_selection)
+        self.table.addAction(paste_action)
+
 
         # Allow to rename columns by double-clicking header
         self.table.horizontalHeader().setSectionsClickable(True)
@@ -109,6 +125,48 @@ class WorksheetWindow(QMdiSubWindow):
         self.plot_count      = 0    # to assign unique plot IDs
         self.plot_subwindows = {}   # {int: QMdiSubWindow}
         self._plot_widgets   = {}   # {plot_id: {"sub": sub, "container": widget, "canvas": canvas, "toolbar": toolbar}}
+    
+
+    def copy_selection(self):
+        ''' Copy selected cells to clipboard in tab-delimited format.
+        '''
+        selection = self.table.selectedRanges()
+        if not selection:
+            return
+
+        r = selection[0]
+        copied = []
+        for row in range(r.topRow(), r.bottomRow() + 1):
+            row_data = []
+            for col in range(r.leftColumn(), r.rightColumn() + 1):
+                item = self.table.item(row, col)
+                row_data.append(item.text() if item else "")
+            copied.append("\t".join(row_data))
+        clipboard = QApplication.clipboard()
+        clipboard.setText("\n".join(copied))
+    
+    def paste_selection(self):
+        ''' Paste tab-delimited data from clipboard into the table starting at current cell.
+        '''
+        clipboard = QApplication.clipboard()
+        text = clipboard.text()
+        if not text:
+            return
+
+        rows = text.split("\n")
+        start = self.table.currentRow(), self.table.currentColumn()
+
+        for i, row in enumerate(rows):
+            cells = row.split("\t")
+            for j, cell in enumerate(cells):
+                r = start[0] + i
+                c = start[1] + j
+                # Expand table if needed
+                if r >= self.table.rowCount():
+                    self.table.insertRow(self.table.rowCount())
+                if c >= self.table.columnCount():
+                    self.table.insertColumn(self.table.columnCount())
+                self.table.setItem(r, c, QTableWidgetItem(cell))
 
 
     def load_file_into_table(self):
@@ -260,7 +318,7 @@ class WorksheetWindow(QMdiSubWindow):
             if col_b:
                 series_b = df[col_b].astype(float)
             else:
-                const = float(const_str)
+                const    = float(const_str)
                 series_b = const
 
             series_a = df[col_a].astype(float)

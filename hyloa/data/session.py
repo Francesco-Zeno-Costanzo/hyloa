@@ -253,6 +253,9 @@ def load_previous_session(app_instance, parent_widget=None):
             app_instance.worksheet_names[idx]      = ws_name
             app_instance.worksheet_subwindows[idx] = ws
 
+            if isinstance(idx, int) and idx > app_instance.number_worksheets:
+                app_instance.number_worksheets = idx + 1
+
             # Ensure it's visible (from_session_data schedules showNormal/showMinimized)
             QTimer.singleShot(0, lambda w=ws: w.show())
 

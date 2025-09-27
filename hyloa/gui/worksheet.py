@@ -29,13 +29,16 @@ from PyQt5.QtWidgets import (
     QFileDialog, QMessageBox, QMdiSubWindow, QLineEdit,
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
-    QDialogButtonBox, QInputDialog, QAction, QApplication
+    QDialogButtonBox, QInputDialog, QAction, QApplication,
+    QFormLayout
 )
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from matplotlib.figure import Figure
+from matplotlib import colors as mcolors, markers, lines as mlines
+
 
 from hyloa.data.io import detect_header_length
 
@@ -94,19 +97,22 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_load    = QPushButton("Load Data")
         self.btn_plot    = QPushButton("Create Plot")
         self.btn_math    = QPushButton("Column Math")
+        self.btn_custom  = QPushButton("Customization")
 
+        btn_layout_top = QHBoxLayout()
+        btn_layout_bot = QHBoxLayout()
 
+        btn_layout_top.addWidget(self.btn_add_col)
+        btn_layout_top.addWidget(self.btn_rmv_col)
+        btn_layout_top.addWidget(self.btn_load)
+        btn_layout_top.addWidget(self.btn_math)
 
-        btn_layout = QHBoxLayout()
-        btn_layout.addWidget(self.btn_add_col)
-        btn_layout.addWidget(self.btn_rmv_col)
-        btn_layout.addWidget(self.btn_load)
-        btn_layout.addWidget(self.btn_plot)
-        btn_layout.addWidget(self.btn_math)
-
-
+        btn_layout_bot.addWidget(self.btn_plot)
+        btn_layout_bot.addWidget(self.btn_custom)
+        
         layout = QVBoxLayout()
-        layout.addLayout(btn_layout)
+        layout.addLayout(btn_layout_top)
+        layout.addLayout(btn_layout_bot)
         layout.addWidget(self.table)
 
         container = QWidget()
@@ -119,13 +125,16 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_rmv_col.clicked.connect(self.remove_column)
         self.btn_load.clicked.connect(self.load_file_into_table)
         self.btn_math.clicked.connect(self.open_math_dialog)
+        self.btn_custom.clicked.connect(self.customize_plot)
+
 
         # Attributes to memorize plot windows
-        self.plots           = {}   # {int: {"x":..., "y":..., "x_err":..., "y_err":..., "geom":...}}
-        self.plot_count      = 0    # to assign unique plot IDs
-        self.plot_subwindows = {}   # {int: QMdiSubWindow}
-        self._plot_widgets   = {}   # {plot_id: {"sub": sub, "container": widget, "canvas": canvas, "toolbar": toolbar}}
-    
+        self.plots              = {}   # {int: {"x":..., "y":..., "x_err":..., "y_err":..., "geom":...}}
+        self.plot_count         = 0    # to assign unique plot IDs
+        self.plot_subwindows    = {}   # {int: QMdiSubWindow}
+        self._plot_widgets      = {}   # {plot_id: {"sub": sub, "container": widget, "canvas": canvas, "toolbar": toolbar}}
+        self.figure             = {}   # {plot_id: {"figure": Figure, "ax": Axes,}
+        self.plot_customization = {}   # {"figure":..., "ax":..., "canvas":..., "customizations": {...}}
 
     def copy_selection(self):
         ''' Copy selected cells to clipboard in tab-delimited format.
@@ -348,7 +357,6 @@ class WorksheetWindow(QMdiSubWindow):
             QMessageBox.critical(self, "Error", f"Operation failed:\n{e}")
 
 
-
     def create_plot(self):
         """
         Open a dialog to select columns and create a plot.
@@ -362,7 +370,7 @@ class WorksheetWindow(QMdiSubWindow):
             self.open_plot_window(df, selections)
 
 
-    def open_plot_window(self, df, selections, show=True, plot_id=None):
+    def open_plot_window(self, df, selections, show=True, plot_id=None, customizations=None):
         """
         Open a new subwindow with a plot of the selected columns.
 
@@ -377,6 +385,8 @@ class WorksheetWindow(QMdiSubWindow):
             Whether to show the plot window immediately (default is True).
         plot_id : int or None, optional
             If provided, use this as the plot ID; otherwise, auto-increment (default is
+        customizations : dict or None, optional
+            Customization settings for the plot (default is None).
         
         Returns
         -------
@@ -398,6 +408,35 @@ class WorksheetWindow(QMdiSubWindow):
                 ax.errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o-", label=label)
             else:
                 ax.plot(x, y, "o-", label=label)
+
+        
+        lines = [ln for ln in ax.lines if ln.get_gid() != "fit"]
+        if customizations:
+            for idx, style in customizations.items():
+                try:
+                    idx = int(idx)
+                    if idx >= len(lines):
+                        continue
+                    line = lines[idx]
+
+                    color     = style.get("color")
+                    marker    = style.get("marker")
+                    linestyle = style.get("linestyle")
+                    label     = style.get("label")
+
+                    if color:     line.set_color(color)
+                    if marker:    line.set_marker(marker)
+                    if linestyle: line.set_linestyle(linestyle)
+                    if label:     line.set_label(label)
+
+                except Exception:
+                    continue
+
+            ax.legend()
+            fig.canvas.draw_idle()
+
+        # Store customization settings
+        self.plot_customization[plot_id] = customizations or {}
 
         ax.set_xlabel(selections[0]["x"]) 
         ax.set_ylabel("Values")
@@ -439,6 +478,14 @@ class WorksheetWindow(QMdiSubWindow):
             "toolbar": toolbar
         }
 
+        self.figure[plot_id]             = {"figure": fig, "ax": ax, "sub": sub}
+        self.plot_customization[plot_id] = {
+            "figure": fig,
+            "ax": ax,
+            "canvas": canvas,
+            "customizations": customizations or {}
+        }
+
         canvas.draw_idle()
         # show only if requested
         if show:
@@ -468,6 +515,104 @@ class WorksheetWindow(QMdiSubWindow):
 
         return sub
     
+    def customize_plot(self):
+        """
+        Open a dialog to customize plot styles (color, marker, linestyle, label).
+        """
+        if not self.figure:
+            QMessageBox.critical(self, "Error", "No plot open! Create a plot first.")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Customize Plot Style")
+        dialog.setFixedSize(420, 360)
+
+        layout      = QVBoxLayout(dialog)
+        form_layout = QFormLayout()
+        layout.addLayout(form_layout)
+
+        # Choose plot to customize
+        plot_combo = QComboBox()
+        for pid, info in self.figure.items():
+            title = info["sub"].windowTitle()
+            plot_combo.addItem(f"Plot {pid}: {title}", pid)
+
+        form_layout.addRow("Select Plot:", plot_combo)
+
+
+        line_combo      = QComboBox()
+        color_combo     = QComboBox()
+        marker_combo    = QComboBox()
+        linestyle_combo = QComboBox()
+        label_edit      = QLineEdit()
+
+        color_combo.addItems(list(mcolors.TABLEAU_COLORS) + list(mcolors.CSS4_COLORS))
+        color_combo.setEditable(True)
+        marker_combo.addItems([m for m in markers.MarkerStyle.markers.keys() if isinstance(m, str) and len(m) == 1])
+        marker_combo.setEditable(True)
+        linestyle_combo.addItems(list(mlines.Line2D.lineStyles.keys()))
+        linestyle_combo.setEditable(True)
+
+        form_layout.addRow("Line:", line_combo)
+        form_layout.addRow("Color:", color_combo)
+        form_layout.addRow("Marker:", marker_combo)
+        form_layout.addRow("Linestyle:", linestyle_combo)
+        form_layout.addRow("Legend label:", label_edit)
+
+        def update_lines():
+            pid   = plot_combo.currentData()
+            ax    = self.figure[pid]["ax"]
+            lines = [ln for ln in ax.lines if ln.get_gid() != "fit"]
+            line_combo.clear()
+            
+            for i, ln in enumerate(lines):
+                line_combo.addItem(ln.get_label() or f"Line {i+1}", i)
+            
+            if lines:
+                label_edit.setText(lines[0].get_label() or "")
+
+        plot_combo.currentIndexChanged.connect(update_lines)
+        update_lines()
+
+        apply_button = QPushButton("Apply")
+        layout.addWidget(apply_button)
+
+        def apply_style():
+            try:
+                pid      = plot_combo.currentData()
+                line_idx = line_combo.currentData()
+                ax       = self.figure[pid]["ax"]
+                fig      = self.figure[pid]["figure"]
+                line     = [ln for ln in ax.lines if ln.get_gid() != "fit"][line_idx]
+
+                color        = color_combo.currentText()
+                marker       = marker_combo.currentText()
+                linestyle    = linestyle_combo.currentText()
+                legend_label = label_edit.text() or line.get_label()
+
+                line.set_color(color)
+                line.set_marker(marker)
+                line.set_linestyle(linestyle)
+                line.set_label(legend_label)
+
+                self.plot_customization[pid]["customizations"][line_idx] = {
+                    "color":     color,
+                    "marker":    marker,
+                    "linestyle": linestyle,
+                    "label":     legend_label,
+                }
+
+                ax.legend()
+                fig.canvas.draw_idle()
+                dialog.accept()
+
+            except Exception as e:
+                QMessageBox.critical(dialog, "Error", f"Error applying style:\n{e}")
+
+        apply_button.clicked.connect(apply_style)
+        dialog.exec_()
+
+    
     def to_session_data(self):
         # Current geometry of the worksheet window
         ws_geom = {
@@ -492,11 +637,19 @@ class WorksheetWindow(QMdiSubWindow):
                 "height": geom.height(),
                 "minimized": sub.isMinimized()
             }
+
+        
+        # Extract only the serializable part of customizations
+        customizations_serializable = {}
+        for pid, info in self.plot_customization.items():
+            customizations_serializable[pid] = info.get("customizations", {})
+
         return {
-            "name": self.name,
-            "data": self.to_dataframe(),
-            "geometry": ws_geom,
-            "plots": self.plots
+            "name":           self.name,
+            "data":           self.to_dataframe(),
+            "geometry":       ws_geom,
+            "plots":          self.plots,
+            "customizations": customizations_serializable
         }
 
 
@@ -546,13 +699,19 @@ class WorksheetWindow(QMdiSubWindow):
             except:
                 return k
         for plot_id in sorted(plots_dict.keys(), key=keyf):
-            plot_info = plots_dict[plot_id]
+            plot_info  = plots_dict[plot_id]
             selections = plot_info.get("selections", [])
             if not selections:
                 continue
 
             # Create sub but don't show it yet
-            sub = self.open_plot_window(df, selections, show=False, plot_id=int(plot_id))
+            cst = data_dict.get("customizations", {}).get(plot_id, {})
+            sub = self.open_plot_window(
+                df, selections, show=False,
+                plot_id=int(plot_id),
+                customizations=cst
+            )
+
 
             # Apply geometry (do this before showing to avoid MDI cascading override)
             pgeom = plot_info.get("geometry")
@@ -698,6 +857,7 @@ class ColumnMathDialog(QDialog):
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.accepted.connect(self.accept); btns.rejected.connect(self.reject)
         layout.addWidget(btns)
+        
         self.setLayout(layout)
 
         self.col_b.currentTextChanged.connect(self._toggle_constant)

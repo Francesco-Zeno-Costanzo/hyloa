@@ -97,6 +97,7 @@ class PlotControlWidget(QWidget):
         top_buttons = [
             ("Create plot",   self.plot),
             ("Customization", self.customize_plot_style),
+            ("Appearance",    self.customize_plot_appearance),
             ("Curve Fitting", self.curve_fitting),
             ("Normalize",     self.normalize),
         ]
@@ -274,6 +275,11 @@ class PlotControlWidget(QWidget):
         customize_plot_style(self, self.plot_customizations,
                              self.number_plots, self.app_instance.figures_map)
     
+    def customize_plot_appearance(self):
+        ''' Call function to customize the appearance of the plot window
+        '''
+        customize_plot_appearance(self)
+
     def curve_fitting(self):
         ''' Curve fitting window
         '''
@@ -634,6 +640,78 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
     apply_button.clicked.connect(apply_style)
 
     dialog.exec_()
+
+def customize_plot_appearance(parent_widget):
+    '''
+    Function to customize the appearance of the plot (font sizes, minor ticks).
+
+    Parameters
+    ----------
+    parent_widget : QWidget
+        parent PyQt5 window
+    '''
+    if parent_widget.figure is None:
+        QMessageBox.critical(parent_widget, "Error", "No plot open! Create a plot first.")
+        return
+
+    fig, ax = parent_widget.figure, parent_widget.ax
+
+    dialog = QDialog(parent_widget)
+    dialog.setWindowTitle("Plot Appearance")
+    dialog.setFixedSize(350, 250)
+    layout = QFormLayout(dialog)
+
+    # Font sizes
+    label_fontsize_edit  = QLineEdit(str(ax.xaxis.label.get_size()))
+    tick_fontsize_edit   = QLineEdit(str(ax.xaxis.get_ticklabels()[0].get_size()) if ax.xaxis.get_ticklabels() else "10")
+    legend_fontsize_edit = QLineEdit("10")
+
+    # Minor ticks (safe check)
+    minor_ticks_checkbox = QCheckBox("Show minor ticks")
+    minor_ticks_checkbox.setChecked(any(tick.tick1line.get_visible() for tick in ax.xaxis.get_minor_ticks()))
+
+
+    layout.addRow("Axis label fontsize:", label_fontsize_edit)
+    layout.addRow("Tick label fontsize:", tick_fontsize_edit)
+    layout.addRow("Legend fontsize:",     legend_fontsize_edit)
+    layout.addRow(minor_ticks_checkbox)
+
+    buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+    layout.addWidget(buttons)
+
+    def apply_changes():
+        try:
+            label_fs  = float(label_fontsize_edit.text())
+            tick_fs   = float(tick_fontsize_edit.text())
+            legend_fs = float(legend_fontsize_edit.text())
+
+            ax.xaxis.label.set_fontsize(label_fs)
+            ax.yaxis.label.set_fontsize(label_fs)
+
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(tick_fs)
+
+            # Legend update
+            leg = ax.get_legend()
+            if leg:
+                for text in leg.get_texts():
+                    text.set_fontsize(legend_fs)
+
+            # Minor ticks
+            if minor_ticks_checkbox.isChecked():
+                ax.minorticks_on()
+            else:
+                ax.minorticks_off()
+
+            parent_widget.canvas.draw_idle()
+            dialog.accept()
+        except Exception as e:
+            QMessageBox.critical(dialog, "Error", str(e))
+
+    buttons.accepted.connect(apply_changes)
+    buttons.rejected.connect(dialog.reject)
+    dialog.exec_()
+
 
 #==============================================================================================#
 # Function to hide a plotted cycle                                                             #

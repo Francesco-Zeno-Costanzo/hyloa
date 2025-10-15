@@ -136,6 +136,44 @@ class WorksheetWindow(QMdiSubWindow):
         self.figure             = {}   # {plot_id: {"figure": Figure, "ax": Axes,}
         self.plot_customization = {}   # {"figure":..., "ax":..., "canvas":..., "customizations": {...}}
 
+    
+    def closeEvent(self, event):
+        '''
+        Cleanup when the worksheet window is closed.
+        Parameters
+        ----------
+        event : QCloseEvent
+            The close event.
+        '''
+        # Close all plot subwindows linked to this worksheet
+        try:
+            for pid, sub in list(self.plot_subwindows.items()):
+                try:
+                    sub.close()
+                except Exception:
+                    pass
+            self.plot_subwindows.clear()
+            self._plot_widgets.clear()
+            self.figure.clear()
+            self.plot_customization.clear()
+            self.plots.clear()
+
+            # Remove self from parent's worksheet tracking
+            if hasattr(self, "mdi_area") and self.mdi_area is not None:
+                 
+                parent = self.mdi_area.parent()
+                if parent is not None:
+                    for idx, ws in list(parent.worksheet_windows.items()):
+                        if ws is self:
+                            parent.worksheet_windows.pop(idx, None)
+                            parent.worksheet_names.pop(idx, None)
+                            parent.worksheet_subwindows.pop(idx, None)
+                            break
+        except Exception as e:
+            print(f"[DEBUG] Error during worksheet cleanup: {e}")
+
+        super().closeEvent(event)
+
     def copy_selection(self):
         ''' Copy selected cells to clipboard in tab-delimited format.
         '''
@@ -496,6 +534,9 @@ class WorksheetWindow(QMdiSubWindow):
         def _cleanup(pid=plot_id):
             self._plot_widgets.pop(pid, None)
             self.plot_subwindows.pop(pid, None)
+            self.figure.pop(pid, None)
+            self.plot_customization.pop(pid, None)
+            self.plots.pop(pid, None)
 
         # Connect the destroyed signal to cleanup
         sub.destroyed.connect(lambda _=None, pid=plot_id: _cleanup(pid))

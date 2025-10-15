@@ -20,7 +20,8 @@ Code for the worksheet window, allowing data table manipulation and plotting.
 
 import numpy as np
 import pandas as pd
-
+from scipy.special import *
+from scipy.optimize import curve_fit
         
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QKeySequence
@@ -30,7 +31,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
     QDialogButtonBox, QInputDialog, QAction, QApplication,
-    QFormLayout
+    QFormLayout, QTextEdit, QSizePolicy, QCheckBox 
 )
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -92,12 +93,16 @@ class WorksheetWindow(QMdiSubWindow):
         self.table.horizontalHeader().setSectionsMovable(True)
         self.table.horizontalHeader().sectionDoubleClicked.connect(self.edit_column_name)
 
-        self.btn_add_col = QPushButton("Add column")
-        self.btn_rmv_col = QPushButton("Remove column")
-        self.btn_load    = QPushButton("Load Data")
-        self.btn_plot    = QPushButton("Create Plot")
-        self.btn_math    = QPushButton("Column Math")
-        self.btn_custom  = QPushButton("Customization")
+        self.btn_add_col    = QPushButton("Add column")
+        self.btn_rmv_col    = QPushButton("Remove column")
+        self.btn_load       = QPushButton("Load Data")
+        self.btn_plot       = QPushButton("Create Plot")
+        self.btn_math       = QPushButton("Column Math")
+        self.btn_custom     = QPushButton("Customization")
+        self.btn_fit        = QPushButton("Fit Data")
+        self.btn_appearance = QPushButton("Appearance")
+
+
 
         btn_layout_top = QHBoxLayout()
         btn_layout_bot = QHBoxLayout()
@@ -109,6 +114,8 @@ class WorksheetWindow(QMdiSubWindow):
 
         btn_layout_bot.addWidget(self.btn_plot)
         btn_layout_bot.addWidget(self.btn_custom)
+        btn_layout_bot.addWidget(self.btn_fit)
+        btn_layout_bot.addWidget(self.btn_appearance)
         
         layout = QVBoxLayout()
         layout.addLayout(btn_layout_top)
@@ -126,6 +133,8 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_load.clicked.connect(self.load_file_into_table)
         self.btn_math.clicked.connect(self.open_math_dialog)
         self.btn_custom.clicked.connect(self.customize_plot)
+        self.btn_fit.clicked.connect(self.open_curve_fitting_window)
+        self.btn_appearance.clicked.connect(self.customize_plot_appearance)
 
 
         # Attributes to memorize plot windows
@@ -652,6 +661,241 @@ class WorksheetWindow(QMdiSubWindow):
 
         apply_button.clicked.connect(apply_style)
         dialog.exec_()
+    
+    def customize_plot_appearance(self):
+        ''' Open a dialog to customize the appearance of the plot (font sizes, minor ticks).
+        '''
+        if not self.figure:
+            QMessageBox.warning(self, "Error", "No plots available! Create a plot first.")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Plot Appearance")
+        dialog.setFixedSize(400, 280)
+        layout = QFormLayout(dialog)
+
+        # Select plot
+        layout.addRow(QLabel("Select plot:"))
+        plot_combo = QComboBox()
+        for pid, info in self.figure.items():
+            sub_title = info["sub"].windowTitle()
+            plot_combo.addItem(f"Plot {pid}: {sub_title}", pid)
+        layout.addRow(plot_combo)
+
+        # Font sizes
+        label_fontsize_edit  = QLineEdit("14")
+        tick_fontsize_edit   = QLineEdit("10")
+        legend_fontsize_edit = QLineEdit("10")
+
+        # Minor ticks (safe)
+        minor_ticks_checkbox = QCheckBox("Show minor ticks")
+        minor_ticks_checkbox.setChecked(True)
+
+        layout.addRow("Axis label fontsize:", label_fontsize_edit)
+        layout.addRow("Tick label fontsize:", tick_fontsize_edit)
+        layout.addRow("Legend fontsize:",     legend_fontsize_edit)
+        layout.addRow(minor_ticks_checkbox)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
+
+        def apply_changes():
+            try:
+                pid = plot_combo.currentData()
+                if pid not in self.figure:
+                    QMessageBox.warning(dialog, "Error", "Selected plot not found!")
+                    return
+
+                fig_info = self.figure[pid]
+                ax = fig_info["ax"]
+                canvas = self.plot_customization[pid]["canvas"]
+
+                label_fs  = float(label_fontsize_edit.text())
+                tick_fs   = float(tick_fontsize_edit.text())
+                legend_fs = float(legend_fontsize_edit.text())
+
+                # --- Axis labels ---
+                ax.xaxis.label.set_fontsize(label_fs)
+                ax.yaxis.label.set_fontsize(label_fs)
+
+                # --- Tick labels ---
+                for label in ax.get_xticklabels() + ax.get_yticklabels():
+                    label.set_fontsize(tick_fs)
+
+                # --- Legend ---
+                leg = ax.get_legend()
+                if leg:
+                    for text in leg.get_texts():
+                        text.set_fontsize(legend_fs)
+
+                # --- Minor ticks ---
+                if minor_ticks_checkbox.isChecked():
+                    ax.minorticks_on()
+                else:
+                    ax.minorticks_off()
+
+                canvas.draw_idle()
+                dialog.accept()
+
+            except Exception as e:
+                QMessageBox.critical(dialog, "Error", f"Error applying appearance settings:\n{e}")
+
+        buttons.accepted.connect(apply_changes)
+        buttons.rejected.connect(dialog.reject)
+        dialog.exec_()
+
+
+
+    def open_curve_fitting_window(self):
+        '''
+        Open a window to perform quick curve fitting on selected data.
+        The user selects X and Y columns, fitting function, initial parameters, and range.
+        The fit result is displayed and the fitted curve is plotted on the selected graph.
+        '''
+        df = self.to_dataframe()
+        if df.empty:
+            QMessageBox.warning(self, "Error", "No data in the worksheet!")
+            return
+
+        if not self.figure:
+            QMessageBox.warning(self, "Error", "No plots available! Create a plot first.")
+            return
+
+        # Create the fitting window
+        window = QWidget()
+        window.setWindowTitle("Quick Curve Fitting")
+        layout = QHBoxLayout(window)
+        window.setLayout(layout)
+
+        # === Left column: select data and plot ===
+        selection_layout = QVBoxLayout()
+        layout.addLayout(selection_layout)
+
+        def show_help_dialog():
+            help_text = (
+                "The fit function must be a function of the variable 'x' and "
+                "the parameter names must be specified in the appropriate field.\n\n"
+                "To establish the range, just read the cursor on the graph, the values are at the top right.\n\n"
+                "ACHTUNG: the function must be written in Python, so for example |x| is abs(x), x^2 is x**2, and all "
+                "other functions must be written with np. in front (i.e. np.cos(x), np.exp(x)), except for special functions, "
+                "for which you must use the name used by the scipy.special library (i.e. scipy.special.erf becomes erf)."
+            )
+            QMessageBox.information(window, "Fitting Guide", help_text)
+
+        help_button = QPushButton("Help")
+        help_button.clicked.connect(show_help_dialog)
+        selection_layout.addWidget(help_button, alignment=Qt.AlignLeft)
+
+        # Select target plot
+        selection_layout.addWidget(QLabel("Select target plot:"))
+        plot_combo = QComboBox()
+        for pid, info in self.figure.items():
+            sub_title = info["sub"].windowTitle()
+            plot_combo.addItem(f"Plot {pid}: {sub_title}", pid)
+        selection_layout.addWidget(plot_combo)
+
+        # Select X and Y columns
+        selection_layout.addWidget(QLabel("Column X:"))
+        x_combo = QComboBox(); x_combo.addItems(df.columns)
+        selection_layout.addWidget(x_combo)
+
+        selection_layout.addWidget(QLabel("Column Y:"))
+        y_combo = QComboBox(); y_combo.addItems(df.columns)
+        selection_layout.addWidget(y_combo)
+
+        # === Right column fit parameter ===
+        param_layout = QVBoxLayout()
+        layout.addLayout(param_layout)
+
+        param_layout.addWidget(QLabel("x_start:"))
+        x_start_edit = QLineEdit(str(df[x_combo.currentText()].min()))
+        param_layout.addWidget(x_start_edit)
+
+        param_layout.addWidget(QLabel("x_end:"))
+        x_end_edit = QLineEdit(str(df[x_combo.currentText()].max()))
+        param_layout.addWidget(x_end_edit)
+
+        param_layout.addWidget(QLabel("Parameter names (e.g. a,b):"))
+        param_names_edit = QLineEdit("a,b")
+        param_layout.addWidget(param_names_edit)
+
+        param_layout.addWidget(QLabel("Initial values (e.g. 1,1):"))
+        initial_params_edit = QLineEdit("1,1")
+        param_layout.addWidget(initial_params_edit)
+
+        param_layout.addWidget(QLabel("Fitting function (e.g. a*x + b):"))
+        function_edit = QLineEdit("a*x + b")
+        param_layout.addWidget(function_edit)
+
+        # Output 
+        output_box = QTextEdit()
+        output_box.setReadOnly(True)
+        output_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(output_box)
+
+        def perform_fit():
+            ''' Perform the curve fitting and update the plot.
+            '''
+            try:
+                # Retrieve data and parameters
+                x = df[x_combo.currentText()].astype(float).values
+                y = df[y_combo.currentText()].astype(float).values
+
+                x_start = float(x_start_edit.text())
+                x_end   = float(x_end_edit.text())
+                mask    = (x >= x_start) & (x <= x_end)
+                x_fit, y_fit = x[mask], y[mask]
+
+                if len(x_fit) == 0:
+                    QMessageBox.warning(window, "Error", "No data in selected range!")
+                    return
+
+                param_names    = [p.strip() for p in param_names_edit.text().split(",")]
+                initial_params = [float(p.strip()) for p in initial_params_edit.text().split(",")]
+
+                func_code = f"lambda x, {', '.join(param_names)}: {function_edit.text()}"
+                fit_func = eval(func_code)
+
+                # Execute the fit
+                params, pcov = curve_fit(fit_func, x_fit, y_fit, p0=initial_params)
+                y_model = fit_func(np.linspace(x_start, x_end, 500), *params)
+
+                # Show fit results
+                lines = []
+                for p, val, err in zip(param_names, params, np.sqrt(np.diag(pcov))):
+                    lines.append(f"{p} = {val:.3e} ± {err:.3e}")
+                result_text = "\n".join(lines)
+                output_box.setPlainText(result_text)
+
+                # Draw fit on the plot
+                pid = plot_combo.currentData()
+                if pid not in self.figure:
+                    QMessageBox.warning(window, "Error", "Selected plot not found!")
+                    return
+
+                ax = self.figure[pid]["ax"]
+                canvas = self.plot_customization[pid]["canvas"]
+
+                fit_line, = ax.plot(np.linspace(x_start, x_end, 500), y_model, linestyle="--", color="red", label="fit")
+                fit_line.set_gid("fit")
+                ax.legend()
+                canvas.draw_idle()
+
+            except Exception as e:
+                QMessageBox.critical(window, "Error", f"Fit failed:\n{e}")
+
+        fit_button = QPushButton("Run Fit")
+        fit_button.clicked.connect(perform_fit)
+        param_layout.addWidget(fit_button)
+
+        # Show the fitting window as a subwindow
+        sub = QMdiSubWindow()
+        sub.setWidget(window)
+        sub.setWindowTitle("Quick Curve Fitting")
+        sub.resize(700, 350)
+        self.mdi_area.addSubWindow(sub)
+        sub.show()
+
 
     
     def to_session_data(self):

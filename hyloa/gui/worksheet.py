@@ -563,6 +563,16 @@ class WorksheetWindow(QMdiSubWindow):
             }
         }
 
+        def on_subwindow_close(event, pid=plot_id):
+            self._plot_widgets.pop(pid, None)
+            self.plot_subwindows.pop(pid, None)
+            self.figure.pop(pid, None)
+            self.plot_customization.pop(pid, None)
+            self.plots.pop(pid, None)
+            event.accept()
+
+        sub.closeEvent = lambda event, pid=plot_id: on_subwindow_close(event, pid)
+
         return sub
     
     def customize_plot(self):

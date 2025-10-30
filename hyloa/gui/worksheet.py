@@ -38,6 +38,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from matplotlib.figure import Figure
+from matplotlib.container import ErrorbarContainer
+from matplotlib.legend_handler import HandlerErrorbar
 from matplotlib import colors as mcolors, markers, lines as mlines
 
 
@@ -452,7 +454,15 @@ class WorksheetWindow(QMdiSubWindow):
             label = sel["y"] if len(selections) == 1 else f"{sel['y']}"
 
             if xerr is not None or yerr is not None:
-                ax.errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o-", label=label)
+                # Plot with error bars
+                err_c = ax.errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o-")
+                # Store the output for customization
+                if not hasattr(ax, "_err_c"):
+                    ax._err_c = {}
+                ax._err_c[i-1] = err_c
+                # Set label for legend
+                err_c[0].set_label(label)
+
             else:
                 ax.plot(x, y, "o-", label=label)
 
@@ -471,15 +481,25 @@ class WorksheetWindow(QMdiSubWindow):
                     linestyle = style.get("linestyle")
                     label     = style.get("label")
 
-                    if color:     line.set_color(color)
-                    if marker:    line.set_marker(marker)
-                    if linestyle: line.set_linestyle(linestyle)
-                    if label:     line.set_label(label)
+                    line.set_color(color)
+                    line.set_marker(marker)
+                    line.set_linestyle(linestyle)
+                    line.set_label(label)
+
+                    if hasattr(ax, "_err_c"):
+                        err_collections = ax._err_c
+                        if idx in err_collections.keys():
+                            err_c = err_collections[idx]
+                            err_c[0].set_marker(marker)
+                            err_c[0].set_linestyle(linestyle)
+                            err_c[0].set_label(label)
+                            err_c[0].set_color(color)
+                            err_c[2][0].set_color(color)
 
                 except Exception:
                     continue
 
-            ax.legend()
+            
             fig.canvas.draw_idle()
 
         # Store customization settings
@@ -487,8 +507,21 @@ class WorksheetWindow(QMdiSubWindow):
 
         ax.set_xlabel(selections[0]["x"]) 
         ax.set_ylabel("Values")
-        ax.legend()
         ax.grid(True)
+
+        # Legend
+        err_c_vals = list(ax._err_c.values()) if hasattr(ax, "_err_c") else []
+        handles = [ln for ln in ax.lines if all(ln is not e[0] for e in err_c_vals)] + err_c_vals
+
+        labels = []
+        for h in handles:
+            if isinstance(h, ErrorbarContainer):
+                labels.append(h[0].get_label())
+            else:
+                labels.append(h.get_label())
+
+        ax.legend(handles, labels, handler_map={ErrorbarContainer: HandlerErrorbar()})
+
 
         canvas = FigureCanvas(fig)
         plot_container = QWidget()
@@ -644,7 +677,7 @@ class WorksheetWindow(QMdiSubWindow):
                 ax       = self.figure[pid]["ax"]
                 fig      = self.figure[pid]["figure"]
                 line     = [ln for ln in ax.lines if ln.get_gid() != "fit"][line_idx]
-
+                
                 color        = color_combo.currentText()
                 marker       = marker_combo.currentText()
                 linestyle    = linestyle_combo.currentText()
@@ -655,6 +688,20 @@ class WorksheetWindow(QMdiSubWindow):
                 line.set_linestyle(linestyle)
                 line.set_label(legend_label)
 
+                # Customization for error bars if present
+                if hasattr(ax, "_err_c"):
+                    err_collections = ax._err_c
+                   
+                    if line_idx in err_collections.keys():
+                        err_c = err_collections[line_idx]
+                        err_c[0].set_color(color)
+                        err_c[0].set_marker(marker)
+                        err_c[0].set_linestyle(linestyle)
+                        err_c[0].set_label(legend_label)
+                        err_c[2][0].set_color(color)
+                       
+                    
+
                 self.plot_customization[pid]["customizations"][line_idx] = {
                     "color":     color,
                     "marker":    marker,
@@ -662,7 +709,19 @@ class WorksheetWindow(QMdiSubWindow):
                     "label":     legend_label,
                 }
 
-                ax.legend()
+                # Legend update
+                err_c_vals = list(ax._err_c.values()) if hasattr(ax, "_err_c") else []
+                handles = [ln for ln in ax.lines if all(ln is not e[0] for e in err_c_vals)] + err_c_vals
+
+                labels = []
+                for h in handles:
+                    if isinstance(h, ErrorbarContainer):
+                        labels.append(h[0].get_label())
+                    else:
+                        labels.append(h.get_label())
+
+                ax.legend(handles, labels, handler_map={ErrorbarContainer: HandlerErrorbar()})
+
                 fig.canvas.draw_idle()
                 dialog.accept()
 

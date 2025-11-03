@@ -31,7 +31,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
     QDialogButtonBox, QInputDialog, QAction, QApplication,
-    QFormLayout, QTextEdit, QSizePolicy, QCheckBox 
+    QFormLayout, QTextEdit, QSizePolicy, QCheckBox, QStackedWidget
 )
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -355,8 +355,8 @@ class WorksheetWindow(QMdiSubWindow):
     
 
     def open_math_dialog(self):
-        """ Open a dialog to perform arithmetic operations between columns.
-        """
+        ''' Open a dialog to perform arithmetic operations between columns.
+        '''
         columns = [self.table.horizontalHeaderItem(c).text() for c in range(self.table.columnCount())]
         if not columns:
             return
@@ -365,7 +365,10 @@ class WorksheetWindow(QMdiSubWindow):
         if dlg.exec_() != QDialog.Accepted:
             return
 
-        col_a, op, col_b, const_str, new_name = dlg.get_selection()
+        sel      = dlg.get_selection()
+        mode     = sel["mode"]
+        new_name = sel["new_name"]
+
         if not new_name:
             QMessageBox.warning(self, "Error", "Please enter a name for the new column.")
             return
@@ -373,28 +376,63 @@ class WorksheetWindow(QMdiSubWindow):
         df = self.to_dataframe()
 
         try:
-            if col_b:
-                series_b = df[col_b].astype(float)
+            # Operation between two columns or column and constant
+            if mode == "Arithmetic between columns":
+                col_a, op, col_b, const_str = sel["col_a"], sel["op"], sel["col_b"], sel["const"]
+                series_a = df[col_a].astype(float)
+                series_b = df[col_b].astype(float) if col_b else float(const_str)
+
+                result = {
+                    "+": series_a + series_b,
+                    "-": series_a - series_b,
+                    "*": series_a * series_b,
+                    "/": series_a / series_b,
+                    "mean": (series_a + series_b) / 2.0
+                }.get(op)
+                if result is None:
+                    raise ValueError("Unknown operation")
+            
+            # Generate linspace
+            elif mode in ("Generate linspace", "Generate logspace"):
+                start, stop, num = float(sel["start"]), float(sel["stop"]), int(sel["num"])
+                result = np.linspace(start, stop, num) if mode == "Generate linspace" else np.logspace(start, stop, num)
+
+            # Generate custom function
+            elif mode == "Generate function from linspace/logspace":
+                
+                start, stop, num = float(sel["start"]), float(sel["stop"]), int(sel["num"])
+                func_str   = sel["func"]
+                space_type = sel.get("space_type", "linspace")
+                
+                if not func_str:
+                    raise ValueError("Please provide a function f(x).")
+
+                # Generate indipendent variable x
+                if space_type == "linspace":
+                    x = np.linspace(start, stop, num)
+                else:
+                    x = np.logspace(start, stop, num)
+                
+                # Compute the function
+                safe_env = {"np": np, "x": x}
+                y        = eval(func_str, {"__builtins__": {}}, safe_env)
+
+                # Naming the new columns
+                x_name = new_name + "_x"
+                y_name = new_name + "_y"
+                for col_name, data in [(x_name, x), (y_name, y)]:
+                    new_col_index = self.table.columnCount()
+                    self.table.insertColumn(new_col_index)
+                    self.table.setHorizontalHeaderItem(new_col_index, QTableWidgetItem(col_name))
+                    for r, val in enumerate(data):
+                        self.table.setItem(r, new_col_index, QTableWidgetItem(str(val)))
+                return  # Avoid adding extra column below
+
             else:
-                const    = float(const_str)
-                series_b = const
+                raise ValueError(f"Unknown mode {mode}")
 
-            series_a = df[col_a].astype(float)
 
-            if op == "+":
-                result = series_a + series_b
-            elif op == "-":
-                result = series_a - series_b
-            elif op == "*":
-                result = series_a * series_b
-            elif op == "/":
-                result = series_a / series_b
-            elif op == "mean":
-                result = (series_a + series_b) / 2.
-            else:
-                raise ValueError("Unknown operation")
-
-            # Add new column to the table
+            # Add new single column to the table
             new_col_index = self.table.columnCount()
             self.table.insertColumn(new_col_index)
             self.table.setHorizontalHeaderItem(new_col_index, QTableWidgetItem(new_name))
@@ -1194,52 +1232,189 @@ class ColumnMathDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Column Math")
 
-        self.col_a = QComboBox(); self.col_a.addItems(columns)
-        self.col_b = QComboBox(); self.col_b.addItems(["<Constant>"] + list(columns))
-        self.constant_edit = QLineEdit(); self.constant_edit.setPlaceholderText("Constant value")
+        self.mode = QComboBox()
+        self.mode.addItems([
+            "Arithmetic between columns",
+            "Generate linspace",
+            "Generate logspace",
+            "Generate function from linspace/logspace"
+        ])
 
-        self.op       = QComboBox(); self.op.addItems(["+", "-", "*", "/", "mean"])
-        self.new_name = QLineEdit(); self.new_name.setPlaceholderText("New column name")
+        # Create the stcack area for dynamic widgets
+        self.stack = QStackedWidget()
+        self.pages = {
+            "Arithmetic between columns": self._create_arithmetic_page(columns),
+            "Generate linspace": self._create_space_page(False),
+            "Generate logspace": self._create_space_page(True),
+            "Generate function from linspace/logspace": self._create_function_page()
+        }
 
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("Column A:")) ; layout.addWidget(self.col_a)
-        layout.addWidget(QLabel("Operation:")); layout.addWidget(self.op)
-        layout.addWidget(QLabel("Column B or constant:")); layout.addWidget(self.col_b)
-        layout.addWidget(self.constant_edit)
-        layout.addWidget(QLabel("New column name:")); layout.addWidget(self.new_name)
-
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept); btns.rejected.connect(self.reject)
-        layout.addWidget(btns)
+        # Add pages to stack
+        for page in self.pages.values():
+            self.stack.addWidget(page)
         
+        # Name new column
+        self.new_name = QLineEdit()
+        self.new_name.setPlaceholderText("New column name")
+
+        # Layout
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Mode:"))
+        layout.addWidget(self.mode)
+        layout.addWidget(self.stack)
+        layout.addWidget(QLabel("New column name:"))
+        layout.addWidget(self.new_name)
+
+        # Buttons
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(self.accept)
+        btns.rejected.connect(self.reject)
+        layout.addWidget(btns)
         self.setLayout(layout)
 
+        # Connections
+        self.mode.currentTextChanged.connect(self._switch_page)
+
+    def _switch_page(self, mode):
+        '''
+        Switch the displayed page based on selected mode.
+
+        Parameters
+        ----------
+        mode : str
+            The selected mode.
+        '''
+        self.stack.setCurrentWidget(self.pages[mode])
+
+    def _create_arithmetic_page(self, columns):
+        '''
+        Create the page for arithmetic operations between columns.
+
+        Parameters
+        ----------
+        columns : list of str
+            List of column names available for selection.
+        
+        Returns
+        -------
+        QWidget
+            The created page widget.
+        '''
+        page   = QWidget()
+        layout = QVBoxLayout(page)
+
+        self.col_a         = QComboBox(); self.col_a.addItems(columns)
+        self.op            = QComboBox(); self.op.addItems(["+", "-", "*", "/", "mean"])
+        self.col_b         = QComboBox(); self.col_b.addItems(["<Constant>"] + list(columns))
+        self.constant_edit = QLineEdit(); self.constant_edit.setPlaceholderText("Constant value")
         self.col_b.currentTextChanged.connect(self._toggle_constant)
 
+        layout.addWidget(QLabel("Column A:")); layout.addWidget(self.col_a)
+        layout.addWidget(QLabel("Operation:")); layout.addWidget(self.op)
+        layout.addWidget(QLabel("Column B or constant:"))
+        layout.addWidget(self.col_b); layout.addWidget(self.constant_edit)
+        return page
+    
+    def _create_space_page(self, is_log):
+        '''
+        Create the page for generating linspace or logspace.
+
+        Parameters
+        ----------
+        is_log : bool
+            If True, create logspace page; otherwise, linspace.
+        
+        Returns
+        -------
+        QWidget
+            The created page widget.
+        '''
+        page   = QWidget()
+        layout = QVBoxLayout(page)
+
+        self.start_edit = QLineEdit(); self.start_edit.setPlaceholderText("Start value")
+        self.stop_edit = QLineEdit(); self.stop_edit.setPlaceholderText("Stop value")
+        self.num_edit = QLineEdit(); self.num_edit.setPlaceholderText("Number of points")
+
+        layout.addWidget(QLabel("Start:")); layout.addWidget(self.start_edit)
+        layout.addWidget(QLabel("Stop:")); layout.addWidget(self.stop_edit)
+        layout.addWidget(QLabel("Number of points:")); layout.addWidget(self.num_edit)
+        return page
+    
+    def _create_function_page(self):
+        '''
+        Create the page for generating a function from linspace/logspace.
+
+        Returns
+        -------
+        QWidget
+            The created page widget.
+        '''
+        page   = QWidget()
+        layout = QVBoxLayout(page)
+
+        self.space_type = QComboBox()
+        self.space_type.addItems(["linspace", "logspace"])
+
+        self.start_edit = QLineEdit(); self.start_edit.setPlaceholderText("Start value")
+        self.stop_edit  = QLineEdit(); self.stop_edit.setPlaceholderText("Stop value")
+        self.num_edit   = QLineEdit(); self.num_edit.setPlaceholderText("Number of points")
+        self.func_edit  = QLineEdit(); self.func_edit.setPlaceholderText("Must be numpy function, e.g. np.sin(x)")
+
+        for label, widget in [
+            ("Space type:", self.space_type),
+            ("Start:", self.start_edit),
+            ("Stop:", self.stop_edit),
+            ("Number of points:", self.num_edit),
+            ("Function f(x):", self.func_edit)
+        ]:
+            layout.addWidget(QLabel(label))
+            layout.addWidget(widget)
+
+        return page
+        
     def _toggle_constant(self, text):
-        """ 
+        '''
         Enable/disable constant input based on selection.
 
         Parameters
         ----------
         text : str
             The current text of the col_b combo box.
-        """
+        '''
         self.constant_edit.setEnabled(text == "<Constant>")
 
     def get_selection(self):
-        """
+        '''
         Get the selected columns, operation, constant, and new column name.
         
         Returns
         -------
-        tuple
-            (col_a, operation, col_b or None, constant or None, new_name)
-        """
-        return (
-            self.col_a.currentText(),
-            self.op.currentText(),
-            None if self.col_b.currentText() == "<Constant>" else self.col_b.currentText(),
-            self.constant_edit.text(),
-            self.new_name.text().strip()
-        )
+        dict
+            A dictionary with keys:
+            - mode: selected mode
+            - col_a: first column
+            - op: operation
+            - col_b: second column or None
+            - const: constant value or None
+            - space_type: linspace or logspace
+            - start: start value for linspace/logspace
+            - stop: stop value for linspace/logspace
+            - num: number of points for linspace/logspace
+            - func: function for generating new column
+            - new_name: name of the new column
+        '''
+        mode = self.mode.currentText()
+        return {
+            "mode":       mode,
+            "col_a":      getattr(self, "col_a", None).currentText() if hasattr(self, "col_a") else None,
+            "op":         getattr(self, "op", None).currentText() if hasattr(self, "op") else None,
+            "col_b":      None if not hasattr(self, "col_b") or self.col_b.currentText() == "<Constant>" else self.col_b.currentText(),
+            "const":      self.constant_edit.text() if hasattr(self, "constant_edit") else "",
+            "space_type": self.space_type.currentText() if hasattr(self, "space_type") else "linspace",
+            "start":      self.start_edit.text() if hasattr(self, "start_edit") else "",
+            "stop":       self.stop_edit.text() if hasattr(self, "stop_edit") else "",
+            "num":        self.num_edit.text() if hasattr(self, "num_edit") else "",
+            "func":       self.func_edit.text().strip() if hasattr(self, "func_edit") else "",
+            "new_name":   self.new_name.text().strip()
+        }

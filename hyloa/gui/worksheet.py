@@ -48,7 +48,7 @@ from hyloa.data.io import detect_header_length
 class WorksheetWindow(QMdiSubWindow):
     """ A worksheet subwindow for managing tabular data and plotting.
     """
-    def __init__(self, mdi_area, parent=None, name="worksheet"):
+    def __init__(self, mdi_area, parent=None, name="worksheet", logger=None):
         """
         Initialize the worksheet window.
 
@@ -60,12 +60,17 @@ class WorksheetWindow(QMdiSubWindow):
             The parent widget (default is None).
         name : str, optional
             Name of the worksheet (default is "worksheet").
+        logger : logging.Logger, optional
+            Logger for debug messages (default is None).
         """
         super().__init__(parent)
         self.mdi_area = mdi_area
         self.name = name
         self.setWindowTitle(f"Worksheet - {self.name}")
         self.resize(600, 600)
+
+        # Logger
+        self.logger = logger
 
         # Create an initial table with 20 rows and 4 columns
         self.table = QTableWidget(20, 4) 
@@ -103,8 +108,6 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_custom     = QPushButton("Customization")
         self.btn_fit        = QPushButton("Fit Data")
         self.btn_appearance = QPushButton("Appearance")
-
-
 
         btn_layout_top = QHBoxLayout()
         btn_layout_bot = QHBoxLayout()
@@ -259,6 +262,10 @@ class WorksheetWindow(QMdiSubWindow):
             self.table.setRowCount(len(df))
             self.table.setColumnCount(len(df.columns))
             self.table.setHorizontalHeaderLabels([str(c) for c in df.columns])
+
+            #Log loaded data info
+            if self.logger is not None:
+                self.logger.info(f"Loaded file '{file_path}' in worksheet with {len(df)} rows and {len(df.columns)} columns.")
             
             # Populate table with data
             for r in range(len(df)):
@@ -504,7 +511,13 @@ class WorksheetWindow(QMdiSubWindow):
             else:
                 ax.plot(x, y, "o-", label=label)
 
-        
+        # Log the creation of the plot with selcected columns
+        if self.logger is not None:
+            msg = f"Created plot (ID: {plot_id if plot_id is not None else self.plot_count + 1}) with selections: "
+            msg += ", ".join([f"(X: {s['x']}, Y: {s['y']})" for s in selections])
+            self.logger.info(msg)
+
+
         lines = [ln for ln in ax.lines if ln.get_gid() != "fit"]
         if customizations:
             for idx, style in customizations.items():
@@ -973,6 +986,14 @@ class WorksheetWindow(QMdiSubWindow):
                     lines.append(f"{p} = {val:.3e} ± {err:.3e}")
                 result_text = "\n".join(lines)
                 output_box.setPlainText(result_text)
+
+                # Log fit data and results
+                if self.logger is not None:
+                    self.logger.info(
+                        f"Performed curve fit on columns X: {x_combo.currentText()}, Y: {y_combo.currentText()} "
+                        f"with range [{x_start}, {x_end}] "
+                        f"with function: {function_edit.text()} "
+                        f"and parameters: {', '.join(param_names)}. Results:\n{str(result_text).replace(chr(10), ' ')}")
 
                 # Draw fit on the plot
                 pid = plot_combo.currentData()

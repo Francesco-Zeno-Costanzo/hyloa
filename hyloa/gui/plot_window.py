@@ -978,6 +978,8 @@ def open_curve_fitting_window(app_instance, plot_widget):
             result = "\n".join(result_lines)
             output_box.setPlainText(result)
             logger.info("Fit completed successfully.")
+            logger.info(f"Fitting function: {function_edit.text()}")
+            logger.info(f"Fitting on data from File {df_idx + 1}, x: {x_col}, y: {y_col}, range: [{x_start}, {x_end}]")
             # Explicit cast to avoid newline issues in log file
             logger.info(f"The fit brought the following results: {str(result).replace(chr(10), ' ')}.")
             app_instance.refresh_shell_variables()

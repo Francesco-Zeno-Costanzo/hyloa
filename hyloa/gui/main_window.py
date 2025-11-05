@@ -250,7 +250,7 @@ class MainApp(QMainWindow):
         ws_idx  = self.number_worksheets
         ws_name = text.strip()
 
-        worksheet = WorksheetWindow(self.mdi_area, name=ws_name)
+        worksheet = WorksheetWindow(self.mdi_area, name=ws_name, logger=self.logger)
         
         worksheet.setWindowTitle(f"Worksheet - {ws_name}")
         self.mdi_area.addSubWindow(worksheet)

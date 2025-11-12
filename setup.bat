@@ -27,19 +27,32 @@ set ICON_PATH=%BASE_DIR%hyloa\resources\icon.ico
 REM === Path to the VBS launcher ===
 set LAUNCH_VBS=%BASE_DIR%launch_hyloa.vbs
 
+REM === Path to the wheel file (assumed inside dist\) ===
+for /f "delims=" %%f in ('dir /b "%BASE_DIR%dist\hyloa-*.whl" 2^>nul') do set WHEEL_FILE=%BASE_DIR%dist\%%f
+
+echo ================================
+echo Checking for wheel package...
+if not defined WHEEL_FILE (
+    echo ERROR: No wheel found in dist\ folder.
+    echo Please ensure a file like dist\hyloa-x.y.z-py3-none-any.whl exists.
+    pause
+    exit /b 1
+)
+echo Found: %WHEEL_FILE%
+
 echo ================================
 echo Creation of virtual environment...
-python -m venv "%VENV_DIR%"
+if not exist "%VENV_DIR%" (
+    python -m venv "%VENV_DIR%"
+)
 
 echo ================================
 echo Activating virtual environment...
 call "%VENV_DIR%\Scripts\activate.bat"
 
 echo ================================
-echo Installing dependencies...
-"%PYTHON_EXE%" -m pip install --upgrade pip
-"%PYTHON_EXE%" -m pip install -r requirements.txt
-"%PYTHON_EXE%" -m pip install .
+echo Installing package from wheel...
+"%PYTHON_EXE%" -m pip install --force-reinstall "%WHEEL_FILE%"
 
 echo ================================
 echo Creating VBS launcher...

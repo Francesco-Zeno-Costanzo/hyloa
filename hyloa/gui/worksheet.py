@@ -44,6 +44,7 @@ from matplotlib import colors as mcolors, markers, lines as mlines
 
 
 from hyloa.data.io import detect_header_length
+from hyloa.utils.err_format import format_value_error
 
 class WorksheetWindow(QMdiSubWindow):
     """ A worksheet subwindow for managing tabular data and plotting.
@@ -983,7 +984,13 @@ class WorksheetWindow(QMdiSubWindow):
                 # Show fit results
                 lines = []
                 for p, val, err in zip(param_names, params, np.sqrt(np.diag(pcov))):
-                    lines.append(f"{p} = {val:.3e} ± {err:.3e}")
+                    lines.append(f"{p} = {format_value_error(val, err)}")
+                
+                for i , pi in zip(range(len(params)), param_names):
+                    for j , pj in zip(range(i+1, len(params)), param_names[i+1:]):
+                        corr_ij = pcov[i, j]/np.sqrt(pcov[i, i]*pcov[j, j])
+                        lines.append(f"corr({pi}, {pj}) = {corr_ij:.3f}")
+
                 result_text = "\n".join(lines)
                 output_box.setPlainText(result_text)
 

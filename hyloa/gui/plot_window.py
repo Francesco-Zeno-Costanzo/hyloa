@@ -36,6 +36,7 @@ from PyQt5.QtWidgets import (
 
 )
 
+from hyloa.utils.err_format import format_value_error
 from hyloa.data.processing import inv_single_branch_dialog
 from hyloa.data.processing import inv_x_dialog, inv_y_dialog
 from hyloa.data.processing import norm_dialog, close_loop_dialog
@@ -967,9 +968,11 @@ def open_curve_fitting_window(app_instance, plot_widget):
 
             result_lines = []
             for p, val, err in zip(param_names, params, np.sqrt(np.diag(pcov))):
-                result_lines.append(f"{p} = {val:.3e} ± {err:.3e}")
+                
+                result_lines.append(f"{p} = {format_value_error(val, err)}")    
                 fit_results[p] = val
                 fit_results[f"error_{p}"] = err
+
             for i , pi in zip(range(len(params)), param_names):
                 for j , pj in zip(range(i+1, len(params)), param_names[i+1:]):
                     corr_ij = pcov[i, j]/np.sqrt(pcov[i, i]*pcov[j, j])

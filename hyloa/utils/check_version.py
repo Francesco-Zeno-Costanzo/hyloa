@@ -14,7 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with HYLOA. If not, see <https://www.gnu.org/licenses/>.
 
-
+"""
+Code connected to the button to check if the installed version is
+the last version aviable on GitHub
+"""
 import re
 import requests
 from packaging import version

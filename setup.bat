@@ -51,6 +51,10 @@ echo Activating virtual environment...
 call "%VENV_DIR%\Scripts\activate.bat"
 
 echo ================================
+echo Upgrading pip and wheel...
+"%PYTHON_EXE%" -m pip install --upgrade pip wheel
+
+echo ================================
 echo Installing package from wheel...
 "%PYTHON_EXE%" -m pip install --force-reinstall "%WHEEL_FILE%"
 

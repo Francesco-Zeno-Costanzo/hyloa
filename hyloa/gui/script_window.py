@@ -262,16 +262,21 @@ class ScriptEditor(QPlainTextEdit):
         '''
         Highlight the background of the current line where the cursor is.
 
-        Notes
-        -----
-        Applies a translucent yellow background to the current line to help visually
-        locate the text cursor position. This does not affect the selection state.
+        The color automatically adapts to the current palette, choosing a light or dark
+        translucent shade depending on whether the application is using a light or dark theme.
         '''
         extra_selections = []
         if not self.isReadOnly():
+
             selection  = QTextEdit.ExtraSelection()
-            line_color = QColor(Qt.white).lighter(160)
-            line_color.setAlpha(100)
+            base_color = self.palette().color(self.backgroundRole())
+
+            if base_color.lightness() < 128:
+                line_color = QColor(255, 255, 255, 40)
+            else:
+                line_color = QColor(0, 0, 0, 25)
+
+
             selection.format.setBackground(line_color)
             selection.format.setProperty(QTextFormat.FullWidthSelection, True)
             selection.cursor = self.textCursor()

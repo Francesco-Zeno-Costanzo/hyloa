@@ -383,6 +383,11 @@ class MainApp(QMainWindow):
     def open_script_editor(self):
         ''' Function to open a window to write some python code
         '''
+
+        if self.logger is None:
+            QMessageBox.critical(None, "Error", "Cannot start analysis without starting log")
+            return
+        
         editor = ScriptEditor(self)
         sub = QMdiSubWindow()
         sub.setWidget(editor.window)

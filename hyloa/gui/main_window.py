@@ -22,6 +22,7 @@ everything that is done otherwise it is not possible to start
 the analysis. From here the calls to the other functions branch out.
 """
 
+import os
 import matplotlib.pyplot as plt
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
@@ -29,6 +30,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox, QHBoxLayout,
     QListWidget, QDialog, QInputDialog
 )
+from PyQt5.QtGui import QPixmap, QIcon
 
 # Code for data management
 from hyloa.data.io import load_files
@@ -97,6 +99,21 @@ class MainApp(QMainWindow):
         control_panel = QWidget()
         layout = QVBoxLayout(control_panel)
 
+        # === LOGO ===
+        logo_label = QLabel()
+
+        # Costruisce il percorso relativo in modo portabile
+        base_dir  = os.path.dirname(os.path.abspath(__file__))            # .../hyloa/gui
+        logo_path = os.path.join(base_dir, "..", "resources", "icon.ico") # .../hyloa/resources/icon.ico
+        logo_path = os.path.normpath(logo_path)                           # handle separetors
+
+        icon   = QIcon(logo_path)
+        pixmap = icon.pixmap(128, 128)
+        logo_label.setPixmap(pixmap)
+        logo_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(logo_label)
+        # =========================================
+
         description = QLabel(
             "To start the analysis, you need to specify a name for the log file.\n"
             "For more information, use the help button.\n"
@@ -134,9 +151,13 @@ class MainApp(QMainWindow):
             ("Exit", self.exit_app)
         ]))
 
+        #control_panel.setMinimumWidth(140)
+        #control_panel.setMaximumWidth(300)
+        control_panel.setFixedWidth(160)
+
         dock.setWidget(control_panel)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
-
+        
     def make_button(self, text, callback):
         btn = QPushButton(text)
         btn.clicked.connect(callback)

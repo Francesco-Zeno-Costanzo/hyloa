@@ -102,7 +102,6 @@ class MainApp(QMainWindow):
         # === LOGO ===
         logo_label = QLabel()
 
-        # Costruisce il percorso relativo in modo portabile
         base_dir  = os.path.dirname(os.path.abspath(__file__))            # .../hyloa/gui
         logo_path = os.path.join(base_dir, "..", "resources", "icon.ico") # .../hyloa/resources/icon.ico
         logo_path = os.path.normpath(logo_path)                           # handle separetors

@@ -37,5 +37,8 @@ hyloa = "hyloa.main:main"
 [tool.setuptools]
 include-package-data = true
 
+[tool.setuptools.package-data]
+hyloa = ["resources/*.png"]
+
 [tool.setuptools.packages.find]
 where = ["."]

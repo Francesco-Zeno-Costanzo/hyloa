@@ -22,7 +22,7 @@ everything that is done otherwise it is not possible to start
 the analysis. From here the calls to the other functions branch out.
 """
 
-from pathlib import Path
+from importlib import resources
 import matplotlib.pyplot as plt
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
@@ -99,26 +99,26 @@ class MainApp(QMainWindow):
         control_panel = QWidget()
         layout = QVBoxLayout(control_panel)
 
-        # === LOGO (versione pulita e cross-platform) ===
+        # === LOGO ===
+
+        def load_icon():
+            with resources.path("hyloa.resources", "icon-5.png") as p:
+                pixmap = QPixmap(str(p))
+            return pixmap
 
         logo_label = QLabel()
         logo_label.setAlignment(Qt.AlignCenter)
 
-        # costruzione percorso
-        base_dir = Path(__file__).resolve().parent.parent    # cartella hyloa/
-        logo_path = base_dir / "resources" / "icon-5.png"    # usa il tuo file PNG
+        pixmap = load_icon()
 
-        pixmap = QPixmap(str(logo_path))
-
-        # fallback elegante se per qualche motivo non carica
         if pixmap.isNull():
             logo_label.setText("Logo not found")
         else:
-            # mantiene proporzioni e assicura visibilità
+            # Mantein proportion and visibility
             scaled = pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             logo_label.setPixmap(scaled)
 
-        # impedisce che il logo venga compresso
+        # Avoid compression
         logo_label.setMinimumSize(128, 128)
 
         layout.addWidget(logo_label)

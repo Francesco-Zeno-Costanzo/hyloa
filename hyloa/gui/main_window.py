@@ -22,7 +22,7 @@ everything that is done otherwise it is not possible to start
 the analysis. From here the calls to the other functions branch out.
 """
 
-import os
+from pathlib import Path
 import matplotlib.pyplot as plt
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox, QHBoxLayout,
     QListWidget, QDialog, QInputDialog
 )
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtGui import QPixmap
 
 # Code for data management
 from hyloa.data.io import load_files
@@ -99,19 +99,30 @@ class MainApp(QMainWindow):
         control_panel = QWidget()
         layout = QVBoxLayout(control_panel)
 
-        # === LOGO ===
+        # === LOGO (versione pulita e cross-platform) ===
+
         logo_label = QLabel()
-
-        base_dir  = os.path.dirname(os.path.abspath(__file__))            # .../hyloa/gui
-        logo_path = os.path.join(base_dir, "..", "resources", "icon.ico") # .../hyloa/resources/icon.ico
-        logo_path = os.path.normpath(logo_path)                           # handle separetors
-
-        icon   = QIcon(logo_path)
-        pixmap = icon.pixmap(128, 128)
-        logo_label.setPixmap(pixmap)
         logo_label.setAlignment(Qt.AlignCenter)
+
+        # costruzione percorso
+        base_dir = Path(__file__).resolve().parent.parent    # cartella hyloa/
+        logo_path = base_dir / "resources" / "icon-5.png"    # usa il tuo file PNG
+
+        pixmap = QPixmap(str(logo_path))
+
+        # fallback elegante se per qualche motivo non carica
+        if pixmap.isNull():
+            logo_label.setText("Logo not found")
+        else:
+            # mantiene proporzioni e assicura visibilità
+            scaled = pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(scaled)
+
+        # impedisce che il logo venga compresso
+        logo_label.setMinimumSize(128, 128)
+
         layout.addWidget(logo_label)
-        # =========================================
+        #=========================================
 
         description = QLabel(
             "To start the analysis, you need to specify a name for the log file.\n"

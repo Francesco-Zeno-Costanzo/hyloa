@@ -223,11 +223,18 @@ class WorksheetWindow(QMdiSubWindow):
             for j, cell in enumerate(cells):
                 r = start[0] + i
                 c = start[1] + j
-                # Expand table if needed
+                
+                # Expand table if needed in rows
                 if r >= self.table.rowCount():
                     self.table.insertRow(self.table.rowCount())
+                
+                # Expand table if needed in collumns
                 if c >= self.table.columnCount():
                     self.table.insertColumn(self.table.columnCount())
+                    # Add column's name
+                    if self.table.horizontalHeaderItem(c) is None:
+                        self.table.setHorizontalHeaderItem(c, QTableWidgetItem(f"Col {c+1}"))
+                
                 self.table.setItem(r, c, QTableWidgetItem(cell))
 
 

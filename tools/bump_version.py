@@ -28,6 +28,7 @@ BASE_DIR       = Path(__file__).resolve().parent
 PYPROJECT_PATH = BASE_DIR.parent / "pyproject.toml"
 INIT_PATH      = BASE_DIR.parent / "hyloa" / "__init__.py"
 SETUP_PATH     = BASE_DIR.parent / "setup.py"
+DIST_DIR       = BASE_DIR.parent / "dist"
 
 INCREMENT_MODES = ('major', 'minor', 'patch')
 VERSION_PATTERN = r'(\d+)\.(\d+)\.(\d+)'
@@ -63,10 +64,31 @@ def update_file(file_path, regex_pattern, new_version, label='version'):
     file_path.write_text(new_content)
     print(f" Updated {label} in {file_path}")
 
+def build_wheel():
+    print("Buildng wheel ...")
+    # Clear old wheel
+    if DIST_DIR.exists():
+        for f in DIST_DIR.iterdir():
+            f.unlink()
+
+    # Bulding
+    try:
+        subprocess.run([sys.executable, "-m", "build"], check=True)
+        print("Build completed.")
+    except subprocess.CalledProcessError as e:
+        print("Build failed:", e)
+        sys.exit(1)
+
 
 def git_commit_and_push(new_version):
     try:
         subprocess.run(["git", "add", str(PYPROJECT_PATH), str(SETUP_PATH), str(INIT_PATH)], check=True)
+
+        # Add all files inside dist directory
+        if DIST_DIR.exists():
+            for f in DIST_DIR.iterdir():
+                subprocess.run(["git", "add", str(f)], check=True)
+
         subprocess.run(["git", "commit", "-m", f"Bump version to {new_version}"], check=True)
         subprocess.run(["git", "push"], check=True)
         print("Changes committed and pushed to origin.")
@@ -97,6 +119,9 @@ def main(mode):
                 rf'(version\s*=\s*[\'"])({VERSION_PATTERN})([\'"])',
                 new_version,
                 label="pyproject.toml")
+    
+    # Build wheel
+    build_wheel()
 
     git_commit_and_push(new_version)
     print("Version bump complete.")

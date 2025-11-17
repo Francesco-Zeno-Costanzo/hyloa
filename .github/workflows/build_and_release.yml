@@ -1,0 +1,51 @@
+name: Build and Release HYLOA
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   # push with tag version
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0   # for tag
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+
+    - name: Build wheel and sdist
+      run: |
+        python -m build
+        ls -lh dist/
+
+    # File.bat for windows installation
+    - name: Copy installer script
+      run: |
+        cp setup.bat dist/ || echo "No install.bat found"
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: "HYLOA ${{ github.ref_name }}"
+        draft: false
+        prerelease: false
+        files: |
+          dist/*.whl
+          dist/*.tar.gz
+          dist/*.bat
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

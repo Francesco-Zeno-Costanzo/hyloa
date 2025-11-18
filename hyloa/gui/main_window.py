@@ -28,7 +28,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QMdiArea, QMdiSubWindow, QWidget, QVBoxLayout,
     QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox, QHBoxLayout,
-    QListWidget, QDialog, QInputDialog
+    QListWidget, QDialog, QInputDialog, QScrollArea
 )
 from PyQt5.QtGui import QPixmap
 
@@ -96,19 +96,22 @@ class MainApp(QMainWindow):
         '''
         dock = QDockWidget(self)
         dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
-        control_panel = QWidget()
-        layout = QVBoxLayout(control_panel)
+        
+        # === Container of the dock ===
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
 
         # === LOGO ===
+        logo_label = QLabel()
+        logo_label.setAlignment(Qt.AlignCenter)
 
         def load_icon():
             with resources.path("hyloa.resources", "icon-5.png") as p:
                 pixmap = QPixmap(str(p))
             return pixmap
-
-        logo_label = QLabel()
-        logo_label.setAlignment(Qt.AlignCenter)
-
+        
         pixmap = load_icon()
 
         if pixmap.isNull():
@@ -119,54 +122,67 @@ class MainApp(QMainWindow):
             logo_label.setPixmap(scaled)
 
         # Avoid compression
-        logo_label.setMinimumSize(128, 128)
+        logo_label.setFixedHeight(130)
 
-        layout.addWidget(logo_label)
-        #=========================================
+        container_layout.addWidget(logo_label) 
+        
+        # === Scroll area ===
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setContentsMargins(4, 4, 4, 4)
+        scroll_layout.setSpacing(6)
 
         description = QLabel(
             "To start the analysis, you need to specify a name for the log file.\n"
             "For more information, use the help button.\n"
         )
         description.setWordWrap(True)
-        layout.addWidget(description)
+        scroll_layout.addWidget(description)
 
-        layout.addWidget(self.make_group("Strat", [
+        scroll_layout.addWidget(self.make_group("Strat", [
             ("Version",       check_for_updates),
             ("Help",          self.help),
             ("Start Logging", self.conf_logging)
         ]))
 
-        layout.addWidget(self.make_group("File Management", [
+        scroll_layout.addWidget(self.make_group("File Management", [
             ("Load file",      self.load_data),
             ("Show file",      self.show_loaded_files),
             ("Save file",      self.save_data),
             ("Duplicate file", self.duplicate)
         ]))
 
-        layout.addWidget(self.make_group("Analysis", [
+        scroll_layout.addWidget(self.make_group("Analysis", [
             ("Create plot", self.plot),
             ("Worksheet",   self.worksheet),
             ("Script",      self.open_script_editor),
             ("Annotation",  self.open_comment_window)
         ]))
 
-        layout.addWidget(self.make_group("Session", [
+        scroll_layout.addWidget(self.make_group("Session", [
             ("Load session",    self.load_session),
             ("list of windows", self.show_window_navigator),
             ("Save session",    self.save_session)
         ]))
 
-        layout.addWidget(self.make_group("Exit", [
+        scroll_layout.addWidget(self.make_group("Exit", [
             ("Exit", self.exit_app)
         ]))
 
-        #control_panel.setMinimumWidth(140)
-        #control_panel.setMaximumWidth(300)
-        control_panel.setFixedWidth(160)
+        scroll_layout.addStretch() # Push everything to the top
+        
+        scroll_area.setWidget(scroll_content)
+        container_layout.addWidget(scroll_area)
 
-        dock.setWidget(control_panel)
+        container.setFixedWidth(160)
+
+        dock.setWidget(container)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
+
         
     def make_button(self, text, callback):
         btn = QPushButton(text)

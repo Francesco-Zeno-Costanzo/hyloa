@@ -48,7 +48,7 @@ def increment_version(version, mode):
     elif mode == 'minor':
         return f"{major}.{minor + 1}.0"
     elif mode == 'patch':
-        return f"{major}.{minor}.{patch + 0}"
+        return f"{major}.{minor}.{patch + 1}"
     else:
         raise ValueError(f"Invalid mode: {mode}")
 
@@ -68,7 +68,7 @@ def git_commit_and_push(new_version):
     try:
         subprocess.run(["git", "add", str(PYPROJECT_PATH), str(SETUP_PATH), str(INIT_PATH)], check=True)
 
-        subprocess.run(["git", "commit", "-m", f"remain on {new_version}, test release"], check=True)
+        subprocess.run(["git", "commit", "-m", f"Bump version to {new_version}"], check=True)
         subprocess.run(["git", "push"], check=True)
         print("Changes committed and pushed to origin.")
     except subprocess.CalledProcessError as e:

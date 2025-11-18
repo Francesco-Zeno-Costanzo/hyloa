@@ -22,6 +22,7 @@ Welcome to the official documentation of **HYsteresis LOop Analyzer**, a softwar
 
    installation
    usage
+   release_notes
    modules
    hyloa
    hyloa.data
@@ -44,19 +45,25 @@ Welcome to the official documentation of **HYsteresis LOop Analyzer**, a softwar
 
 **How to get started?**
 --------------------------------
-To install the package, use:
+To install the package:
 
-.. code-block:: bash
+1. Go to:
 
-   "to do"
+   https://github.com/Francesco-Zeno-Costanzo/hyloa/releases
 
-Directly from the GitHub repository:
+2. Download the file:
 
-.. code-block:: bash
+   ``hyloa-<version>-py3-none-any.whl``
 
-    git clone https://github.com/Francesco-Zeno-Costanzo/hyloa.git
-    cd hyloa
-    pip install .
+3. Open a terminal in the folder where the wheel was downloaded.
+
+4. Install it with:
+
+   .. code-block:: bash
+
+       python -m pip install hyloa-<version>-py3-none-any.whl
+
+Replace ``<version>`` with the actual release version.
 
 To launch the graphical interface:
 
@@ -68,12 +75,12 @@ To launch the graphical interface:
 
 If you're on Windows and prefer not to use the terminal, simply:
 
-1. Download the repository as a ZIP file from GitHub and extract it.
-2. Inside the extracted folder, double-click on:
+1. Download:
 
-   .. code-block:: none
+   - ``hyloa-<version>-py3-none-any.whl``
+   - ``setup.bat``
 
-      setup.bat
+2. Double-click ``setup.bat``  to run the installer.
 
 This will automatically install everything you need and create a desktop shortcut to launch the GUI.
 

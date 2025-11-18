@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*.*.*'   # push with tag version
+  
+permissions:
+  contents: write
 
 jobs:
   build-release:

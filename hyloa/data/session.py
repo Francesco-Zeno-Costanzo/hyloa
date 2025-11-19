@@ -240,7 +240,8 @@ def load_previous_session(app_instance, parent_widget=None):
             ws_name = ws_info.get("name", f"Worksheet {idx}")
 
             # Create worksheet instance with name
-            ws = WorksheetWindow(app_instance.mdi_area, name=ws_name)
+            ws = WorksheetWindow(app_instance.mdi_area, parent=app_instance.mdi_area, name=ws_name,
+                                logger=app_instance.logger, app_instance=app_instance)
 
             # Add to mdi area BEFORE restoring content (important!)
             app_instance.mdi_area.addSubWindow(ws)

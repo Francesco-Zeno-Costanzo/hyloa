@@ -280,11 +280,6 @@ class MainApp(QMainWindow):
     
 
     def worksheet(self):
-        ws = WorksheetWindow(self.mdi_area)
-        self.mdi_area.addSubWindow(ws)
-        ws.show()
-
-    def worksheet(self):
         if self.logger is None:
             QMessageBox.critical(None, "Error", "Cannot create worksheet without starting log")
             return
@@ -297,7 +292,8 @@ class MainApp(QMainWindow):
         ws_idx  = self.number_worksheets
         ws_name = text.strip()
 
-        worksheet = WorksheetWindow(self.mdi_area, name=ws_name, logger=self.logger)
+        worksheet = WorksheetWindow(self.mdi_area, parent=self.mdi_area, name=ws_name,
+                                    logger=self.logger, app_instance=self)
         
         worksheet.setWindowTitle(f"Worksheet - {ws_name}")
         self.mdi_area.addSubWindow(worksheet)

@@ -31,7 +31,8 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
     QDialogButtonBox, QInputDialog, QAction, QApplication,
-    QFormLayout, QTextEdit, QSizePolicy, QCheckBox, QStackedWidget
+    QFormLayout, QTextEdit, QSizePolicy, QCheckBox, QStackedWidget,
+    QListWidget
 )
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -49,7 +50,7 @@ from hyloa.utils.err_format import format_value_error
 class WorksheetWindow(QMdiSubWindow):
     """ A worksheet subwindow for managing tabular data and plotting.
     """
-    def __init__(self, mdi_area, parent=None, name="worksheet", logger=None):
+    def __init__(self, mdi_area, parent=None, name="worksheet", logger=None, app_instance=None):
         """
         Initialize the worksheet window.
 
@@ -72,7 +73,9 @@ class WorksheetWindow(QMdiSubWindow):
 
         # Logger
         self.logger = logger
-
+        # App instance
+        self.app_instance = app_instance
+        
         # Create an initial table with 20 rows and 4 columns
         self.table = QTableWidget(20, 4) 
         self.table.setHorizontalHeaderLabels([f"Col {i+1}" for i in range(4)])
@@ -103,12 +106,13 @@ class WorksheetWindow(QMdiSubWindow):
 
         self.btn_add_col    = QPushButton("Add column")
         self.btn_rmv_col    = QPushButton("Remove column")
-        self.btn_load       = QPushButton("Load Data")
+        self.btn_load       = QPushButton("Load from file")
         self.btn_plot       = QPushButton("Create Plot")
         self.btn_math       = QPushButton("Column Math")
         self.btn_custom     = QPushButton("Customization")
         self.btn_fit        = QPushButton("Fit Data")
         self.btn_appearance = QPushButton("Appearance")
+        self.btn_import_col = QPushButton("Import Column")
 
         btn_layout_top = QHBoxLayout()
         btn_layout_bot = QHBoxLayout()
@@ -116,6 +120,7 @@ class WorksheetWindow(QMdiSubWindow):
         btn_layout_top.addWidget(self.btn_add_col)
         btn_layout_top.addWidget(self.btn_rmv_col)
         btn_layout_top.addWidget(self.btn_load)
+        btn_layout_top.addWidget(self.btn_import_col)
         btn_layout_top.addWidget(self.btn_math)
 
         btn_layout_bot.addWidget(self.btn_plot)
@@ -141,6 +146,7 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_custom.clicked.connect(self.customize_plot)
         self.btn_fit.clicked.connect(self.open_curve_fitting_window)
         self.btn_appearance.clicked.connect(self.customize_plot_appearance)
+        self.btn_import_col.clicked.connect(self.import_column_from_main)
 
 
         # Attributes to memorize plot windows
@@ -338,6 +344,88 @@ class WorksheetWindow(QMdiSubWindow):
             self.table.setHorizontalHeaderItem(index, QTableWidgetItem(new_name.strip()))
 
 
+    def import_column_from_main(self):
+        '''
+        Import a column from one of the DataFrames loaded in MainApp.
+        The worksheet will know the dataframes only if they are loaded
+        before creating the worksheet.
+        '''
+        data = self.app_instance
+        
+        if len(data.dataframes) == 0:
+            msg  = "No DataFrames in this woorksheet. "
+            msg += "The worksheet will know the dataframes only if "
+            msg += "they are loaded before creating the worksheet. "
+            msg += "So you need to create a new one."
+            QMessageBox.warning(self, "Error", msg)
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Import column from loaded data")
+        dialog.resize(500, 200)
+
+        layout = QHBoxLayout(dialog)
+
+        # Left list = dataframe names
+        df_list = QListWidget()
+        df_list.addItems([f"File {i+1}" for i in range(len(data.dataframes))])
+        layout.addWidget(df_list)
+
+        # Right list = columns of selected dataframe
+        col_list = QListWidget()
+        layout.addWidget(col_list)
+
+        # Update columns when a dataframe is selected
+        def update_columns():
+            col_list.clear()
+            idx = df_list.currentRow()
+            if idx >= 0:
+                df = data.dataframes[idx]
+                col_list.addItems(df.columns)
+
+        df_list.currentRowChanged.connect(update_columns)
+        df_list.setCurrentRow(0)  # show first dataframe by default
+
+        # Buttons
+        btn_box = QVBoxLayout()
+        layout.addLayout(btn_box)
+
+        import_btn = QPushButton("Import")
+        cancel_btn = QPushButton("Cancel")
+        btn_box.addWidget(import_btn)
+        btn_box.addWidget(cancel_btn)
+        btn_box.addStretch()
+
+        # === When Import is clicked ===
+        def do_import():
+            df_idx = df_list.currentRow()
+            col_idx = col_list.currentRow()
+
+            if df_idx < 0 or col_idx < 0:
+                QMessageBox.warning(dialog, "Error", "Please select a dataframe and a column.")
+                return
+
+            df       = data.dataframes[df_idx]
+            col_name = df.columns[col_idx]
+            values   = df[col_name].values
+
+            # Add column in worksheet
+            new_col_index = self.table.columnCount()
+            self.table.insertColumn(new_col_index)
+            self.table.setHorizontalHeaderItem(new_col_index, QTableWidgetItem(col_name))
+
+            while self.table.rowCount() < len(values):
+                self.table.insertRow(self.table.rowCount())
+
+            for r, val in enumerate(values):
+                self.table.setItem(r, new_col_index, QTableWidgetItem(str(val)))
+
+            dialog.accept()
+
+        import_btn.clicked.connect(do_import)
+        cancel_btn.clicked.connect(dialog.reject)
+
+        dialog.exec_()
 
     def to_dataframe(self):
         """

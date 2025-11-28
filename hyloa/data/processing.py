@@ -259,7 +259,6 @@ def close_loop_dialog(plot_instance, app_instance):
     def on_apply():
         selected_file_idx = file_combo.currentIndex()
         selected_cols = [col for col, cb in column_checks.items() if cb.isChecked()]
-        print(33, selected_cols)
         apply_loop_closure(
             plot_instance,
             app_instance,

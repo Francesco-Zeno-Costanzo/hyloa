@@ -42,3 +42,6 @@ hyloa = ["resources/*.png"]
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.pytest.ini_options]
+qt_api = "pyqt5"

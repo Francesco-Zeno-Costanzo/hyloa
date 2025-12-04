@@ -10,6 +10,7 @@ Submodules
    hyloa.data.io
    hyloa.data.processing
    hyloa.data.session
+   hyloa.data.correction
 
 Module contents
 ---------------

@@ -40,7 +40,7 @@ from hyloa.utils.err_format import format_value_error
 from hyloa.data.processing import inv_single_branch_dialog
 from hyloa.data.processing import inv_x_dialog, inv_y_dialog
 from hyloa.data.processing import norm_dialog, close_loop_dialog
-
+from hyloa.data.correction import correct_hysteresis_loop
 
 #==============================================================================================#
 # Main class for managing the plot window                                                      #
@@ -115,6 +115,7 @@ class PlotControlWidget(QWidget):
             ("Flip x axis",  self.x_inversion),
             ("Flip y axis",  self.y_inversion),
             ("Flip a branch", self.revert_branch),
+            ("Correct loop", self.correction)
         ]
         for text, func in bottom_buttons:
             btn = QPushButton(text)
@@ -310,6 +311,11 @@ class PlotControlWidget(QWidget):
         ''' Call function to revert a branch of a cycle
         '''
         inv_single_branch_dialog(self, self.app_instance)
+    
+    def correction(self):
+        ''' Call function to correct a hysteresis loop
+        '''
+        correct_hysteresis_loop(self.app_instance)
 
 
 #==============================================================================================#

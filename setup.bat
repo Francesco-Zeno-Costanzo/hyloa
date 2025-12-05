@@ -1,82 +1,60 @@
 @echo off
 setlocal
 
-REM === Project folder name ===
-set PROJECT_NAME=hyloa
-
-REM === Absolute path of this folder ===
+REM === Base directory (where this .bat is) ===
 set BASE_DIR=%~dp0
 
-REM === Virtual environment path ===
-set VENV_DIR=%BASE_DIR%venv
+REM === Detect wheel file ===
+for /f "delims=" %%f in ('dir /b "%BASE_DIR%hyloa-*.whl" 2^>nul') do set WHEEL_FILE=%BASE_DIR%%%f
 
-REM === Path to Python within the virtual environment ===
-set PYTHON_EXE=%VENV_DIR%\Scripts\python.exe
-
-REM === Path to the main script ===
-set MAIN_SCRIPT=%BASE_DIR%hyloa\main.py
-
-REM === Path to the shortcut to create on the Desktop ===
-set SHORTCUT_NAME=hyloa.lnk
-set DESKTOP=%USERPROFILE%\Desktop
-set SHORTCUT_PATH=%DESKTOP%\%SHORTCUT_NAME%
-
-REM === Path to the package icon ===
-set ICON_PATH=%BASE_DIR%hyloa\resources\icon.ico
-
-REM === Path to the VBS launcher ===
-set LAUNCH_VBS=%BASE_DIR%launch_hyloa.vbs
-
-REM === Path to the wheel file (assumed inside dist\) ===
-for /f "delims=" %%f in ('dir /b "%BASE_DIR%dist\hyloa-*.whl" 2^>nul') do set WHEEL_FILE=%BASE_DIR%dist\%%f
-
-echo ================================
-echo Checking for wheel package...
 if not defined WHEEL_FILE (
-    echo ERROR: No wheel found in dist\ folder.
-    echo Please ensure a file like dist\hyloa-x.y.z-py3-none-any.whl exists.
+    echo ERROR: No wheel file found in this folder.
+    echo Place setup.bat and hyloa-xxx.whl in the same folder.
     pause
     exit /b 1
 )
-echo Found: %WHEEL_FILE%
 
-echo ================================
-echo Creation of virtual environment...
-if not exist "%VENV_DIR%" (
-    python -m venv "%VENV_DIR%"
+echo Found wheel: %WHEEL_FILE%
+
+REM === Virtual environment path ===
+set VENV_DIR=%BASE_DIR%venv
+python -m venv "%VENV_DIR%"
+
+REM === Install wheel ===
+"%VENV_DIR%\Scripts\python.exe" -m pip install --upgrade pip
+"%VENV_DIR%\Scripts\python.exe" -m pip install "%WHEEL_FILE%"
+
+REM === Locate installed package (inside venv) ===
+set SITE_PKGS=%VENV_DIR%\Lib\site-packages\hyloa
+
+REM === Icon inside the installed package ===
+set ICON_PATH=%SITE_PKGS%\resources\icon.ico
+
+REM === Script vytvořený setuptools ===
+set APP_EXE=%VENV_DIR%\Scripts\hyloa.exe
+
+IF NOT EXIST "%APP_EXE%" (
+    echo ERROR: hyloa.exe not found. Entry point missing.
+    pause
+    exit /b 1
 )
 
-echo ================================
-echo Activating virtual environment...
-call "%VENV_DIR%\Scripts\activate.bat"
+REM === Create VBS launcher (no terminal) ===
+set LAUNCH_VBS=%BASE_DIR%launch_hyloa.vbs
 
-echo ================================
-echo Upgrading pip and wheel...
-"%PYTHON_EXE%" -m pip install --upgrade pip wheel
+echo Set shell = CreateObject("WScript.Shell") > "%LAUNCH_VBS%"
+echo shell.Run Chr(34) ^& "%APP_EXE%" ^& Chr(34), 0 >> "%LAUNCH_VBS%"
+echo Set shell = Nothing >> "%LAUNCH_VBS%"
 
-echo ================================
-echo Installing package from wheel...
-"%PYTHON_EXE%" -m pip install --force-reinstall "%WHEEL_FILE%"
+REM === Create desktop shortcut ===
+set SHORTCUT=%USERPROFILE%\Desktop\hyloa.lnk
 
-echo ================================
-echo Creating VBS launcher...
-REM === Save a .vbs file that launches the program without showing the terminal
-echo Set WshShell = CreateObject("WScript.Shell") > "%LAUNCH_VBS%"
-echo WshShell.Run Chr(34) ^& "%PYTHON_EXE%" ^& Chr(34) ^& " " ^& Chr(34) ^& "%MAIN_SCRIPT%" ^& Chr(34), 0 >> "%LAUNCH_VBS%"
-echo Set WshShell = Nothing >> "%LAUNCH_VBS%"
-
-echo ================================
-echo Creating shortcut on Desktop...
-
-REM === Create the shortcut to VBS
 echo Set oWS = WScript.CreateObject("WScript.Shell") > temp.vbs
-echo sLinkFile = "%SHORTCUT_PATH%" >> temp.vbs
-echo Set oLink = oWS.CreateShortcut(sLinkFile) >> temp.vbs
+echo Set oLink = oWS.CreateShortcut("%SHORTCUT%") >> temp.vbs
 echo oLink.TargetPath = "%LAUNCH_VBS%" >> temp.vbs
-echo oLink.WorkingDirectory = "%BASE_DIR%" >> temp.vbs
-echo oLink.WindowStyle = 1 >> temp.vbs
 echo oLink.IconLocation = "%ICON_PATH%" >> temp.vbs
-echo oLink.Description = "Avvia hyloa GUI" >> temp.vbs
+echo oLink.Description = "Start HYLOA" >> temp.vbs
+echo oLink.WorkingDirectory = "%BASE_DIR%" >> temp.vbs
 echo oLink.Save >> temp.vbs
 
 cscript //nologo temp.vbs

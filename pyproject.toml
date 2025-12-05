@@ -38,7 +38,7 @@ hyloa = "hyloa.main:main"
 include-package-data = true
 
 [tool.setuptools.package-data]
-hyloa = ["resources/*.png"]
+hyloa = ["resources/*.png", "resources/*.ico"]
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -123,6 +123,14 @@ def correct_hysteresis_loop(app_instance):
     x_down_combo = QComboBox(); box_data.addWidget(x_down_combo, 1, 1)
     y_down_combo = QComboBox(); box_data.addWidget(y_down_combo, 1, 2)
 
+    # Select option to duplicate a branch
+    left_layout.addWidget(QLabel("Optional: duplicate up or down branch"))
+    double_branch = QComboBox()
+    double_branch.addItem("Original")
+    double_branch.addItem("Up")
+    double_branch.addItem("Down")
+    left_layout.addWidget(double_branch)
+
     # Selection of the file to save corrected columns
     left_layout.addWidget(QLabel("Optional: file to save corrected data (use same order):"))
     save_file_combo = QComboBox()
@@ -395,6 +403,17 @@ def correct_hysteresis_loop(app_instance):
             x_dw = np.copy(df_src[x_dw_col].astype(float).values) - field_shift
             x_dw = x_dw * field_scale
             y_dw = np.copy(df_src[y_dw_col].astype(float).values)
+
+            # Read duplication branch
+            db = double_branch.currentText()
+            if db == "Original":
+                pass
+            elif db == "Up":
+                x_dw = - x_up
+                y_dw = - y_up
+            elif db == "Down":
+                x_up = - x_dw
+                y_up = - y_dw
 
             # Read tail ranges
             try:

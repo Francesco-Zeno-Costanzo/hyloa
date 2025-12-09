@@ -182,6 +182,7 @@ class CommandWindow(QWidget):
 
                 if res is not None:
                     print(repr(res))
+                    self.local_vars["_"] = res
             except SyntaxError:
                 # If not possible, execute as statement
                 exec(command, globals(), self.local_vars)

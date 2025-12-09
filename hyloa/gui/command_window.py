@@ -175,13 +175,25 @@ class CommandWindow(QWidget):
         sys.stderr = output_capture
 
         try:
-            exec(command, globals(), self.local_vars)
+            # First try to execute as expression
+            try:
+                code = compile(command, "<input>", "eval")
+                res  = eval(code, globals(), self.local_vars)
+
+                if res is not None:
+                    print(repr(res))
+            except SyntaxError:
+                # If not possible, execute as statement
+                exec(command, globals(), self.local_vars)
+
             output = output_capture.getvalue()
+
         except Exception as e:
             output = f"Error: {str(e)}\n"
         finally:
             sys.stdout, sys.stderr = old_stdout, old_stderr
 
+        # Update dataframes with modified variables
         for idx, df in enumerate(self.dataframes):
             for column in df.columns:
                 if column in self.local_vars:

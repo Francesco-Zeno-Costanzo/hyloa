@@ -2,6 +2,10 @@
 HYLOA Release Notes
 =========================
 
+Version 1.10.1 - 2025-12-05
+---------------------------
+Fix installation on windows via setup.bat file
+
 Version 1.10.0 - 2025-12-05
 ---------------------------
 This release introduces a new Loop Correction panel and several usability improvements.

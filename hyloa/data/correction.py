@@ -338,7 +338,7 @@ def correct_hysteresis_loop(app_instance):
                 if xcol and ycol and xcol in df.columns and ycol in df.columns:
                     x = df[xcol].astype(float).values
                     y = df[ycol].astype(float).values
-                    ax.plot(x, y, marker='.', linestyle='', label=label, color='k')
+                    ax.plot(x, y, marker='.', linestyle='-', label=label, color='k')
 
                     # Add horizontal line at y=0
                     ax.axhline(y=0, color='gray', linestyle='--', linewidth=1)
@@ -409,11 +409,11 @@ def correct_hysteresis_loop(app_instance):
             if db == "Original":
                 pass
             elif db == "Up":
-                x_dw = - x_up
-                y_dw = - y_up
+                x_dw, y_dw = -np.copy(x_up), -np.copy(y_up)
+                x_dw, y_dw = x_dw[::-1], y_dw[::-1]  # reverse to maintain order
             elif db == "Down":
-                x_up = - x_dw
-                y_up = - y_dw
+                x_up, y_up = -np.copy(x_dw), -np.copy(y_dw)
+                x_up, y_up = x_up[::-1], y_up[::-1]  # reverse to maintain order
 
             # Read tail ranges
             try:
@@ -539,8 +539,8 @@ def correct_hysteresis_loop(app_instance):
             # Plot original data (black), corrected (red) and errors
             clear_fit_lines()
             ax.clear()
-            ax.plot(x_up/field_scale, y_up, 'k.', label='Up raw',   markersize=3, alpha=0.5)
-            ax.plot(x_dw/field_scale, y_dw, 'k.', label='Down raw', markersize=3, alpha=0.5)
+            ax.plot(x_up/field_scale, y_up, 'k.-', label='Up raw',   markersize=3, alpha=0.5)
+            ax.plot(x_dw/field_scale, y_dw, 'k.-', label='Down raw', markersize=3, alpha=0.5)
             
             # Add horizontal line at y=0
             ax.axhline(y=0, color='gray', linestyle='--', linewidth=1)
@@ -548,8 +548,8 @@ def correct_hysteresis_loop(app_instance):
             ax.axvline(x=0, color='gray', linestyle='--', linewidth=1)
 
             # Plot corrected closed data with errorbars (use error arrays e_up, e_dw)
-            ax.errorbar(x_up, y_up_closed, e_up, fmt='.', color='r', label='Up corrected', alpha=0.8)
-            ax.errorbar(x_dw, y_dw_closed, e_dw, fmt='.', color='r', label='Down corrected', alpha=0.8)
+            ax.errorbar(x_up, y_up_closed, e_up, fmt='.', color='r', linestyle='-', label='Up corrected',   alpha=0.8)
+            ax.errorbar(x_dw, y_dw_closed, e_dw, fmt='.', color='r', linestyle='-', label='Down corrected', alpha=0.8)
 
             # Fit coercivity
             try:
@@ -575,12 +575,13 @@ def correct_hysteresis_loop(app_instance):
                 # Plot coercive fit lines
                 t1 = np.linspace(x_n_start_hc, x_n_end_hc, 400)
                 t2 = np.linspace(x_p_start_hc, x_p_end_hc, 400)
-                ln, = ax.plot(t1, g_func(t1, *popt_n), '--', label='HC neg fit')
+                ln, = ax.plot(t1, g_func(t1, *popt_n), 'b--', label='HC neg fit')
                 ln.set_gid(f"fit_hc_neg")
-                ln, = ax.plot(t2, g_func(t2, *popt_p), '--', label='HC pos fit')
+                ln, = ax.plot(t2, g_func(t2, *popt_p), 'b--', label='HC pos fit')
                 ln.set_gid(f"fit_hc_pos")
 
             # Store numerical results
+            results_text_lines.append("Coercive fit results:")
             for p, val, err in zip(hc_param_names, popt_n, np.sqrt(np.diag(covm_n))):
                 results_text_lines.append(f"{p} = {format_value_error(val, err)}")    
                 
@@ -609,7 +610,18 @@ def correct_hysteresis_loop(app_instance):
 
             # Show textual results
             output_box.setPlainText("\n".join(results_text_lines))
-            logger.info("Loop correction completed. Summary:\n" + "\n".join(results_text_lines))
+
+            # Summary of results
+            log_results_lines = []
+            log_results_lines.append(f"Summary of correction for data in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}:")
+            log_results_lines.append(f"Corrected data with field shift = {field_shift} and scale = {field_scale}")
+            log_results_lines.append(f"Using tail fit function: {tail_function_edit.text()}")
+            log_results_lines.append(f"Using coercive fit function: {hc_function_edit.text()}")
+            log_results_lines.append(f"Using range limits (neg): {x_n_start/field_scale} to {x_n_end/field_scale}")
+            log_results_lines.append(f"Using range limits (pos): {x_p_start/field_scale} to {x_p_end/field_scale}")
+            log_results_lines.append(f"Using coercive fit ranges (down): {x_n_start_hc/field_scale} to {x_n_end_hc/field_scale}")
+            log_results_lines.append(f"Using coercive fit ranges (up): {x_p_start_hc/field_scale} to {x_p_end_hc/field_scale}\n")
+            logger.info("Loop correction completed. Summary:\n" + "\n".join(log_results_lines) +"\n".join(results_text_lines))
 
             # Save corrected columns if requested
             if save_idx is not None:

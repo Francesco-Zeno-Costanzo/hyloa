@@ -54,7 +54,7 @@ class LogWindow(QPlainTextEdit):
             new_lines = lines[self.last_line_count:]
             self.last_line_count = len(lines)
 
-            cleaned = [line.split(" - ")[-1] for line in new_lines]
+            cleaned = [line.split(" INFO - ")[-1] for line in new_lines]
 
             # Scroll on bottom
             scrollbar = self.verticalScrollBar()

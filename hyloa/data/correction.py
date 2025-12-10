@@ -94,12 +94,6 @@ def correct_hysteresis_loop(app_instance):
             "to extract properties such as coercive field or remanence. This second fit operates on the *corrected* data.\n"
             "It is recommended to use simple low-order polinomials to fit coercivity or remenance regions.\n"
             "\n"
-            "• Press 'Correct' to execute both fit blocks for both branches.\n"
-            "\n"
-            "Examples of fit functions:\n"
-            "    a + b*x\n"
-            "    a + b*x + c*x**2\n"
-            "    np.tanh(a*(x-b))\n"
         )
 
         QMessageBox.information(window, "Correction Guide", help_text)
@@ -108,6 +102,10 @@ def correct_hysteresis_loop(app_instance):
     help_button = QPushButton("Help")
     help_button.clicked.connect(show_help_dialog)
     left_layout.addWidget(help_button, alignment=Qt.AlignLeft)
+
+    #===============================================#
+    # Load data                                     #
+    #===============================================#
 
     # Selection of the file to process
     left_layout.addWidget(QLabel("Select data file (source):"))
@@ -127,18 +125,22 @@ def correct_hysteresis_loop(app_instance):
     x_down_combo = QComboBox(); box_data.addWidget(x_down_combo, 1, 1)
     y_down_combo = QComboBox(); box_data.addWidget(y_down_combo, 1, 2)
 
+    def update_columns_from_selected_file():
+        ''' Update the column selection combos based on the selected source file.
+        '''
+        idx = file_combo.currentIndex()
+        cols = list(dataframes[idx].columns)
+        for combo in (x_up_combo, y_up_combo, x_down_combo, y_down_combo):
+            combo.clear()
+            combo.addItems(cols)
+
+    file_combo.currentIndexChanged.connect(update_columns_from_selected_file)
+    update_columns_from_selected_file()
+
+    #===============================================#
+    # Store data                                    #
+    #===============================================#
     
-    box_options = QGridLayout()
-    left_layout.addLayout(box_options)
-
-    # Select option to duplicate a branch
-    double_branch = QComboBox()
-    double_branch.addItem("No")
-    double_branch.addItem("Up")
-    double_branch.addItem("Down")
-    box_options.addWidget(QLabel("Duplicate branch: "), 0, 0)
-    box_options.addWidget(double_branch, 0, 1)
-
     # Selection of the file to save corrected columns
     left_layout.addWidget(QLabel("Optional: file to save corrected data (use same order):"))
     save_file_combo = QComboBox()
@@ -157,20 +159,6 @@ def correct_hysteresis_loop(app_instance):
     dest_box.addWidget(QLabel("Save down:"), 1, 0)
     x_dw_dest = QComboBox(); dest_box.addWidget(x_dw_dest, 1, 1)
     y_dw_dest = QComboBox(); dest_box.addWidget(y_dw_dest, 1, 2)
-
-    #===============================================#
-
-    def update_columns_from_selected_file():
-        ''' Update the column selection combos based on the selected source file.
-        '''
-        idx = file_combo.currentIndex()
-        cols = list(dataframes[idx].columns)
-        for combo in (x_up_combo, y_up_combo, x_down_combo, y_down_combo):
-            combo.clear()
-            combo.addItems(cols)
-
-    file_combo.currentIndexChanged.connect(update_columns_from_selected_file)
-    update_columns_from_selected_file()
 
     def update_dest_columns():
         ''' Update the column selection combos based on the selected save file.
@@ -193,12 +181,12 @@ def correct_hysteresis_loop(app_instance):
     save_file_combo.currentIndexChanged.connect(update_dest_columns)
 
     #===============================================#
-    # Set parameters for the corrections            #
+    # Set parameters for the field corrections      #
     #===============================================#
 
-    st_grid = QGridLayout()
-    left_layout.addWidget(QLabel("---- Field correction ----"))
+    left_layout.addWidget(QLabel("-------- Preliminary Analysis --------"))
 
+    st_grid = QGridLayout()
     left_layout.addLayout(st_grid)
     st_grid.addWidget(QLabel("Field shift (i.e. H = H - shift)"), 0, 0)
     st_grid.addWidget(QLabel("Field scale (i.e. H = H * scale)"), 0, 1)
@@ -209,8 +197,20 @@ def correct_hysteresis_loop(app_instance):
     field_scale_edit = QLineEdit("1")
     st_grid.addWidget(field_scale_edit, 1, 1)
 
-    
-    left_layout.addWidget(QLabel("---- Fit for tail correction ----"))
+    change_box = QGridLayout()
+    left_layout.addLayout(change_box)
+    apply_shift_btn = QPushButton("Applay H --> (H - shift)*scale")
+    save_shift_btn  = QPushButton("Save H changes")
+    flip_btn        = QPushButton("Check Symmetry")
+    change_box.addWidget(apply_shift_btn, 0, 0)
+    change_box.addWidget(save_shift_btn, 0, 1)
+    change_box.addWidget(flip_btn, 0, 2)
+
+    #===============================================#
+    # Set parameters for the mag corrections        #
+    #===============================================#
+
+    left_layout.addWidget(QLabel("-------- Fit for tail correction --------"))
 
     limits_grid = QGridLayout()
     left_layout.addLayout(limits_grid)
@@ -250,20 +250,20 @@ def correct_hysteresis_loop(app_instance):
     # Set parameters for coercivity computation     #
     #===============================================#
 
-    left_layout.addWidget(QLabel("---- Fit for coercivity/remenance exitamtion ----"))
+    left_layout.addWidget(QLabel("-------- Fit for coercivity/remenance exitamtion --------"))
 
     limits_grid_1 = QGridLayout()
     left_layout.addLayout(limits_grid_1)
 
     x_start_up_hc_edit = QLineEdit("100")
-    x_end_up_hc_edit   = QLineEdit("200")
+    x_end_up_hc_edit   = QLineEdit("300")
     
     limits_grid_1.addWidget(QLabel("x_start_up"), 0, 0)
     limits_grid_1.addWidget(x_start_up_hc_edit,   0, 1)
     limits_grid_1.addWidget(QLabel("x_end_up"),   0, 2)
     limits_grid_1.addWidget(x_end_up_hc_edit,     0, 3)
 
-    x_start_dw_hc_edit = QLineEdit("-200")
+    x_start_dw_hc_edit = QLineEdit("-300")
     x_end_dw_hc_edit   = QLineEdit("-100")
 
     limits_grid_1.addWidget(QLabel("x_start_down"), 1, 0)
@@ -287,9 +287,20 @@ def correct_hysteresis_loop(app_instance):
     left_layout.addWidget(hc_function_edit)
 
     #===============================================#
+    """
+    # Select option to duplicate a branch
+    double_branch = QComboBox()
+    double_branch.addItem("No")
+    double_branch.addItem("Up")
+    double_branch.addItem("Down")
+    box_options.addWidget(QLabel("Duplicate branch: "), 0, 2)
+    box_options.addWidget(double_branch, 0, 3)
+    """
+
+    #===============================================#
     # Run button                                    #
     #===============================================#
-    run_button = QPushButton("Correct")
+    run_button = QPushButton("Apply drift correction and Hc/Mr fit")
     left_layout.addWidget(run_button)
 
     left_layout.addStretch()
@@ -325,30 +336,47 @@ def correct_hysteresis_loop(app_instance):
     #================================================#
     # Helper function for plot and preview refresh   #
     #================================================#
+    def get_preview_data():
+        ''' Get initial data for preview plot
+        '''
+        idx = file_combo.currentIndex()
+        df  = dataframes[idx]
 
-    def refresh_preview():
+        x_up = df[x_up_combo.currentText()].astype(float).values
+        y_up = df[y_up_combo.currentText()].astype(float).values
+        x_dw = df[x_down_combo.currentText()].astype(float).values
+        y_dw = df[y_down_combo.currentText()].astype(float).values
+
+        return x_up, y_up, x_dw, y_dw
+
+    last_x_up = None
+    last_y_up = None
+    last_x_dw = None
+    last_y_dw = None
+
+    def refresh_preview(x_up, y_up, x_dw, y_dw):
         ''' Draw selected data on canvas
         '''
+        nonlocal last_x_up, last_y_up, last_x_dw, last_y_dw
+        # Local savaing to concatenate changes
+        last_x_up = x_up
+        last_y_up = y_up
+        last_x_dw = x_dw
+        last_y_dw = y_dw
+
         try:
             ax.clear()
-            idx = file_combo.currentIndex()
-            df  = dataframes[idx]
+            
+            # Draw Up branch
+            if x_up is not None and y_up is not None:
+                ax.plot(x_up, y_up, 'k.-', label="Up")
 
-            # plot both up and down raw points if available
-            def plot_if_exists(xcol, ycol, label):
-                if xcol and ycol and xcol in df.columns and ycol in df.columns:
-                    x = df[xcol].astype(float).values
-                    y = df[ycol].astype(float).values
-                    ax.plot(x, y, marker='.', linestyle='-', label=label, color='k')
+            # Draw Down branch
+            if x_dw is not None and y_dw is not None:
+                ax.plot(x_dw, y_dw, 'k.-', label="Down")
 
-                    # Add horizontal line at y=0
-                    ax.axhline(y=0, color='gray', linestyle='--', linewidth=1)
-                    # Add vertical line at x=0
-                    ax.axvline(x=0, color='gray', linestyle='--', linewidth=1)
-
-            plot_if_exists(x_up_combo.currentText(),   y_up_combo.currentText(), "Up")
-            plot_if_exists(x_down_combo.currentText(), y_down_combo.currentText(), "Down")
-
+            ax.axhline(0, color='gray', linestyle='--', linewidth=1)
+            ax.axvline(0, color='gray', linestyle='--', linewidth=1)
             
             handles, labels = ax.get_legend_handles_labels()
             if labels:
@@ -359,29 +387,104 @@ def correct_hysteresis_loop(app_instance):
             canvas.draw()
         except Exception as e:
             QMessageBox.critical("Error refreshing preview: %s", e)
+    
+    def save_temporary_data():
+        try:
+            if last_x_up is None:
+                QMessageBox.warning(window, "Warning", "No temporary data to save.")
+                return
+
+            idx = file_combo.currentIndex()
+            df = dataframes[idx]
+
+            x_up_col = x_up_combo.currentText()
+            y_up_col = y_up_combo.currentText()
+            x_dw_col = x_down_combo.currentText()
+            y_dw_col = y_down_combo.currentText()
+
+            # salva i valori correnti della preview
+            df[x_up_col] = last_x_up
+            df[y_up_col] = last_y_up
+            df[x_dw_col] = last_x_dw
+            df[y_dw_col] = last_y_dw
+
+            update_default_limits()
+
+            fs1 = float(field_shift_edit.text())
+            fs2 = float(field_scale_edit.text())
+            logger.info(f"Columns {x_up_col} and {x_dw_col}, shifted by {fs1} and scaled by {fs2}")
+
+            
+        except Exception as e:
+            QMessageBox.critical(window, "Error", f"Error saving temporary data:\n{e}")
+
+    def update_default_limits():
+
+        # Retrive old QLineEdit according fild scaling
+        try:
+            x_n_end      = float(x_end_n_edit.text())
+            x_p_start    = float(x_start_p_edit.text())
+         
+            x_n_start_hc = float(x_start_dw_hc_edit.text())
+            x_n_end_hc   = float(x_end_dw_hc_edit.text())
+            x_p_start_hc = float(x_start_up_hc_edit.text())
+            x_p_end_hc   = float(x_end_up_hc_edit.text())
+            
+            field_shift = float(field_shift_edit.text())
+            field_scale = float(field_scale_edit.text())
+        except Exception:
+            pass
+        # Scale and shift value
+        x_end_n_edit.setText(f"{(x_n_end - field_shift)*field_scale:.1f}")
+        x_start_p_edit.setText(f"{(x_p_start - field_shift)*field_scale:.1f}")
+        
+        x_start_dw_hc_edit.setText(f"{(x_n_start_hc - field_shift)*field_scale:.1f}")
+        x_end_dw_hc_edit.setText(f"{(x_n_end_hc - field_shift)*field_scale:.1f}")
+        x_start_up_hc_edit.setText(f"{(x_p_start_hc - field_shift)*field_scale:.1f}")
+        x_end_up_hc_edit.setText(f"{(x_p_end_hc - field_shift)*field_scale:.1f}")
+
 
     # Connect changes to update preview
     for cb in (x_up_combo, y_up_combo, x_down_combo, y_down_combo, file_combo):
         try:
-            cb.currentIndexChanged.connect(refresh_preview)
+            cb.currentIndexChanged.connect(
+                lambda : refresh_preview(*get_preview_data())
+            )
         except Exception:
             pass
 
+    #================================================#
+    # Button connections                             #
+    #================================================#
     
     # Connect run button
     run_button.clicked.connect(lambda: perform_correction(
-        file_combo, save_file_combo,
-        x_up_combo, y_up_combo, x_down_combo, y_down_combo,
-        double_branch, field_shift_edit, field_scale_edit,
-        x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
-        tail_params_edit, tail_function_edit,
-        x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
-        hc_params_edit, hc_function_edit,
-        x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
-        dataframes, logger,
-        ax, canvas, output_box, window)
+            file_combo, save_file_combo,
+            x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
+            tail_params_edit, tail_function_edit,
+            x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
+            hc_params_edit, hc_function_edit,
+            x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
+            dataframes, logger,
+            ax, canvas, output_box, window
+        )
     )
-    
+
+    flip_btn.clicked.connect(lambda: flip(
+            file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            dataframes, window, refresh_preview
+        )
+    ) 
+
+    apply_shift_btn.clicked.connect(lambda: apply_shift_scale(
+            file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            dataframes, field_shift_edit, field_scale_edit, window, refresh_preview
+        )
+    )
+
+    save_shift_btn.clicked.connect(save_temporary_data)
+         
     # Sub-window for fitting panel
     sub = QMdiSubWindow()
     sub.setWidget(window)
@@ -408,12 +511,113 @@ def clear_fit_lines(ax):
         ln.remove()
 
 #================================================#
+# Function to chek simmetry by flipping a branch #
+#================================================#
+
+def flip(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+         dataframes, window, up):
+    '''
+    Function to flip a brach to ensure simmetricity of the loop.
+
+    Parameters
+    ----------
+    file_combo : QComboBox
+        Combo box to select source data file.
+    x_up_combo : QComboBox
+        Combo box to select X column for Up branch.
+    y_up_combo : QComboBox
+        Combo box to select Y column for Up branch.
+    x_down_combo : QComboBox
+        Combo box to select X column for Down branch.
+    y_down_combo : QComboBox
+        Combo box to select Y column for Down branch.
+    dataframes : list of pd.DataFrame
+        List of dataframes containing loaded data.
+    window : QWidget
+        The main window widget.
+    up : callable
+        Function to update the preview
+    '''
+    try:
+        idx = file_combo.currentIndex()
+        df  = dataframes[idx]
+
+        # Flip up branch
+        x_up = -df[x_up_combo.currentText()].astype(float)
+        y_up = -df[y_up_combo.currentText()].astype(float)
+        # Down data remain unchanged
+        x_dw = df[x_down_combo.currentText()].astype(float)
+        y_dw = df[y_down_combo.currentText()].astype(float)
+        
+        # Update preview
+        up(x_up, y_up, x_dw, y_dw)
+
+    except Exception as e:
+        QMessageBox.critical(window, "Error", f"Error during flip:\n{e}")
+#================================================#
+# Function to correct field                      #
+#================================================#
+
+def apply_shift_scale(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo, 
+                      dataframes, field_shift_edit, field_scale_edit,
+                      window, up):
+    '''
+    Function for ffield scaling, H --> (H - shift)*scaling.
+
+    Parameters
+    ----------
+    file_combo : QComboBox
+        Combo box to select source data file.
+    x_up_combo : QComboBox
+        Combo box to select X column for Up branch.
+    y_up_combo : QComboBox
+        Combo box to select Y column for Up branch.
+    x_down_combo : QComboBox
+        Combo box to select X column for Down branch.
+    y_down_combo : QComboBox
+        Combo box to select Y column for Down branch.
+    dataframes : list of pd.DataFrame
+        List of dataframes containing loaded data.
+    field_shift_edit : QLineEdit
+        Value for field shifting
+    field_scale_edit : QLineEdit
+        Value for field scaling
+    window : QWidget
+        The main window widget.
+    up : callable
+        Function to update the preview
+    '''
+    try:
+        idx = file_combo.currentIndex()
+        df  = dataframes[idx]
+
+        x_up_col = x_up_combo.currentText()
+        x_dw_col = x_down_combo.currentText()
+
+        field_shift = float(field_shift_edit.text())
+        field_scale = float(field_scale_edit.text())
+
+        # Apply shift and scale
+        x_up = (df[x_up_col].astype(float) - field_shift) * field_scale
+        x_dw = (df[x_dw_col].astype(float) - field_shift) * field_scale
+        
+        # y data remain unchanged
+        y_up = df[y_up_combo.currentText()].astype(float)
+        y_dw = df[y_down_combo.currentText()].astype(float)
+
+        # update preview
+        up(x_up, y_up, x_dw, y_dw)
+
+    except Exception as e:
+        QMessageBox.critical(window, "Error", f"Error applying shift/scale:\n{e}")
+
+
+#================================================#
 # MAIN CORRECTION FUNCTION                       #
 #================================================#
 
 def perform_correction(file_combo, save_file_combo,
                        x_up_combo, y_up_combo, x_down_combo, y_down_combo,
-                       double_branch, field_shift_edit, field_scale_edit,
                        x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
                        tail_params_edit, tail_function_edit,
                        x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
@@ -426,9 +630,7 @@ def perform_correction(file_combo, save_file_combo,
     The correction involves fitting the saturation parts (tails) of the hystersis loop
     to remove drifts; then there is the possibilty to fit a region of the loop to
     extract the values of the coercive field and/ore the remenance.
-    The anisotropy filed is computed by integrating the area between the up and down branches,
-    and selected the field where the area il below/above a certain threshold.
-
+    
     Parameters
     ----------
     file_combo : QComboBox
@@ -443,12 +645,6 @@ def perform_correction(file_combo, save_file_combo,
         Combo box to select X column for Down branch.
     y_down_combo : QComboBox
         Combo box to select Y column for Down branch.
-    double_branch : QComboBox
-        Combo box to select branch duplication option.
-    field_shift_edit : QLineEdit
-        Line edit for field shift value.
-    field_scale_edit : QLineEdit
-        Line edit for field scale value.
     x_start_n_edit : QLineEdit
         Line edit for negative tail start limit.
     x_end_n_edit : QLineEdit
@@ -499,9 +695,6 @@ def perform_correction(file_combo, save_file_combo,
 
         results_text_lines = []
 
-        # Read field shift/scale
-        field_shift = float(field_shift_edit.text())
-        field_scale = float(field_scale_edit.text())
 
         # Read x/y column names
         x_up_col = x_up_combo.currentText()
@@ -511,14 +704,12 @@ def perform_correction(file_combo, save_file_combo,
 
         
         # Prepare arrays: apply shift and scale
-        x_up = np.copy(df_src[x_up_col].astype(float).values) - field_shift
-        x_up = x_up * field_scale
+        x_up = np.copy(df_src[x_up_col].astype(float).values)
         y_up = np.copy(df_src[y_up_col].astype(float).values)
-
-        x_dw = np.copy(df_src[x_dw_col].astype(float).values) - field_shift
-        x_dw = x_dw * field_scale
+        x_dw = np.copy(df_src[x_dw_col].astype(float).values)
         y_dw = np.copy(df_src[y_dw_col].astype(float).values)
 
+        """
         # Read duplication branch
         db = double_branch.currentText()
         if db == "Original":
@@ -529,21 +720,21 @@ def perform_correction(file_combo, save_file_combo,
         elif db == "Down":
             x_up, y_up = -np.copy(x_dw), -np.copy(y_dw)
             x_up, y_up = x_up[::-1], y_up[::-1]  # reverse to maintain order
-
+        """
 
         # Read tail ranges
         try:
-            x_n_start = float(x_start_n_edit.text()) * field_scale  # For up negative region
-            x_n_end   = float(x_end_n_edit.text())   * field_scale
+            x_n_start = float(x_start_n_edit.text()) # For up negative region
+            x_n_end   = float(x_end_n_edit.text())
         except Exception:
             # fallback
-            x_n_start, x_n_end = -4000 * field_scale, -1000 * field_scale
+            x_n_start, x_n_end = -4000,  -1000
 
         try:
-            x_p_start = float(x_start_p_edit.text()) * field_scale  # For up positive region
-            x_p_end   = float(x_end_p_edit.text()) * field_scale
+            x_p_start = float(x_start_p_edit.text()) # For up positive region
+            x_p_end   = float(x_end_p_edit.text()) 
         except Exception:
-            x_p_start, x_p_end = 1000 * field_scale, 4000 * field_scale
+            x_p_start, x_p_end = 1000, 4000
 
         # Masks for up/down tails split by sign
         mask_n_up = (x_up >= x_n_start) & (x_up <= x_n_end)
@@ -655,8 +846,8 @@ def perform_correction(file_combo, save_file_combo,
         # Plot original data (black), corrected (red) and errors
         clear_fit_lines(ax)
         ax.clear()
-        ax.plot(x_up/field_scale, y_up, 'k.-', label='Up raw',   markersize=3, alpha=0.5)
-        ax.plot(x_dw/field_scale, y_dw, 'k.-', label='Down raw', markersize=3, alpha=0.5)
+        ax.plot(x_up, y_up, 'k.-', label='Up raw',   markersize=3, alpha=0.5)
+        ax.plot(x_dw, y_dw, 'k.-', label='Down raw', markersize=3, alpha=0.5)
         
         # Add horizontal line at y=0
         ax.axhline(y=0, color='gray', linestyle='--', linewidth=1)
@@ -669,10 +860,10 @@ def perform_correction(file_combo, save_file_combo,
 
         # Fit coercivity
         try:
-            x_n_start_hc = float(x_start_dw_hc_edit.text()) * field_scale
-            x_n_end_hc   = float(x_end_dw_hc_edit.text())   * field_scale
-            x_p_start_hc = float(x_start_up_hc_edit.text()) * field_scale
-            x_p_end_hc   = float(x_end_up_hc_edit.text())   * field_scale
+            x_n_start_hc = float(x_start_dw_hc_edit.text())
+            x_n_end_hc   = float(x_end_dw_hc_edit.text())
+            x_p_start_hc = float(x_start_up_hc_edit.text())
+            x_p_end_hc   = float(x_end_up_hc_edit.text())
         except Exception:
             QMessageBox.critical(window, "Error", f"Invalid value for Hc range:\n{e}")
             return
@@ -730,13 +921,12 @@ def perform_correction(file_combo, save_file_combo,
         # Summary of results
         log_results_lines = []
         log_results_lines.append(f"Summary of correction for data in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}:")
-        log_results_lines.append(f"Corrected data with field shift = {field_shift} and scale = {field_scale}")
         log_results_lines.append(f"Using tail fit function: {tail_function_edit.text()}")
         log_results_lines.append(f"Using coercive fit function: {hc_function_edit.text()}")
-        log_results_lines.append(f"Using range limits (neg): {x_n_start/field_scale} to {x_n_end/field_scale}")
-        log_results_lines.append(f"Using range limits (pos): {x_p_start/field_scale} to {x_p_end/field_scale}")
-        log_results_lines.append(f"Using coercive fit ranges (down): {x_n_start_hc/field_scale} to {x_n_end_hc/field_scale}")
-        log_results_lines.append(f"Using coercive fit ranges (up): {x_p_start_hc/field_scale} to {x_p_end_hc/field_scale}\n")
+        log_results_lines.append(f"Using range limits (neg): {x_n_start} to {x_n_end}")
+        log_results_lines.append(f"Using range limits (pos): {x_p_start} to {x_p_end}")
+        log_results_lines.append(f"Using coercive fit ranges (down): {x_n_start_hc} to {x_n_end_hc}")
+        log_results_lines.append(f"Using coercive fit ranges (up): {x_p_start_hc} to {x_p_end_hc}\n")
         logger.info("Loop correction completed. Summary:\n" + "\n".join(log_results_lines) +"\n".join(results_text_lines))
 
         # Save corrected columns if requested

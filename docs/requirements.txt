@@ -1,2 +1,8 @@
 sphinx
 sphinx_rtd_theme
+PyQt5
+numpy
+scipy
+pandas
+requests
+matplotlib

@@ -13,6 +13,7 @@ Submodules
    hyloa.gui.plot_window
    hyloa.gui.log_window
    hyloa.gui.worksheet
+   hyloa.gui.correction_window
 
 
 Module contents

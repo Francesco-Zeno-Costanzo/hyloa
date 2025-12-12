@@ -48,6 +48,30 @@ def correct_hysteresis_loop(app_instance):
     dataframes  = app_instance.dataframes
     logger      = app_instance.logger
 
+    # Variables to store last preview of selected data
+    last_x_up = None
+    last_y_up = None
+    last_x_dw = None
+    last_y_dw = None
+
+    plot_state = {
+        "flipped"   : False,
+        "done_corr" : False,
+        "x_up"      : None,
+        "y_up"      : None,
+        "x_dw"      : None,
+        "y_dw"      : None,
+        "x_up_corr" : None,
+        "Y_up_corr" : None,
+        "x_dw_corr" : None,
+        "y_dw_corr" : None,
+        "e_up"      : None,
+        "e_dw"      : None,
+        "fit_hc_n"  : None,
+        "fit_hc_p"  : None
+    }
+
+
     if not dataframes:
         QMessageBox.critical(app_instance, "Error", "No data loaded!")
         return
@@ -200,10 +224,8 @@ def correct_hysteresis_loop(app_instance):
     change_box = QGridLayout()
     left_layout.addLayout(change_box)
     apply_shift_btn = QPushButton("Applay H --> (H - shift)*scale")
-    save_shift_btn  = QPushButton("Save H changes")
     flip_btn        = QPushButton("Check Symmetry")
     change_box.addWidget(apply_shift_btn, 0, 0)
-    change_box.addWidget(save_shift_btn, 0, 1)
     change_box.addWidget(flip_btn, 0, 2)
 
     #===============================================#
@@ -333,6 +355,69 @@ def correct_hysteresis_loop(app_instance):
     output_box.setFixedHeight(140)
     right_layout.addWidget(output_box, stretch=1)
 
+    def draw_plot():
+        ax.clear()
+
+        # flip factor (non altera i dati direttamente)
+        mul = -1 if plot_state["flipped"] else 1
+
+        #==========================================================#
+        # Raw data                                                 #
+        #==========================================================#
+        if plot_state["x_up"] is not None and plot_state["y_up"] is not None:
+
+            ax.plot(plot_state["x_up"] * mul, plot_state["y_up"] * mul, 'k.-',
+                    label="Up raw", alpha=0.5 if plot_state["done_corr"] else 1)
+            
+        if plot_state["x_dw"] is not None and plot_state["y_dw"] is not None:
+
+            ax.plot(plot_state["x_dw"], plot_state["y_dw"], 'k.-', 
+                    label="Down raw", alpha=0.5 if plot_state["done_corr"] else 1)
+
+        #==========================================================#
+        # Corrected data                                           #    
+        #==========================================================#
+        if plot_state.get("x_up_corr") is not None:
+
+            ax.errorbar(
+                plot_state["x_up_corr"] * mul, plot_state["y_up_corr"] * mul,
+                yerr=plot_state["e_up"], linestyle='-', 
+                fmt='.', color='r', label="Up corrected"
+            )
+
+        if plot_state.get("x_dw_corr") is not None:
+
+            ax.errorbar(
+                plot_state["x_dw_corr"], plot_state["y_dw_corr"],
+                yerr=plot_state["e_dw"], linestyle='-', 
+                fmt='.', color='r', label="Down corrected"
+            )
+
+        #==========================================================#
+        # Fit lines                                                #
+        #==========================================================#
+        if plot_state.get("fit_hc_n") is not None:
+            xfit, yfit = plot_state["fit_hc_n"]
+            ax.plot(xfit, yfit, 'b--', label="HC neg fit")
+
+        if plot_state.get("fit_hc_p") is not None:
+            xfit, yfit = plot_state["fit_hc_p"]
+            ax.plot(xfit, yfit, 'b--', label="HC pos fit")
+
+        #==========================================================#
+        ax.axhline(0, color='gray', linestyle='--', linewidth=1)
+        ax.axvline(0, color='gray', linestyle='--', linewidth=1)
+
+        if ax.get_legend_handles_labels()[1]:
+            ax.legend()
+
+        ax.set_xlabel("H [Oe]", fontsize=15)
+        ax.set_ylabel("M/M$_{sat}$", fontsize=15)
+
+        fig.tight_layout()
+        canvas.draw()
+
+
     #================================================#
     # Helper function for plot and preview refresh   #
     #================================================#
@@ -349,11 +434,6 @@ def correct_hysteresis_loop(app_instance):
 
         return x_up, y_up, x_dw, y_dw
 
-    last_x_up = None
-    last_y_up = None
-    last_x_dw = None
-    last_y_dw = None
-
     def refresh_preview(x_up, y_up, x_dw, y_dw):
         ''' Draw selected data on canvas
         '''
@@ -365,83 +445,16 @@ def correct_hysteresis_loop(app_instance):
         last_y_dw = y_dw
 
         try:
-            ax.clear()
-            
-            # Draw Up branch
-            if x_up is not None and y_up is not None:
-                ax.plot(x_up, y_up, 'k.-', label="Up")
+            plot_state.update({
+                "x_up": x_up,
+                "y_up": y_up,
+                "x_dw": x_dw,
+                "y_dw": y_dw,
+            })
+            draw_plot()
 
-            # Draw Down branch
-            if x_dw is not None and y_dw is not None:
-                ax.plot(x_dw, y_dw, 'k.-', label="Down")
-
-            ax.axhline(0, color='gray', linestyle='--', linewidth=1)
-            ax.axvline(0, color='gray', linestyle='--', linewidth=1)
-            
-            handles, labels = ax.get_legend_handles_labels()
-            if labels:
-                ax.legend(handles, labels)
-
-            ax.set_xlabel("H [Oe]", fontsize=15)
-            ax.set_ylabel(r"M/M$_{sat}$", fontsize=15)
-            canvas.draw()
         except Exception as e:
             QMessageBox.critical("Error refreshing preview: %s", e)
-    
-    def save_temporary_data():
-        try:
-            if last_x_up is None:
-                QMessageBox.warning(window, "Warning", "No temporary data to save.")
-                return
-
-            idx = file_combo.currentIndex()
-            df = dataframes[idx]
-
-            x_up_col = x_up_combo.currentText()
-            y_up_col = y_up_combo.currentText()
-            x_dw_col = x_down_combo.currentText()
-            y_dw_col = y_down_combo.currentText()
-
-            # salva i valori correnti della preview
-            df[x_up_col] = last_x_up
-            df[y_up_col] = last_y_up
-            df[x_dw_col] = last_x_dw
-            df[y_dw_col] = last_y_dw
-
-            update_default_limits()
-
-            fs1 = float(field_shift_edit.text())
-            fs2 = float(field_scale_edit.text())
-            logger.info(f"Columns {x_up_col} and {x_dw_col}, shifted by {fs1} and scaled by {fs2}")
-
-            
-        except Exception as e:
-            QMessageBox.critical(window, "Error", f"Error saving temporary data:\n{e}")
-
-    def update_default_limits():
-
-        # Retrive old QLineEdit according fild scaling
-        try:
-            x_n_end      = float(x_end_n_edit.text())
-            x_p_start    = float(x_start_p_edit.text())
-         
-            x_n_start_hc = float(x_start_dw_hc_edit.text())
-            x_n_end_hc   = float(x_end_dw_hc_edit.text())
-            x_p_start_hc = float(x_start_up_hc_edit.text())
-            x_p_end_hc   = float(x_end_up_hc_edit.text())
-            
-            field_shift = float(field_shift_edit.text())
-            field_scale = float(field_scale_edit.text())
-        except Exception:
-            pass
-        # Scale and shift value
-        x_end_n_edit.setText(f"{(x_n_end - field_shift)*field_scale:.1f}")
-        x_start_p_edit.setText(f"{(x_p_start - field_shift)*field_scale:.1f}")
-        
-        x_start_dw_hc_edit.setText(f"{(x_n_start_hc - field_shift)*field_scale:.1f}")
-        x_end_dw_hc_edit.setText(f"{(x_n_end_hc - field_shift)*field_scale:.1f}")
-        x_start_up_hc_edit.setText(f"{(x_p_start_hc - field_shift)*field_scale:.1f}")
-        x_end_up_hc_edit.setText(f"{(x_p_end_hc - field_shift)*field_scale:.1f}")
 
 
     # Connect changes to update preview
@@ -461,29 +474,28 @@ def correct_hysteresis_loop(app_instance):
     run_button.clicked.connect(lambda: perform_correction(
             file_combo, save_file_combo,
             x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            field_shift_edit, field_scale_edit,
             x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
             tail_params_edit, tail_function_edit,
             x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
             hc_params_edit, hc_function_edit,
             x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
-            dataframes, logger,
-            ax, canvas, output_box, window
+            dataframes, logger, plot_state, draw_plot,
+            output_box, window, 
         )
     )
 
     flip_btn.clicked.connect(lambda: flip(
-            file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
-            dataframes, window, refresh_preview
+            plot_state, window, draw_plot
         )
     ) 
 
     apply_shift_btn.clicked.connect(lambda: apply_shift_scale(
             file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
-            dataframes, field_shift_edit, field_scale_edit, window, refresh_preview
+            dataframes, field_shift_edit, field_scale_edit, window,
+            plot_state, draw_plot
         )
     )
-
-    save_shift_btn.clicked.connect(save_temporary_data)
          
     # Sub-window for fitting panel
     sub = QMdiSubWindow()
@@ -514,43 +526,22 @@ def clear_fit_lines(ax):
 # Function to chek simmetry by flipping a branch #
 #================================================#
 
-def flip(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
-         dataframes, window, up):
+def flip(plot_state, window, draw_plot):
     '''
     Function to flip a brach to ensure simmetricity of the loop.
 
     Parameters
     ----------
-    file_combo : QComboBox
-        Combo box to select source data file.
-    x_up_combo : QComboBox
-        Combo box to select X column for Up branch.
-    y_up_combo : QComboBox
-        Combo box to select Y column for Up branch.
-    x_down_combo : QComboBox
-        Combo box to select X column for Down branch.
-    y_down_combo : QComboBox
-        Combo box to select Y column for Down branch.
-    dataframes : list of pd.DataFrame
-        List of dataframes containing loaded data.
+    plot_state : dict
+        dictionary of the plotted data
     window : QWidget
         The main window widget.
-    up : callable
+    draw_plot : callable
         Function to update the preview
     '''
     try:
-        idx = file_combo.currentIndex()
-        df  = dataframes[idx]
-
-        # Flip up branch
-        x_up = -df[x_up_combo.currentText()].astype(float)
-        y_up = -df[y_up_combo.currentText()].astype(float)
-        # Down data remain unchanged
-        x_dw = df[x_down_combo.currentText()].astype(float)
-        y_dw = df[y_down_combo.currentText()].astype(float)
-        
-        # Update preview
-        up(x_up, y_up, x_dw, y_dw)
+        plot_state["flipped"] = not plot_state["flipped"]
+        draw_plot()
 
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error during flip:\n{e}")
@@ -560,7 +551,7 @@ def flip(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
 
 def apply_shift_scale(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo, 
                       dataframes, field_shift_edit, field_scale_edit,
-                      window, up):
+                      window, plot_state, draw_plot):
     '''
     Function for ffield scaling, H --> (H - shift)*scaling.
 
@@ -584,7 +575,9 @@ def apply_shift_scale(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_c
         Value for field scaling
     window : QWidget
         The main window widget.
-    up : callable
+    plot_state : dict
+        dictionary of the plotted data
+    draw_plot : callable
         Function to update the preview
     '''
     try:
@@ -605,8 +598,13 @@ def apply_shift_scale(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_c
         y_up = df[y_up_combo.currentText()].astype(float)
         y_dw = df[y_down_combo.currentText()].astype(float)
 
-        # update preview
-        up(x_up, y_up, x_dw, y_dw)
+        plot_state.update({
+            "x_up": x_up,
+            "y_up": y_up,
+            "x_dw": x_dw,
+            "y_dw": y_dw,
+        })
+        draw_plot()
 
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error applying shift/scale:\n{e}")
@@ -618,13 +616,14 @@ def apply_shift_scale(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_c
 
 def perform_correction(file_combo, save_file_combo,
                        x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+                       field_shift_edit, field_scale_edit,
                        x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
                        tail_params_edit, tail_function_edit,
                        x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
                        hc_params_edit, hc_function_edit,
                        x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
-                       dataframes, logger,
-                       ax, canvas, output_box, window):
+                       dataframes, logger, plot_state, draw_plot,
+                       output_box, window):
     ''' 
     Perform the loop correction using the parameters from the UI.
     The correction involves fitting the saturation parts (tails) of the hystersis loop
@@ -645,6 +644,10 @@ def perform_correction(file_combo, save_file_combo,
         Combo box to select X column for Down branch.
     y_down_combo : QComboBox
         Combo box to select Y column for Down branch.
+    field_shift_edit : QLineEdit
+        Line edit for field shift value.
+    field_scale_edit : QLineEdit
+        Line edit for field scale value.
     x_start_n_edit : QLineEdit
         Line edit for negative tail start limit.
     x_end_n_edit : QLineEdit
@@ -673,10 +676,10 @@ def perform_correction(file_combo, save_file_combo,
         List of dataframes containing loaded data.
     logger : Logger
         Logger of the application.
-    ax : matplotlib.axes.Axes
-        Axes for plotting.
-    canvas : FigureCanvas
-        Canvas for rendering the plot.
+    plot_state : dict
+        dictionary of the plotted data
+    draw_plot : callable
+        Function to update the preview
     output_box : QTextEdit
         Text edit for displaying output results.
     window : QWidget
@@ -695,18 +698,22 @@ def perform_correction(file_combo, save_file_combo,
 
         results_text_lines = []
 
+        # Read field shift/scale
+        field_shift = float(field_shift_edit.text())
+        field_scale = float(field_scale_edit.text())
 
         # Read x/y column names
         x_up_col = x_up_combo.currentText()
         y_up_col = y_up_combo.currentText()
         x_dw_col = x_down_combo.currentText()
         y_dw_col = y_down_combo.currentText()
-
         
         # Prepare arrays: apply shift and scale
-        x_up = np.copy(df_src[x_up_col].astype(float).values)
+        x_up = np.copy(df_src[x_up_col].astype(float).values) - field_shift
+        x_up = x_up * field_scale
         y_up = np.copy(df_src[y_up_col].astype(float).values)
-        x_dw = np.copy(df_src[x_dw_col].astype(float).values)
+        x_dw = np.copy(df_src[x_dw_col].astype(float).values) - field_shift
+        x_dw = x_dw * field_scale
         y_dw = np.copy(df_src[y_dw_col].astype(float).values)
 
         """
@@ -724,15 +731,15 @@ def perform_correction(file_combo, save_file_combo,
 
         # Read tail ranges
         try:
-            x_n_start = float(x_start_n_edit.text()) # For up negative region
-            x_n_end   = float(x_end_n_edit.text())
+            x_n_start = float(x_start_n_edit.text()) * field_scale # For up negative region
+            x_n_end   = float(x_end_n_edit.text()) * field_scale
         except Exception:
             # fallback
             x_n_start, x_n_end = -4000,  -1000
 
         try:
-            x_p_start = float(x_start_p_edit.text()) # For up positive region
-            x_p_end   = float(x_end_p_edit.text()) 
+            x_p_start = float(x_start_p_edit.text()) * field_scale # For up positive region
+            x_p_end   = float(x_end_p_edit.text()) * field_scale 
         except Exception:
             x_p_start, x_p_end = 1000, 4000
 
@@ -843,27 +850,12 @@ def perform_correction(file_combo, save_file_combo,
         y_up_closed = close_fun(y_up_corr, p_up_1[0], p_up_2[0])
         y_dw_closed = close_fun(y_dw_corr, p_dw_1[0], p_dw_2[0])
 
-        # Plot original data (black), corrected (red) and errors
-        clear_fit_lines(ax)
-        ax.clear()
-        ax.plot(x_up, y_up, 'k.-', label='Up raw',   markersize=3, alpha=0.5)
-        ax.plot(x_dw, y_dw, 'k.-', label='Down raw', markersize=3, alpha=0.5)
-        
-        # Add horizontal line at y=0
-        ax.axhline(y=0, color='gray', linestyle='--', linewidth=1)
-        # Add vertical line at x=0
-        ax.axvline(x=0, color='gray', linestyle='--', linewidth=1)
-
-        # Plot corrected closed data with errorbars (use error arrays e_up, e_dw)
-        ax.errorbar(x_up, y_up_closed, e_up, fmt='.', color='r', linestyle='-', label='Up corrected',   alpha=0.8)
-        ax.errorbar(x_dw, y_dw_closed, e_dw, fmt='.', color='r', linestyle='-', label='Down corrected', alpha=0.8)
-
         # Fit coercivity
         try:
-            x_n_start_hc = float(x_start_dw_hc_edit.text())
-            x_n_end_hc   = float(x_end_dw_hc_edit.text())
-            x_p_start_hc = float(x_start_up_hc_edit.text())
-            x_p_end_hc   = float(x_end_up_hc_edit.text())
+            x_n_start_hc = float(x_start_dw_hc_edit.text()) * field_scale
+            x_n_end_hc   = float(x_end_dw_hc_edit.text()) * field_scale
+            x_p_start_hc = float(x_start_up_hc_edit.text()) * field_scale
+            x_p_end_hc   = float(x_end_up_hc_edit.text()) * field_scale
         except Exception:
             QMessageBox.critical(window, "Error", f"Invalid value for Hc range:\n{e}")
             return
@@ -879,13 +871,22 @@ def perform_correction(file_combo, save_file_combo,
             popt_n, covm_n = curve_fit(g_func, x_dw[mask_n], y_dw_closed[mask_n], sigma=e_dw[mask_n], absolute_sigma=False)
             popt_p, covm_p = curve_fit(g_func, x_up[mask_p], y_up_closed[mask_p], sigma=e_up[mask_p], absolute_sigma=False)
 
-            # Plot coercive fit lines
-            t1 = np.linspace(x_n_start_hc, x_n_end_hc, 400)
-            t2 = np.linspace(x_p_start_hc, x_p_end_hc, 400)
-            ln, = ax.plot(t1, g_func(t1, *popt_n), 'b--', label='HC neg fit')
-            ln.set_gid(f"fit_hc_neg")
-            ln, = ax.plot(t2, g_func(t2, *popt_p), 'b--', label='HC pos fit')
-            ln.set_gid(f"fit_hc_pos")
+        
+        t1 = np.linspace(x_n_start_hc, x_n_end_hc, 400)
+        t2 = np.linspace(x_p_start_hc, x_p_end_hc, 400)
+
+        plot_state.update({
+            "done_corr": True,
+            "x_up_corr": x_up,
+            "y_up_corr": y_up_closed,
+            "e_up"     : e_up,
+            "x_dw_corr": x_dw,
+            "y_dw_corr": y_dw_closed,
+            "e_dw"     : e_dw,
+            "fit_hc_p" : (t1, g_func(t1, *popt_n)),
+            "fit_hc_n" : (t2, g_func(t2, *popt_p))
+        })
+        draw_plot()
 
         # Store numerical results
         results_text_lines.append("Coercive fit results:")
@@ -905,28 +906,19 @@ def perform_correction(file_combo, save_file_combo,
                 corr_ij = covm_n[i, j]/np.sqrt(covm_p[i, i]*covm_p[j, j])
                 results_text_lines.append(f"corr({pi}, {pj}) = {corr_ij:.3f}")
     
-        # Redraw legend and canvas
-        ax.set_xlabel("H [Oe]", fontsize=15)
-        ax.set_ylabel(r"M/M$_{sat}$", fontsize=15)
-        # Add horizontal line at y=0
-        ax.axhline(y=0, color='gray', linestyle='--', linewidth=1)
-        # Add vertical line at x=0
-        ax.axvline(x=0, color='gray', linestyle='--', linewidth=1)
-        ax.legend()
-        canvas.draw()
-
         # Show textual results
         output_box.setPlainText("\n".join(results_text_lines))
 
         # Summary of results
         log_results_lines = []
         log_results_lines.append(f"Summary of correction for data in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}:")
+        log_results_lines.append(f"Corrected data with field shift = {field_shift} and scale = {field_scale}")
         log_results_lines.append(f"Using tail fit function: {tail_function_edit.text()}")
         log_results_lines.append(f"Using coercive fit function: {hc_function_edit.text()}")
-        log_results_lines.append(f"Using range limits (neg): {x_n_start} to {x_n_end}")
-        log_results_lines.append(f"Using range limits (pos): {x_p_start} to {x_p_end}")
-        log_results_lines.append(f"Using coercive fit ranges (down): {x_n_start_hc} to {x_n_end_hc}")
-        log_results_lines.append(f"Using coercive fit ranges (up): {x_p_start_hc} to {x_p_end_hc}\n")
+        log_results_lines.append(f"Using range limits (neg): {x_n_start/field_scale} to {x_n_end/field_scale}")
+        log_results_lines.append(f"Using range limits (pos): {x_p_start/field_scale} to {x_p_end/field_scale}")
+        log_results_lines.append(f"Using coercive fit ranges (down): {x_n_start_hc/field_scale} to {x_n_end_hc/field_scale}")
+        log_results_lines.append(f"Using coercive fit ranges (up): {x_p_start_hc/field_scale} to {x_p_end_hc/field_scale}\n")
         logger.info("Loop correction completed. Summary:\n" + "\n".join(log_results_lines) +"\n".join(results_text_lines))
 
         # Save corrected columns if requested

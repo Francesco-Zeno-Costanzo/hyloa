@@ -23,11 +23,12 @@ extensions = [
     "sphinx.ext.autodoc",   # Automatic generation of documentation from docstrings 
     "sphinx.ext.napoleon",  # Support for NumPy and Google style docstrings
     "sphinx.ext.viewcode",  # Link to souce code
+    "sphinx.ext.autosummary",
 ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
+autosummary_generate = True
 
 
 # -- Options for HTML output -------------------------------------------------

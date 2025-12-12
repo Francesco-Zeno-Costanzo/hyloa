@@ -39,6 +39,35 @@ def correct_hysteresis_loop(app_instance):
     Opens a hysteresis loop correction window in a sub-MDI window.
     This window allows the user to set all parameters for the correction
     of a selected hysteresis loop and visualize the results.
+
+    Help guide:
+
+    • Select the main data file and choose the four X/Y columns that define the Up and Down branches of the loop.
+    These selections must correspond to the same variables shown in the plotting window.
+
+    • Optionally, you may select a second file where corrected data will be saved.
+    The corrected columns will be written in the corresponding positions of the destination grid,
+    so the layout of the two 2x2 grids matches (Up/Down x X/Y).
+
+    • You can shift and scale the field array. Remember that the first change that is applied is the shift and then the scaling.
+    These changes are not incremental, so you can safely change the value and press the button again.
+
+    • Set the x_start / x_end limits for each branch. If the field is scaled, remember that
+    the fit ranges must be chosen according to the *original*, non-scaled data; the scaling will be applied later.
+
+    • Configure the first fit block, which is used to correct possible drifts at the end of each branch.
+    You may use any polynomial or analytical function, but it is strongly recommended to avoid excessively
+    high polynomial orders. The constant term MUST be the first parameter, exactly as shown in the example below.
+    (e.g. 'a + b*x + c*x**2').
+    To proceed with the fit of the physical quantities, you must first press the button to perform the drift correction.
+
+    • Configure the second fit block. This works exactly like the 'Quick Fit' window and can be used
+    to extract properties such as coercive field or remanence. This second fit operates on the *corrected* data.
+    So in this case the fit ranges must be chosen according to the *scaled* data.
+    It is recommended to use simple low-order polynomials to fit coercivity or remanence regions.
+    If there's a significant discrepancy between the coercives, you can shift the field values and rerun the fit by pressing the appropriate button.
+    Note that this time the shift is incremental, so a second shift will be applied to data already shifted by the first shift.
+
     
     Parameters
     ----------
@@ -62,7 +91,7 @@ def correct_hysteresis_loop(app_instance):
         "x_dw"      : None,
         "y_dw"      : None,
         "x_up_corr" : None,
-        "Y_up_corr" : None,
+        "y_up_corr" : None,
         "x_dw_corr" : None,
         "y_dw_corr" : None,
         "e_up"      : None,
@@ -100,11 +129,12 @@ def correct_hysteresis_loop(app_instance):
             "• Select the main data file and choose the four X/Y columns that define the Up and Down branches of the loop.\n"
             " These selections must correspond to the same variables shown in the plotting window.\n"
             "\n"
-            "• Optionally, you may choose to substitute one branch with the mirrored version of the other branch.\n"
-            "\n"
             "• Optionally, you may select a second file where corrected data will be saved.\n"
             "The corrected columns will be written in the corresponding positions of the destination grid, "
             "so the layout of the two 2x2 grids matches (Up/Down x X/Y).\n"
+            "\n"
+            "• You can shift and scale the field array, remember that the first change that is applied is the shift and then the scaling. \n"
+            " These changes are not incremental, so you can safely change the value and press the button again."
             "\n"
             "• Set the x_start / x_end limits for each branch. If the field is scaled, remember that "
             "the fit ranges must be chosen according to the *original*, non-scaled data; the scaling will be applied later.\n"
@@ -113,10 +143,14 @@ def correct_hysteresis_loop(app_instance):
             "You may use any polynomial or analytical function, but it is strongly recommended to avoid excessively "
             "high polynomial orders. The constant term MUST be the first parameter, exactly as shown in the example below.\n"
             "  (e.g. 'a + b*x + c*x**2').\n"
+            "To proceed with the fit of the physical quantities, you must first press the button to perform the drift correction.\n"
             "\n"
             "• Configure the second fit block. This works exactly like the 'Quick Fit' window and can be used "
             "to extract properties such as coercive field or remanence. This second fit operates on the *corrected* data.\n"
+            "So in this case the fit ranges must be chosen according to the *scaled* data.\n"
             "It is recommended to use simple low-order polinomials to fit coercivity or remenance regions.\n"
+            "If there's a significant discrepancy between the coercives, you can shift the field values and rerun the fit by pressing the appropriate button.\n"
+            "Note that this time the shift is incremental, so a second shift will be applied to data already shifted by the first shift."
             "\n"
         )
 
@@ -208,12 +242,14 @@ def correct_hysteresis_loop(app_instance):
     # Set parameters for the field corrections      #
     #===============================================#
 
-    left_layout.addWidget(QLabel("-------- Preliminary Analysis --------"))
+    left_layout.addWidget(QLabel("-------- Preliminary field changes --------"))
 
     st_grid = QGridLayout()
     left_layout.addLayout(st_grid)
-    st_grid.addWidget(QLabel("Field shift (i.e. H = H - shift)"), 0, 0)
-    st_grid.addWidget(QLabel("Field scale (i.e. H = H * scale)"), 0, 1)
+    st_grid.addWidget(QLabel("Shift (i.e. H = H - shift)"), 0, 0)
+    st_grid.addWidget(QLabel("Scale (i.e. H = H * scale)"), 0, 1)
+    st_grid.addWidget(QLabel("Revert a branch"),            0, 2)
+
     
     field_shift_edit = QLineEdit("0")
     st_grid.addWidget(field_shift_edit, 1, 0)
@@ -221,12 +257,8 @@ def correct_hysteresis_loop(app_instance):
     field_scale_edit = QLineEdit("1")
     st_grid.addWidget(field_scale_edit, 1, 1)
 
-    change_box = QGridLayout()
-    left_layout.addLayout(change_box)
-    apply_shift_btn = QPushButton("Applay H --> (H - shift)*scale")
-    flip_btn        = QPushButton("Check Symmetry")
-    change_box.addWidget(apply_shift_btn, 0, 0)
-    change_box.addWidget(flip_btn, 0, 2)
+    flip_btn         = QPushButton("Check Symmetry")
+    st_grid.addWidget(flip_btn, 1, 2)
 
     #===============================================#
     # Set parameters for the mag corrections        #
@@ -264,15 +296,28 @@ def correct_hysteresis_loop(app_instance):
     tail_initials_edit = QLineEdit("1,1")
     box_fit_params.addWidget(tail_initials_edit, 1, 1)
 
-    left_layout.addWidget(QLabel("Function (e.g. a + b*x) :"))
+    box_fit_params.addWidget(QLabel("Function (e.g. a + b*x) :"), 2, 0)
     tail_function_edit = QLineEdit("a + b*x")
-    left_layout.addWidget(tail_function_edit)
+    box_fit_params.addWidget(tail_function_edit, 2, 1)
+
+    #===============================================#
+    # Correction buttons                            #
+    #===============================================#
+
+    corr_btn_box = QGridLayout()
+    left_layout.addLayout(corr_btn_box)
+    
+    run_button = QPushButton("Apply drift correction")
+    corr_btn_box.addWidget(run_button, 0, 0)
+
+    del_cp_btn = QPushButton("Remove ccorrections")
+    corr_btn_box.addWidget(del_cp_btn, 0, 1)
 
     #===============================================#
     # Set parameters for coercivity computation     #
     #===============================================#
 
-    left_layout.addWidget(QLabel("-------- Fit for coercivity/remenance exitamtion --------"))
+    left_layout.addWidget(QLabel("-------- Fit for coercivity/remenance estimation --------"))
 
     limits_grid_1 = QGridLayout()
     left_layout.addLayout(limits_grid_1)
@@ -304,11 +349,39 @@ def correct_hysteresis_loop(app_instance):
     hc_initials_edit = QLineEdit("1,1")
     box_fit_params_1.addWidget(hc_initials_edit, 1, 1)
 
-    left_layout.addWidget(QLabel("Function (e.g. s*(x - hc) ):"))
+    fit_btn_box = QGridLayout()
+    left_layout.addLayout(fit_btn_box)
+
+    fit_btn_box.addWidget(QLabel("Function (e.g. s*(x - hc) ):"), 0, 0)
     hc_function_edit = QLineEdit("s*(x - hc)")
-    left_layout.addWidget(hc_function_edit)
+    fit_btn_box.addWidget(hc_function_edit, 0, 1)
+
+    fit_btn = QPushButton("fit")
+    fit_btn_box.addWidget(fit_btn, 0, 2)
 
     #===============================================#
+    # Correction buttons                            #
+    #===============================================#
+
+    fit_btn_box = QGridLayout()
+    left_layout.addLayout(fit_btn_box)
+    
+    fit_btn_box.addWidget(QLabel("Shift (i.e. H = H - shift)"), 0, 1)
+    
+    field_shift_pc_edit = QLineEdit("0")
+    fit_btn_box.addWidget(field_shift_pc_edit, 0, 2)
+
+    field_shift_btn = QPushButton("Apply shift and fit again")
+    fit_btn_box.addWidget(field_shift_btn, 0, 3)
+
+
+    #===============================================#
+    # 
+    #===============================================#
+
+
+    left_layout.addWidget(QLabel("-------- Symmetrization and estimation of the anisotropy field --------"))
+
     """
     # Select option to duplicate a branch
     double_branch = QComboBox()
@@ -320,10 +393,6 @@ def correct_hysteresis_loop(app_instance):
     """
 
     #===============================================#
-    # Run button                                    #
-    #===============================================#
-    run_button = QPushButton("Apply drift correction and Hc/Mr fit")
-    left_layout.addWidget(run_button)
 
     left_layout.addStretch()
    
@@ -477,11 +546,9 @@ def correct_hysteresis_loop(app_instance):
             field_shift_edit, field_scale_edit,
             x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
             tail_params_edit, tail_function_edit,
-            x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
-            hc_params_edit, hc_function_edit,
             x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
             dataframes, logger, plot_state, draw_plot,
-            output_box, window, 
+            window, 
         )
     )
 
@@ -490,13 +557,31 @@ def correct_hysteresis_loop(app_instance):
         )
     ) 
 
-    apply_shift_btn.clicked.connect(lambda: apply_shift_scale(
-            file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
-            dataframes, field_shift_edit, field_scale_edit, window,
-            plot_state, draw_plot
+    del_cp_btn.clicked.connect(lambda: change_ps(
+            plot_state, window, draw_plot
         )
     )
-         
+
+    fit_btn.clicked.connect(lambda : fit_data(
+            file_combo,
+            x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
+            hc_params_edit, hc_function_edit, logger, plot_state, draw_plot,
+            output_box, window
+        )
+    )
+    
+    field_shift_btn.clicked.connect(lambda: apply_shift(
+            field_shift_pc_edit, plot_state, window, fit_data, args=(
+                file_combo,
+                x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+                x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
+                hc_params_edit, hc_function_edit, logger, plot_state, draw_plot,
+                output_box, window
+            )
+        )
+    )
+        
     # Sub-window for fitting panel
     sub = QMdiSubWindow()
     sub.setWidget(window)
@@ -506,21 +591,27 @@ def correct_hysteresis_loop(app_instance):
     sub.show()
 
 #================================================#
-# Helper function for removing old lines         #
+# Function to chek simmetry by flipping a branch #
 #================================================#
 
-def clear_fit_lines(ax):
-    ''' 
-    Helper function clear previous fit lines from axes (gid startswith "fit")
+def change_ps(plot_state, window, draw_plot):
 
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axes from which to remove fit lines.
-    '''
-    to_remove = [ln for ln in ax.lines if getattr(ln, "get_gid", lambda: None)() and str(ln.get_gid()).startswith("fit")]
-    for ln in to_remove:
-        ln.remove()
+    try:
+        plot_state.update({
+            "done_corr": False,
+            "x_up_corr": None,
+            "y_up_corr": None,
+            "e_up"     : None,
+            "x_dw_corr": None,
+            "y_dw_corr": None,
+            "e_dw"     : None,
+            "fit_hc_p" : None,
+            "fit_hc_n" : None
+        })
+        draw_plot()
+
+    except Exception as e:
+        QMessageBox.critical(window, "Error", f"Error during flip:\n{e}")
 
 #================================================#
 # Function to chek simmetry by flipping a branch #
@@ -545,69 +636,38 @@ def flip(plot_state, window, draw_plot):
 
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error during flip:\n{e}")
+
 #================================================#
 # Function to correct field                      #
 #================================================#
 
-def apply_shift_scale(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo, 
-                      dataframes, field_shift_edit, field_scale_edit,
-                      window, plot_state, draw_plot):
+def apply_shift(field_shift_pc_edit, plot_state, window, fit_data, args=()):
     '''
-    Function for ffield scaling, H --> (H - shift)*scaling.
+    Function add a field shift after the corrections
 
     Parameters
     ----------
-    file_combo : QComboBox
-        Combo box to select source data file.
-    x_up_combo : QComboBox
-        Combo box to select X column for Up branch.
-    y_up_combo : QComboBox
-        Combo box to select Y column for Up branch.
-    x_down_combo : QComboBox
-        Combo box to select X column for Down branch.
-    y_down_combo : QComboBox
-        Combo box to select Y column for Down branch.
-    dataframes : list of pd.DataFrame
-        List of dataframes containing loaded data.
-    field_shift_edit : QLineEdit
+    field_shift_pc_edit : QLineEdit
         Value for field shifting
-    field_scale_edit : QLineEdit
-        Value for field scaling
     window : QWidget
         The main window widget.
     plot_state : dict
         dictionary of the plotted data
-    draw_plot : callable
-        Function to update the preview
+    fit_data : callable
+        Function for fitting data
+    args : tuple
+        Argumets to pass to fit_data
     '''
     try:
-        idx = file_combo.currentIndex()
-        df  = dataframes[idx]
 
-        x_up_col = x_up_combo.currentText()
-        x_dw_col = x_down_combo.currentText()
+        field_shift = float(field_shift_pc_edit.text())
+        plot_state["x_up_corr"] -= field_shift
+        plot_state["x_dw_corr"] -= field_shift
 
-        field_shift = float(field_shift_edit.text())
-        field_scale = float(field_scale_edit.text())
-
-        # Apply shift and scale
-        x_up = (df[x_up_col].astype(float) - field_shift) * field_scale
-        x_dw = (df[x_dw_col].astype(float) - field_shift) * field_scale
-        
-        # y data remain unchanged
-        y_up = df[y_up_combo.currentText()].astype(float)
-        y_dw = df[y_down_combo.currentText()].astype(float)
-
-        plot_state.update({
-            "x_up": x_up,
-            "y_up": y_up,
-            "x_dw": x_dw,
-            "y_dw": y_dw,
-        })
-        draw_plot()
+        fit_data(*args)
 
     except Exception as e:
-        QMessageBox.critical(window, "Error", f"Error applying shift/scale:\n{e}")
+        QMessageBox.critical(window, "Error", f"Error applying shift:\n{e}")
 
 
 #================================================#
@@ -619,17 +679,14 @@ def perform_correction(file_combo, save_file_combo,
                        field_shift_edit, field_scale_edit,
                        x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
                        tail_params_edit, tail_function_edit,
-                       x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
-                       hc_params_edit, hc_function_edit,
                        x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
                        dataframes, logger, plot_state, draw_plot,
-                       output_box, window):
+                       window):
     ''' 
     Perform the loop correction using the parameters from the UI.
     The correction involves fitting the saturation parts (tails) of the hystersis loop
-    to remove drifts; then there is the possibilty to fit a region of the loop to
-    extract the values of the coercive field and/ore the remenance.
-    
+    to remove drifts.
+
     Parameters
     ----------
     file_combo : QComboBox
@@ -660,18 +717,6 @@ def perform_correction(file_combo, save_file_combo,
         Line edit for tail fit parameter names.
     tail_function_edit : QLineEdit
         Line edit for tail fit function.
-    x_start_up_hc_edit : QLineEdit
-        Line edit for Up branch coercive fit start limit.
-    x_end_up_hc_edit : QLineEdit
-        Line edit for Up branch coercive fit end limit.
-    x_start_dw_hc_edit : QLineEdit
-        Line edit for Down branch coercive fit start limit.
-    x_end_dw_hc_edit : QLineEdit
-        Line edit for Down branch coercive fit end limit.
-    hc_params_edit : QLineEdit
-        Line edit for coercive fit parameter names.
-    hc_function_edit : QLineEdit
-        Line edit for coercive fit function.
     dataframes : list of pd.DataFrame
         List of dataframes containing loaded data.
     logger : Logger
@@ -695,8 +740,6 @@ def perform_correction(file_combo, save_file_combo,
         else:
             # save_file_combo items: ["No save", "File 1", "File 2"...]
             save_idx = save_choice - 1
-
-        results_text_lines = []
 
         # Read field shift/scale
         field_shift = float(field_shift_edit.text())
@@ -749,9 +792,9 @@ def perform_correction(file_combo, save_file_combo,
         mask_n_dw = (x_dw >= x_n_start) & (x_dw <= x_n_end)
         mask_p_dw = (x_dw >= x_p_start) & (x_dw <= x_p_end)
         
-        #===================================================================#
-        # Auxiliary functions for fitting
-        #===================================================================#
+        #=========================================#
+        # Auxiliary functions for fitting         #
+        #=========================================#
 
         try:
             tail_param_names = [p.strip() for p in tail_params_edit.text().split(",") if p.strip() != ""]
@@ -761,17 +804,21 @@ def perform_correction(file_combo, save_file_combo,
         except Exception as e:
             QMessageBox.critical(window, "Error", f"Invalid function for tail fit:\n{e}")
             return
-
-        try:
-            hc_param_names = [p.strip() for p in hc_params_edit.text().split(",") if p.strip() != ""]
-            func_code_hc   = f"lambda x, {', '.join(hc_param_names)}: {hc_function_edit.text()}"
-            g_func         = eval(func_code_hc, {"np": np, "__builtins__": {}})
-        
-        except Exception as e:
-            QMessageBox.critical(window, "Error", f"Invalid function for coercive fit:\n{e}")
-            return
         
         s2 = lambda x, y, f, popt: sum((y-f(x, *popt))**2)/(len(x)-len(popt))
+
+        def poly_error(x, params, dparams):
+            '''
+            params: [a0, a1, a2, ...]
+            dparams: relative uncertainties
+            '''
+            total = 0.0
+            # Skip i=0 because a0 is the constant term
+            for i in range(1, len(params)):
+                total += ( (x**i) * dparams[i] )**2
+            return np.sqrt(total)
+
+        #=========================================#
 
         # Fit linear tails (four fits)
         p_up_1, c_up_1 = curve_fit(f_func, x_up[mask_n_up], y_up[mask_n_up])
@@ -806,17 +853,6 @@ def perform_correction(file_combo, save_file_combo,
             f_func(x_dw, *p_dw_1) - p_dw_1[0],
             f_func(x_dw, *p_dw_2) - p_dw_2[0]
         )
-
-        def poly_error(x, params, dparams):
-            '''
-            params: [a0, a1, a2, ...]
-            dparams: relative uncertainties
-            '''
-            total = 0.0
-            # Skip i=0 because a0 is the constant term
-            for i in range(1, len(params)):
-                total += ( (x**i) * dparams[i] )**2
-            return np.sqrt(total)
         
         d_corr_up = np.where(
             x_up < 0,
@@ -850,13 +886,127 @@ def perform_correction(file_combo, save_file_combo,
         y_up_closed = close_fun(y_up_corr, p_up_1[0], p_up_2[0])
         y_dw_closed = close_fun(y_dw_corr, p_dw_1[0], p_dw_2[0])
 
+        plot_state.update({
+            "done_corr": True,
+            "x_up_corr": x_up,
+            "y_up_corr": y_up_closed,
+            "e_up"     : e_up,
+            "x_dw_corr": x_dw,
+            "y_dw_corr": y_dw_closed,
+            "e_dw"     : e_dw,
+        })
+        draw_plot()
+
+        # Summary of results
+        log_results_lines = []
+        log_results_lines.append(f"Summary of correction for data in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}:")
+        log_results_lines.append(f"Corrected data with field shift = {field_shift} and scale = {field_scale}")
+        log_results_lines.append(f"Using tail fit function: {tail_function_edit.text()}")
+        log_results_lines.append(f"Using range limits (neg): {x_n_start/field_scale} to {x_n_end/field_scale}")
+        log_results_lines.append(f"Using range limits (pos): {x_p_start/field_scale} to {x_p_end/field_scale}\n")
+        logger.info("Loop correction completed. Summary:\n" + "\n".join(log_results_lines))
+
+        # Save corrected columns if requested
+        if save_idx is not None:
+            df_dest = dataframes[save_idx]
+
+            df_dest[x_up_dest.currentText()] = x_up
+            df_dest[y_up_dest.currentText()] = y_up_closed
+
+            df_dest[x_dw_dest.currentText()] = x_dw
+            df_dest[y_dw_dest.currentText()] = y_dw_closed
+
+            logger.info("Corrected columns saved to destination file.")
+
+    except Exception as e:
+        QMessageBox.critical(window, "Error", f"Error running fits: {e}")
+        logger.exception("Unhandled error in perform_all_fits: %s", e) 
+    
+
+#===================================================================#
+# Function to fit for physiscal quantities                          #
+#===================================================================#       
+
+def fit_data(file_combo,
+             x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+             x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
+             hc_params_edit, hc_function_edit, logger, plot_state, draw_plot,
+             output_box, window):
+    '''
+    Parameters
+    ----------
+    file_combo : QComboBox
+        Combo box to select source data file.
+    x_up_combo : QComboBox
+        Combo box to select X column for Up branch.
+    y_up_combo : QComboBox
+        Combo box to select Y column for Up branch.
+    x_down_combo : QComboBox
+        Combo box to select X column for Down branch.
+    y_down_combo : QComboBox
+        Combo box to select Y column for Down branch.
+    x_start_up_hc_edit : QLineEdit
+        Line edit for Up branch coercive fit start limit.
+    x_end_up_hc_edit : QLineEdit
+        Line edit for Up branch coercive fit end limit.
+    x_start_dw_hc_edit : QLineEdit
+        Line edit for Down branch coercive fit start limit.
+    x_end_dw_hc_edit : QLineEdit
+        Line edit for Down branch coercive fit end limit.
+    hc_params_edit : QLineEdit
+        Line edit for coercive fit parameter names.
+    hc_function_edit : QLineEdit
+        Line edit for coercive fit function.
+    logger : Logger
+        Logger of the application.
+    plot_state : dict
+        dictionary of the plotted data
+    draw_plot : callable
+        Function to update the preview
+    output_box : QTextEdit
+        Text edit for displaying output results.
+    window : QWidget
+        The main window widget.
+    '''
+    try : 
+        idx_src = file_combo.currentIndex()
+    
+        # Read x/y column names
+        x_up_col = x_up_combo.currentText()
+        y_up_col = y_up_combo.currentText()
+        x_dw_col = x_down_combo.currentText()
+        y_dw_col = y_down_combo.currentText()
+
+        #Read data
+        x_up = plot_state["x_up_corr"]
+        y_up = plot_state["y_up_corr"]
+        x_dw = plot_state["x_dw_corr"]
+        y_dw = plot_state["y_dw_corr"]
+        e_up = plot_state["e_up"]
+        e_dw = plot_state["e_dw"]
+        
+        if e_up is None:
+            QMessageBox.critical(window, "Error", f"You need to correct data first")
+            return
+
+        
+        results_text_lines =  []
+        try:
+            hc_param_names = [p.strip() for p in hc_params_edit.text().split(",") if p.strip() != ""]
+            func_code_hc   = f"lambda x, {', '.join(hc_param_names)}: {hc_function_edit.text()}"
+            g_func         = eval(func_code_hc, {"np": np, "__builtins__": {}})
+        
+        except Exception as e:
+            QMessageBox.critical(window, "Error", f"Invalid function for coercive fit:\n{e}")
+            return
+        
         # Fit coercivity
         try:
-            x_n_start_hc = float(x_start_dw_hc_edit.text()) * field_scale
-            x_n_end_hc   = float(x_end_dw_hc_edit.text()) * field_scale
-            x_p_start_hc = float(x_start_up_hc_edit.text()) * field_scale
-            x_p_end_hc   = float(x_end_up_hc_edit.text()) * field_scale
-        except Exception:
+            x_n_start_hc = float(x_start_dw_hc_edit.text())
+            x_n_end_hc   = float(x_end_dw_hc_edit.text())
+            x_p_start_hc = float(x_start_up_hc_edit.text())
+            x_p_end_hc   = float(x_end_up_hc_edit.text())
+        except Exception as e:
             QMessageBox.critical(window, "Error", f"Invalid value for Hc range:\n{e}")
             return
         
@@ -868,21 +1018,14 @@ def perform_correction(file_combo, save_file_combo,
             return
         else :
             # Perform weighted fits
-            popt_n, covm_n = curve_fit(g_func, x_dw[mask_n], y_dw_closed[mask_n], sigma=e_dw[mask_n], absolute_sigma=False)
-            popt_p, covm_p = curve_fit(g_func, x_up[mask_p], y_up_closed[mask_p], sigma=e_up[mask_p], absolute_sigma=False)
+            popt_n, covm_n = curve_fit(g_func, x_dw[mask_n], y_dw[mask_n], sigma=e_dw[mask_n])
+            popt_p, covm_p = curve_fit(g_func, x_up[mask_p], y_up[mask_p], sigma=e_up[mask_p])
 
         
         t1 = np.linspace(x_n_start_hc, x_n_end_hc, 400)
         t2 = np.linspace(x_p_start_hc, x_p_end_hc, 400)
 
         plot_state.update({
-            "done_corr": True,
-            "x_up_corr": x_up,
-            "y_up_corr": y_up_closed,
-            "e_up"     : e_up,
-            "x_dw_corr": x_dw,
-            "y_dw_corr": y_dw_closed,
-            "e_dw"     : e_dw,
             "fit_hc_p" : (t1, g_func(t1, *popt_n)),
             "fit_hc_n" : (t2, g_func(t2, *popt_p))
         })
@@ -905,38 +1048,19 @@ def perform_correction(file_combo, save_file_combo,
             for j , pj in zip(range(i+1, len(popt_p)), hc_param_names[i+1:]):
                 corr_ij = covm_n[i, j]/np.sqrt(covm_p[i, i]*covm_p[j, j])
                 results_text_lines.append(f"corr({pi}, {pj}) = {corr_ij:.3f}")
-    
+
         # Show textual results
         output_box.setPlainText("\n".join(results_text_lines))
 
         # Summary of results
         log_results_lines = []
-        log_results_lines.append(f"Summary of correction for data in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}:")
-        log_results_lines.append(f"Corrected data with field shift = {field_shift} and scale = {field_scale}")
-        log_results_lines.append(f"Using tail fit function: {tail_function_edit.text()}")
-        log_results_lines.append(f"Using coercive fit function: {hc_function_edit.text()}")
-        log_results_lines.append(f"Using range limits (neg): {x_n_start/field_scale} to {x_n_end/field_scale}")
-        log_results_lines.append(f"Using range limits (pos): {x_p_start/field_scale} to {x_p_end/field_scale}")
-        log_results_lines.append(f"Using coercive fit ranges (down): {x_n_start_hc/field_scale} to {x_n_end_hc/field_scale}")
-        log_results_lines.append(f"Using coercive fit ranges (up): {x_p_start_hc/field_scale} to {x_p_end_hc/field_scale}\n")
-        logger.info("Loop correction completed. Summary:\n" + "\n".join(log_results_lines) +"\n".join(results_text_lines))
-
-        # Save corrected columns if requested
-        if save_idx is not None:
-            df_dest = dataframes[save_idx]
-
-            df_dest[x_up_dest.currentText()] = x_up
-            df_dest[y_up_dest.currentText()] = y_up_closed
-
-            df_dest[x_dw_dest.currentText()] = x_dw
-            df_dest[y_dw_dest.currentText()] = y_dw_closed
-
-            logger.info("Corrected columns saved to destination file.")
-
-    except Exception as e:
-        QMessageBox.critical(window, "Error", f"Error running fits: {e}")
-        logger.exception("Unhandled error in perform_all_fits: %s", e) 
+        log_results_lines.append(f"Summary of fit for data in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}:")
+        log_results_lines.append(f"Using fit function: {hc_function_edit.text()}")
+        log_results_lines.append(f"Using fit ranges (down): {x_n_start_hc} to {x_n_end_hc}")
+        log_results_lines.append(f"Using fit ranges (up): {x_p_start_hc} to {x_p_end_hc}\n")
+        logger.info("Fit completed. Summary:\n" + "\n".join(log_results_lines) +"\n".join(results_text_lines))
     
-        
-
+    except Exception as e:
+        QMessageBox.critical(window, "Error", f"Error during fitting:\n{e}")
+        return
 

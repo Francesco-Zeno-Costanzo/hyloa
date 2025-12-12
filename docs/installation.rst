@@ -57,6 +57,28 @@ Typical usage:
 
 This will automatically install everything you need and create a desktop shortcut to launch the GUI.
 
+.. note::
+
+   On Windows, make sure that Python is installed **with the “Add python.exe to PATH” option enabled** during the installer setup.  
+   If you forgot to check that box, you can add Python to your PATH manually:
+
+   **Add Python to PATH (user level):**
+
+   1. Open the Start Menu and search for **“Environment Variables”**, then open **“Edit the system environment variables”**.
+   2. Click **“Environment Variables…”**.
+   3. Under **“User variables”**, select **Path** and click **“Edit…”**.
+   4. Click **“New”** and paste the folder path containing ``python.exe``  
+      (e.g. ``C:\Users\you\AppData\Local\Programs\Python\Python311``).
+   5. Optionally, also add the ``Scripts`` subfolder.
+   6. Click **OK** to close all dialogs.
+
+   After doing this, close and reopen your terminal and run:
+
+   ``python --version``
+
+   to verify that Python is correctly available in your PATH.
+
+
 **Updating HYLOA**
 ---------------------
 To update HYLOA to the latest version, simply download the latest wheel file from the GitHub Releases page and install it using pip as shown above.

@@ -75,12 +75,6 @@ def correct_hysteresis_loop(app_instance):
     dataframes  = app_instance.dataframes
     logger      = app_instance.logger
 
-    # Variables to store last preview of selected data
-    last_x_up = None
-    last_y_up = None
-    last_x_dw = None
-    last_y_dw = None
-
     plot_state = {
         "flipped"   : False,
         "done_corr" : False,
@@ -528,12 +522,6 @@ def correct_hysteresis_loop(app_instance):
     def refresh_preview(x_up, y_up, x_dw, y_dw):
         ''' Draw selected data on canvas
         '''
-        nonlocal last_x_up, last_y_up, last_x_dw, last_y_dw
-        # Local savaing to concatenate changes
-        last_x_up = x_up
-        last_y_up = y_up
-        last_x_dw = x_dw
-        last_y_dw = y_dw
 
         try:
             plot_state.update({

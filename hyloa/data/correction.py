@@ -14,6 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with HYLOA. If not, see <https://www.gnu.org/licenses/>.
 
+"""
+Code with basic routines to correct some loop distortions
+"""
+
 import numpy as np
 from scipy.optimize import curve_fit
 from PyQt5.QtWidgets import QMessageBox
@@ -25,6 +29,18 @@ from hyloa.utils.err_format import format_value_error
 #================================================#
 
 def change_ps(plot_state, window, draw_plot):
+    '''
+    Function to change the plot status deleting the corrected data
+
+    Parameters
+    ----------
+    plot_state : dict
+        dictionary of the plotted data
+    window : QWidget
+        The main window widget.
+    draw_plot : callable
+        Function to update the preview
+    '''
 
     try:
         plot_state.update({
@@ -147,6 +163,14 @@ def perform_correction(file_combo, save_file_combo,
         Line edit for tail fit parameter names.
     tail_function_edit : QLineEdit
         Line edit for tail fit function.
+    x_up_dest : QComboBox
+        Combo box to select X column in which to store the correct up branch.
+    y_up_dest : QComboBox
+        Combo box to select Y column in which to store the correct up branch.
+    x_dw_dest : QComboBox
+        Combo box to select X column in which to store the correct down branch.
+    y_dw_dest : QComboBox
+        Combo box to select Y column in which to store the correct down branch.
     dataframes : list of pd.DataFrame
         List of dataframes containing loaded data.
     logger : Logger
@@ -188,19 +212,6 @@ def perform_correction(file_combo, save_file_combo,
         x_dw = np.copy(df_src[x_dw_col].astype(float).values) - field_shift
         x_dw = x_dw * field_scale
         y_dw = np.copy(df_src[y_dw_col].astype(float).values)
-
-        """
-        # Read duplication branch
-        db = double_branch.currentText()
-        if db == "Original":
-            pass
-        elif db == "Up":
-            x_dw, y_dw = -np.copy(x_up), -np.copy(y_up)
-            x_dw, y_dw = x_dw[::-1], y_dw[::-1]  # reverse to maintain order
-        elif db == "Down":
-            x_up, y_up = -np.copy(x_dw), -np.copy(y_dw)
-            x_up, y_up = x_up[::-1], y_up[::-1]  # reverse to maintain order
-        """
 
         # Read tail ranges
         try:

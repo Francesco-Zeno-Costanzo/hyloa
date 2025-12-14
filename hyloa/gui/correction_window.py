@@ -67,6 +67,14 @@ def correct_hysteresis_loop(app_instance):
     If there's a significant discrepancy between the coercives, you can shift the field values and rerun the fit by pressing the appropriate button.
     Note that this time the shift is incremental, so a second shift will be applied to data already shifted by the first shift.
 
+    • Cubic spline fitting and symmetrization:
+    After the drift correction, you may fit each branch using a cubic B-spline.
+    This step is mainly intended for data symmetrization and for the estimation of the anisotropy field.
+    The smoothing parameter controls how closely the spline follows the data:
+    - s = 0 corresponds to an exact interpolation of the points;
+    - s > 0 allows for smoothing and helps reduce the impact of noise.
+    A reasonable value depends on the data quality and on the estimated experimental error.
+
     
     Parameters
     ----------
@@ -150,6 +158,16 @@ def correct_hysteresis_loop(app_instance):
             "If there's a significant discrepancy between the coercives, you can shift the field values and rerun the fit by pressing the appropriate button.\n"
             "Note that this time the shift is incremental, so a second shift will be applied to data already shifted by the first shift."
             "\n"
+            "• Cubic spline fitting and symmetrization:\n"
+            "After the drift correction, you may fit each branch using a cubic B-spline. "
+            "This step is mainly intended for data symmetrization and for the estimation of the anisotropy field.\n"
+            "\n"
+            "The smoothing parameter controls how closely the spline follows the data:\n"
+            "  - s = 0 corresponds to an exact interpolation of the points;\n"
+            "  - s > 0 allows for smoothing and helps reduce the impact of noise.\n"
+            "A reasonable value depends on the data quality and on the estimated experimental error.\n"
+            "\n"
+            "• By moving the mouse over the various boxes, a tooltip appears with information relating to them."
         )
 
         QMessageBox.information(window, "Correction Guide", help_text)
@@ -477,6 +495,7 @@ def correct_hysteresis_loop(app_instance):
 
     hk_box.addWidget(QLabel("Closure threshold:"), 0, 0)
     hk_thr_edit = QLineEdit("0.02")
+    hk_thr_edit.setToolTip("Threshold below which the relative difference of the branches must be to find the closing point.")
     hk_box.addWidget(hk_thr_edit, 0, 1)
     hk_btn = QPushButton("Compute anisotropy field")
     hk_box.addWidget(hk_btn, 0, 2)

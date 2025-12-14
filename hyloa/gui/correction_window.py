@@ -31,6 +31,7 @@ from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,
 from PyQt5.QtCore import Qt
 
 from hyloa.data.correction import *
+from hyloa.data.anisotropy import *
 
 def correct_hysteresis_loop(app_instance):
     '''
@@ -78,6 +79,7 @@ def correct_hysteresis_loop(app_instance):
     plot_state = {
         "flipped"   : False,
         "done_corr" : False,
+        "done_spl3" : False,
         "x_up"      : None,
         "y_up"      : None,
         "x_dw"      : None,
@@ -91,7 +93,9 @@ def correct_hysteresis_loop(app_instance):
         "fit_hc_n"  : None,
         "fit_hc_p"  : None,
         "spline_up" : None,
-        "spline_dw" : None
+        "spline_dw" : None,
+        "s_data_up" : None,
+        "s_data_dw" : None
     }
 
 
@@ -152,6 +156,7 @@ def correct_hysteresis_loop(app_instance):
     
 
     help_button = QPushButton("Help")
+    help_button.setToolTip("Press for a quick user guide")
     help_button.clicked.connect(show_help_dialog)
     left_layout.addWidget(help_button, alignment=Qt.AlignLeft)
 
@@ -163,6 +168,7 @@ def correct_hysteresis_loop(app_instance):
     left_layout.addWidget(QLabel("Select data file (source):"))
     file_combo = QComboBox()
     file_combo.addItems([f"File {i+1}" for i in range(len(dataframes))])
+    file_combo.setToolTip("File from which load data")
     left_layout.addWidget(file_combo)
 
     # Selecetion of the columns that contain the data
@@ -172,19 +178,28 @@ def correct_hysteresis_loop(app_instance):
     box_data.addWidget(QLabel("up: "), 0, 0)
     x_up_combo = QComboBox(); box_data.addWidget(x_up_combo, 0, 1)
     y_up_combo = QComboBox(); box_data.addWidget(y_up_combo, 0, 2)
+    x_up_combo.setToolTip("x data for up branch")
+    y_up_combo.setToolTip("y data for up branch")
 
     box_data.addWidget(QLabel("down: "), 1, 0)
     x_down_combo = QComboBox(); box_data.addWidget(x_down_combo, 1, 1)
     y_down_combo = QComboBox(); box_data.addWidget(y_down_combo, 1, 2)
+    x_down_combo.setToolTip("x data for down branch")
+    y_down_combo.setToolTip("y data for down branch")
 
     def update_columns_from_selected_file():
         ''' Update the column selection combos based on the selected source file.
         '''
-        idx = file_combo.currentIndex()
-        cols = list(dataframes[idx].columns)
+        idx  = file_combo.currentIndex()
+        cols = [c for c in list(dataframes[idx].columns) if str(c) != '']
+
         for combo in (x_up_combo, y_up_combo, x_down_combo, y_down_combo):
+            # Block signals to avoid too rapid changes
+            combo.blockSignals(True)
             combo.clear()
             combo.addItems(cols)
+            combo.setCurrentIndex(0)
+            combo.blockSignals(False)
 
     file_combo.currentIndexChanged.connect(update_columns_from_selected_file)
     update_columns_from_selected_file()
@@ -198,6 +213,7 @@ def correct_hysteresis_loop(app_instance):
     save_file_combo = QComboBox()
     save_file_combo.addItem("No save")
     save_file_combo.addItems([f"File {i+1}" for i in range(len(dataframes))])
+    save_file_combo.setToolTip("File to store data. Suggest to use duplicate file to create it.")
     left_layout.addWidget(save_file_combo)
 
     # Selection of destination columns
@@ -207,10 +223,16 @@ def correct_hysteresis_loop(app_instance):
     dest_box.addWidget(QLabel("Save up:"), 0, 0)
     x_up_dest = QComboBox(); dest_box.addWidget(x_up_dest, 0, 1)
     y_up_dest = QComboBox(); dest_box.addWidget(y_up_dest, 0, 2)
+    x_up_dest.setToolTip("In this variable the data on the x of the up branch will be stored.")
+    y_up_dest.setToolTip("In this variable the data on the y of the up branch will be stored.")
+
 
     dest_box.addWidget(QLabel("Save down:"), 1, 0)
     x_dw_dest = QComboBox(); dest_box.addWidget(x_dw_dest, 1, 1)
     y_dw_dest = QComboBox(); dest_box.addWidget(y_dw_dest, 1, 2)
+    x_dw_dest.setToolTip("In this variable the data on the x of the down branch will be stored.")
+    y_dw_dest.setToolTip("In this variable the data on the y of the down branch will be stored.")
+
 
     def update_dest_columns():
         ''' Update the column selection combos based on the selected save file.
@@ -246,12 +268,17 @@ def correct_hysteresis_loop(app_instance):
 
     
     field_shift_edit = QLineEdit("0")
+    field_shift_edit.setToolTip("Both field arrays will be shifted by this value. "
+                                "The shift is applied before scaling.")
     st_grid.addWidget(field_shift_edit, 1, 0)
 
     field_scale_edit = QLineEdit("1")
+    field_scale_edit.setToolTip("Both field arrays will be scaled by this value."
+                                "The scaling will be applied after the shift")
     st_grid.addWidget(field_scale_edit, 1, 1)
 
-    flip_btn         = QPushButton("Check Symmetry")
+    flip_btn = QPushButton("Check Symmetry")
+    flip_btn.setToolTip("Revert up branch to visually check the symmetry.")
     st_grid.addWidget(flip_btn, 1, 2)
 
     #===============================================#
@@ -265,24 +292,37 @@ def correct_hysteresis_loop(app_instance):
 
     x_start_n_edit = QLineEdit("-4000")
     x_end_n_edit   = QLineEdit("-400")
+
+    x_start_n_edit.setToolTip("Left limit for fit in the negative field saturation zone.\n"
+                              "If greater than the largest value of the fields, "
+                              "data will be taken starting from the largest existing value.")
+    x_end_n_edit.setToolTip("Right limit for fit in the negative field saturation zone.\n"
+                            "Choose carefully based on the data.")
     
-    limits_grid.addWidget(QLabel("x_start_neg"), 0, 0)
-    limits_grid.addWidget(x_start_n_edit,        0, 1)
-    limits_grid.addWidget(QLabel("x_end_neg"),   0, 2)
-    limits_grid.addWidget(x_end_n_edit,          0, 3)
+    limits_grid.addWidget(QLabel("x_start_neg:"), 0, 0)
+    limits_grid.addWidget(x_start_n_edit,         0, 1)
+    limits_grid.addWidget(QLabel("x_end_neg:"),   0, 2)
+    limits_grid.addWidget(x_end_n_edit,           0, 3)
 
     x_start_p_edit = QLineEdit("400")
     x_end_p_edit   = QLineEdit("4000")
 
-    limits_grid.addWidget(QLabel("x_start_pos"), 1, 0)
-    limits_grid.addWidget(x_start_p_edit,        1, 1)
-    limits_grid.addWidget(QLabel("x_end_pos"),   1, 2)
-    limits_grid.addWidget(x_end_p_edit,          1, 3)
+    x_start_p_edit.setToolTip("Left limit for fit in the positive field saturation zone.\n"
+                              "Choose carefully based on the data.")
+    x_end_p_edit.setToolTip("Right limit for fit in the positive field saturation zone.\n"
+                            "If greater than the largest value of the fields, "
+                            "data will be taken starting from the largest existing value.")
+                            
+
+    limits_grid.addWidget(QLabel("x_start_pos:"), 1, 0)
+    limits_grid.addWidget(x_start_p_edit,         1, 1)
+    limits_grid.addWidget(QLabel("x_end_pos:"),   1, 2)
+    limits_grid.addWidget(x_end_p_edit,           1, 3)
 
     box_fit_params = QGridLayout()
     left_layout.addLayout(box_fit_params)
     box_fit_params.addWidget(QLabel("Parameter names (e.g. a,b):"), 0, 0)
-    box_fit_params.addWidget(QLabel("Initial values  (e.g. 1,1):"), 0, 1)
+    box_fit_params.addWidget(QLabel("Initial fit values (e.g. 1,1):"), 0, 1)
 
     tail_params_edit = QLineEdit("a,b")
     box_fit_params.addWidget(tail_params_edit, 1, 0)
@@ -304,8 +344,11 @@ def correct_hysteresis_loop(app_instance):
     run_button = QPushButton("Apply drift correction")
     corr_btn_box.addWidget(run_button, 0, 0)
 
-    del_cp_btn = QPushButton("Remove ccorrections")
+    del_cp_btn = QPushButton("Remove corrections")
     corr_btn_box.addWidget(del_cp_btn, 0, 1)
+
+    del_od_btn = QPushButton("Remove original data")
+    corr_btn_box.addWidget(del_od_btn, 0, 2)
 
     #===============================================#
     # Set parameters for coercivity computation     #
@@ -318,24 +361,34 @@ def correct_hysteresis_loop(app_instance):
 
     x_start_up_hc_edit = QLineEdit("100")
     x_end_up_hc_edit   = QLineEdit("300")
+
+    x_start_up_hc_edit.setToolTip("Left limit for fit for up branch.\n"
+                                  "Choose carefully based on the data.")
+    x_end_up_hc_edit.setToolTip("Right limit for fit for up branch.\n"
+                                "Choose carefully based on the data.")
     
-    limits_grid_1.addWidget(QLabel("x_start_up"), 0, 0)
-    limits_grid_1.addWidget(x_start_up_hc_edit,   0, 1)
-    limits_grid_1.addWidget(QLabel("x_end_up"),   0, 2)
-    limits_grid_1.addWidget(x_end_up_hc_edit,     0, 3)
+    limits_grid_1.addWidget(QLabel("x_start_up:"), 0, 0)
+    limits_grid_1.addWidget(x_start_up_hc_edit,    0, 1)
+    limits_grid_1.addWidget(QLabel("x_end_up:"),   0, 2)
+    limits_grid_1.addWidget(x_end_up_hc_edit,      0, 3)
 
     x_start_dw_hc_edit = QLineEdit("-300")
     x_end_dw_hc_edit   = QLineEdit("-100")
 
-    limits_grid_1.addWidget(QLabel("x_start_down"), 1, 0)
-    limits_grid_1.addWidget(x_start_dw_hc_edit,     1, 1)
-    limits_grid_1.addWidget(QLabel("x_end_down"),   1, 2)
-    limits_grid_1.addWidget(x_end_dw_hc_edit,       1, 3)
+    x_start_dw_hc_edit.setToolTip("Left limit for fit for down branch.\n"
+                                  "Choose carefully based on the data.")
+    x_end_dw_hc_edit.setToolTip("Right limit for fit for down branch.\n"
+                                "Choose carefully based on the data.")
+
+    limits_grid_1.addWidget(QLabel("x_start_down:"), 1, 0)
+    limits_grid_1.addWidget(x_start_dw_hc_edit,      1, 1)
+    limits_grid_1.addWidget(QLabel("x_end_down:"),   1, 2)
+    limits_grid_1.addWidget(x_end_dw_hc_edit,        1, 3)
 
     box_fit_params_1 = QGridLayout()
     left_layout.addLayout(box_fit_params_1)
     box_fit_params_1.addWidget(QLabel("Parameter names (e.g. a,b):"), 0, 0)
-    box_fit_params_1.addWidget(QLabel("Initial values  (e.g. 1,1):"),  0, 1)
+    box_fit_params_1.addWidget(QLabel("Initial fit values (e.g. 1,1):"),  0, 1)
 
     hc_params_edit = QLineEdit("s,hc")
     box_fit_params_1.addWidget(hc_params_edit, 1, 0)
@@ -357,15 +410,19 @@ def correct_hysteresis_loop(app_instance):
     # Correction buttons                            #
     #===============================================#
 
+    left_layout.addWidget(QLabel("-------- Final correction of the fields a posterior --------"))
+
     fit_btn_box = QGridLayout()
     left_layout.addLayout(fit_btn_box)
     
     fit_btn_box.addWidget(QLabel("Shift (i.e. H = H - shift)"), 0, 1)
     
     field_shift_pc_edit = QLineEdit("0")
+    field_shift_pc_edit.setToolTip("This shift will be applied to the correct data.")
     fit_btn_box.addWidget(field_shift_pc_edit, 0, 2)
 
     field_shift_btn = QPushButton("Apply shift and fit again")
+    field_shift_btn.setToolTip("Fit again corrected data after the shift.")
     fit_btn_box.addWidget(field_shift_btn, 0, 3)
 
 
@@ -390,12 +447,20 @@ def correct_hysteresis_loop(app_instance):
 
     left_layout.addLayout(box_spline)
 
-    box_spline.addWidget(QLabel("Up branch"), 0, 0)
+    box_spline.addWidget(QLabel("Up branch:"), 0, 0)
     smooth_up_edit = QLineEdit("0.01")
+    smooth_up_edit.setToolTip("Smoothing Bsline parameter for the up branch.\n"
+                              "After correcting the data, the value is automatically changed, "
+                              "providing a more accurate estimate based on the data error. \n"
+                              "If 0 normal interpolation.")
     box_spline.addWidget(smooth_up_edit, 0, 1)
 
-    box_spline.addWidget(QLabel("Dw branch"), 0, 2)
+    box_spline.addWidget(QLabel("Dw branch:"), 0, 2)
     smooth_dw_edit = QLineEdit("0.01")
+    smooth_up_edit.setToolTip("Smoothing Bspline parameter for the down branch.\n"
+                              "After correcting the data, the value is automatically changed, "
+                              "providing a more accurate estimate based on the data error.\n"
+                              "If 0, normal interpolation.")
     box_spline.addWidget(smooth_dw_edit, 0, 3)
 
     spl3_btn_box = QGridLayout()
@@ -404,13 +469,22 @@ def correct_hysteresis_loop(app_instance):
     spl3_btn = QPushButton("Create spline")
     spl3_btn_box.addWidget(spl3_btn, 0, 0)
 
+    sim_btn = QPushButton("Simmetrize loop")
+    spl3_btn_box.addWidget(sim_btn, 0, 1)
+
+    hk_box = QGridLayout()
+    left_layout.addLayout(hk_box)
+
+    hk_box.addWidget(QLabel("Closure threshold:"), 0, 0)
+    hk_thr_edit = QLineEdit("0.02")
+    hk_box.addWidget(hk_thr_edit, 0, 1)
     hk_btn = QPushButton("Compute anisotropy field")
-    spl3_btn_box.addWidget(hk_btn, 0, 1)
+    hk_box.addWidget(hk_btn, 0, 2)
     
 
     #===============================================#
 
-    #left_layout.addStretch()
+    left_layout.addStretch(1)
    
     #===============================================#
     # ----------- RIGHT: plot + results ----------- #
@@ -467,7 +541,8 @@ def correct_hysteresis_loop(app_instance):
             ax.errorbar(
                 plot_state["x_up_corr"] * mul, plot_state["y_up_corr"] * mul,
                 yerr=plot_state["e_up"], linestyle='-', 
-                fmt='.', color='r', label="Up corrected"
+                fmt='.', color='r', label="Up corrected",
+                alpha=0.5 if plot_state["done_spl3"] else 1
             )
 
         if plot_state.get("x_dw_corr") is not None:
@@ -475,19 +550,36 @@ def correct_hysteresis_loop(app_instance):
             ax.errorbar(
                 plot_state["x_dw_corr"], plot_state["y_dw_corr"],
                 yerr=plot_state["e_dw"], linestyle='-', 
-                fmt='.', color='r', label="Down corrected"
+                fmt='.', color='r', label="Down corrected",
+                alpha=0.5 if plot_state["done_spl3"] else 1
             )
 
         #==========================================================#
         # Fit lines                                                #
         #==========================================================#
         if plot_state.get("fit_hc_n") is not None:
-            xfit, yfit = plot_state["fit_hc_n"]
-            ax.plot(xfit, yfit, 'b--', label="HC neg fit")
+            ax.plot(*plot_state["fit_hc_n"], 'b--', label="HC neg fit")
 
         if plot_state.get("fit_hc_p") is not None:
-            xfit, yfit = plot_state["fit_hc_p"]
-            ax.plot(xfit, yfit, 'b--', label="HC pos fit")
+            ax.plot(*plot_state["fit_hc_p"], 'b--', label="HC pos fit")
+
+        #==========================================================#
+        # Spline lines                                             #
+        #==========================================================#
+        if plot_state.get("spline_up") is not None:
+            ax.plot(*plot_state["spline_up"], '-', color='navy', label="spl3 Up")
+
+        if plot_state.get("spline_dw") is not None:
+            ax.plot(*plot_state["spline_dw"], '-', color='navy', label="spl3 Dw")
+
+        #==========================================================#
+        # Symmetrizied data                                        #
+        #==========================================================#
+        if plot_state.get("s_data_up") is not None:
+            ax.plot(*plot_state["s_data_up"], 'k.-', label="sym Up")
+
+        if plot_state.get("s_data_dw") is not None:
+            ax.plot(*plot_state["s_data_dw"], 'k.-', label="sym Dw")
 
         #==========================================================#
         ax.axhline(0, color='gray', linestyle='--', linewidth=1)
@@ -557,6 +649,7 @@ def correct_hysteresis_loop(app_instance):
             x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
             tail_params_edit, tail_function_edit,
             x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
+            smooth_up_edit, smooth_dw_edit,
             dataframes, logger, plot_state, draw_plot,
             window, 
         )
@@ -568,7 +661,12 @@ def correct_hysteresis_loop(app_instance):
     ) 
 
     del_cp_btn.clicked.connect(lambda: change_ps(
-            plot_state, window, draw_plot
+            plot_state, window, draw_plot, mode="cp"
+        )
+    )
+
+    del_od_btn.clicked.connect(lambda:change_ps(
+            plot_state, window, draw_plot, mode="od"
         )
     )
 
@@ -591,11 +689,34 @@ def correct_hysteresis_loop(app_instance):
             )
         )
     )
+
+    spl3_btn.clicked.connect(lambda: compute_b_spline(
+            file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            smooth_up_edit, smooth_dw_edit,
+            plot_state, logger, window, draw_plot
+
+        )
+    )
+
+    sim_btn.clicked.connect(lambda: symmetrize(
+            file_combo, save_file_combo,
+            x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            x_up_dest,  y_up_dest,  x_dw_dest,    y_dw_dest,
+            dataframes, logger, plot_state, draw_plot,
+            window, 
+        )
+    )
+
+    hk_btn.clicked.connect(lambda: compute_Hk(
+            file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            hk_thr_edit, plot_state, logger, window, output_box
+        )
+    )
         
     # Sub-window for fitting panel
     sub = QMdiSubWindow()
     sub.setWidget(window)
     sub.setWindowTitle("Loop Correction")
-    sub.resize(1200, 800)
+    sub.resize(1200, 900)
     app_instance.mdi_area.addSubWindow(sub)
     sub.show()

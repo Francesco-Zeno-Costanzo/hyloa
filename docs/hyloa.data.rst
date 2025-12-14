@@ -11,6 +11,7 @@ Submodules
    hyloa.data.processing
    hyloa.data.session
    hyloa.data.correction
+   hyloa.data.anisotropy
 
 Module contents
 ---------------

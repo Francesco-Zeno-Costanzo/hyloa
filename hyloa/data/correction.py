@@ -28,9 +28,10 @@ from hyloa.utils.err_format import format_value_error
 # Function to chek simmetry by flipping a branch #
 #================================================#
 
-def change_ps(plot_state, window, draw_plot):
+def change_ps(plot_state, window, draw_plot, mode="cp"):
     '''
-    Function to change the plot status deleting the corrected data
+    Function to change the plot status deleting the corrected
+    or the original data
 
     Parameters
     ----------
@@ -40,21 +41,37 @@ def change_ps(plot_state, window, draw_plot):
         The main window widget.
     draw_plot : callable
         Function to update the preview
+    mode : string, optional, dafult "cp"
+        if mode="cp" all correction will be remove from the plot
+        id mode="od" the original data will be removed from the plot
     '''
 
     try:
-        plot_state.update({
-            "done_corr": False,
-            "x_up_corr": None,
-            "y_up_corr": None,
-            "e_up"     : None,
-            "x_dw_corr": None,
-            "y_dw_corr": None,
-            "e_dw"     : None,
-            "fit_hc_p" : None,
-            "fit_hc_n" : None
-        })
-        draw_plot()
+        if mode =="cp":
+            plot_state.update({
+                "done_corr": False,
+                "done_spl3": False,
+                "x_up_corr": None,
+                "y_up_corr": None,
+                "e_up"     : None,
+                "x_dw_corr": None,
+                "y_dw_corr": None,
+                "e_dw"     : None,
+                "fit_hc_p" : None,
+                "fit_hc_n" : None,
+                "spline_up": None,
+                "spline_dw": None
+            })
+            draw_plot()
+
+        if mode == "od":
+            plot_state.update({
+                "x_up" : None,
+                "y_up" : None,
+                "x_dw" : None,
+                "y_dw" : None,
+            })
+            draw_plot()
 
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error during flip:\n{e}")
@@ -126,12 +143,15 @@ def perform_correction(file_combo, save_file_combo,
                        x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
                        tail_params_edit, tail_function_edit,
                        x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
+                       smooth_up_edit, smooth_dw_edit,
                        dataframes, logger, plot_state, draw_plot,
                        window):
     ''' 
     Perform the loop correction using the parameters from the UI.
     The correction involves fitting the saturation parts (tails) of the hystersis loop
     to remove drifts.
+    Using the computed error the code also provides an estimation of
+    smoothing parameters for Bspline fitting.
 
     Parameters
     ----------
@@ -173,6 +193,10 @@ def perform_correction(file_combo, save_file_combo,
         Combo box to select Y column in which to store the correct down branch.
     dataframes : list of pd.DataFrame
         List of dataframes containing loaded data.
+    smooth_up_edit : QLineEdit
+        Line edit for smoothing parameter for spline for up branch
+    smooth_dw_edit : QlineEdit
+        Line edit for smoothing parameter for spline for down branch
     logger : Logger
         Logger of the application.
     plot_state : dict
@@ -310,6 +334,11 @@ def perform_correction(file_combo, save_file_combo,
         # Total error = dispersion + abs(d_corr)
         e_up = e_up + np.abs(d_corr_up)
         e_dw = e_dw + np.abs(d_corr_dw)
+
+        # Update with an edicated guess
+        smooth_up_edit.setText(f"{sum(e_up**2):.2f}")
+        smooth_dw_edit.setText(f"{sum(e_dw**2):.2f}")
+
 
         # Apply correction to data
         y_up_corr = y_up - corr_up

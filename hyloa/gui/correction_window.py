@@ -28,6 +28,8 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,
      QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QMessageBox,
      QSizePolicy, QMdiSubWindow)
+from PyQt5.QtWidgets import QScrollArea
+
 from PyQt5.QtCore import Qt
 
 from hyloa.data.correction import *
@@ -121,8 +123,15 @@ def correct_hysteresis_loop(app_instance):
     # Control's panel on the left side        #
     #=========================================#
     
-    left_layout = QVBoxLayout()
-    root_layout.addLayout(left_layout, stretch=0)
+    left_widget = QWidget()
+    left_layout = QVBoxLayout(left_widget)
+
+    scroll_area = QScrollArea()
+    scroll_area.setWidgetResizable(True)
+    scroll_area.setWidget(left_widget)
+
+    root_layout.addWidget(scroll_area, stretch=0)
+
 
     def show_help_dialog():
         '''
@@ -140,7 +149,7 @@ def correct_hysteresis_loop(app_instance):
             "so the layout of the two 2x2 grids matches (Up/Down x X/Y).\n"
             "\n"
             "• You can shift and scale the field array, remember that the first change that is applied is the shift and then the scaling. \n"
-            " These changes are not incremental, so you can safely change the value and press the button again."
+            " These changes are not incremental, so you can safely change the value and press the button again.\n"
             "\n"
             "• Set the x_start / x_end limits for each branch. If the field is scaled, remember that "
             "the fit ranges must be chosen according to the *original*, non-scaled data; the scaling will be applied later.\n"
@@ -156,12 +165,11 @@ def correct_hysteresis_loop(app_instance):
             "So in this case the fit ranges must be chosen according to the *scaled* data.\n"
             "It is recommended to use simple low-order polinomials to fit coercivity or remenance regions.\n"
             "If there's a significant discrepancy between the coercives, you can shift the field values and rerun the fit by pressing the appropriate button.\n"
-            "Note that this time the shift is incremental, so a second shift will be applied to data already shifted by the first shift."
+            "Note that this time the shift is incremental, so a second shift will be applied to data already shifted by the first shift.\n"
             "\n"
             "• Cubic spline fitting and symmetrization:\n"
             "After the drift correction, you may fit each branch using a cubic B-spline. "
             "This step is mainly intended for data symmetrization and for the estimation of the anisotropy field.\n"
-            "\n"
             "The smoothing parameter controls how closely the spline follows the data:\n"
             "  - s = 0 corresponds to an exact interpolation of the points;\n"
             "  - s > 0 allows for smoothing and helps reduce the impact of noise.\n"
@@ -170,7 +178,20 @@ def correct_hysteresis_loop(app_instance):
             "• By moving the mouse over the various boxes, a tooltip appears with information relating to them."
         )
 
-        QMessageBox.information(window, "Correction Guide", help_text)
+        msg = QMessageBox(window)
+        msg.setWindowTitle("Correction Guide")
+        msg.setIcon(QMessageBox.Information)
+
+        text = QTextEdit()
+        text.setPlainText(help_text)
+        text.setReadOnly(True)
+        text.setMinimumSize(700, 500)
+
+        layout = msg.layout()
+        layout.addWidget(text, 0, 0, 1, layout.columnCount())
+
+        msg.exec_()
+
     
 
     help_button = QPushButton("Help")
@@ -487,8 +508,11 @@ def correct_hysteresis_loop(app_instance):
     spl3_btn = QPushButton("Create spline")
     spl3_btn_box.addWidget(spl3_btn, 0, 0)
 
-    sim_btn = QPushButton("Simmetrize loop")
-    spl3_btn_box.addWidget(sim_btn, 0, 1)
+    sym_btn = QPushButton("Symmetrize loop")
+    spl3_btn_box.addWidget(sym_btn, 0, 1)
+
+    del_sym_btn = QPushButton("Remove sym loop")
+    spl3_btn_box.addWidget(del_sym_btn, 0, 2)
 
     hk_box = QGridLayout()
     left_layout.addLayout(hk_box)
@@ -530,7 +554,9 @@ def correct_hysteresis_loop(app_instance):
     # Output box
     output_box = QTextEdit()
     output_box.setReadOnly(True)
-    output_box.setFixedHeight(140)
+    output_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    output_box.setMaximumHeight(140)
+
     right_layout.addWidget(output_box, stretch=1)
 
     def draw_plot():
@@ -717,12 +743,17 @@ def correct_hysteresis_loop(app_instance):
         )
     )
 
-    sim_btn.clicked.connect(lambda: symmetrize(
+    sym_btn.clicked.connect(lambda: symmetrize(
             file_combo, save_file_combo,
             x_up_combo, y_up_combo, x_down_combo, y_down_combo,
             x_up_dest,  y_up_dest,  x_dw_dest,    y_dw_dest,
             dataframes, logger, plot_state, draw_plot,
             window, 
+        )
+    )
+
+    del_sym_btn.clicked.connect(lambda:change_ps(
+            plot_state, window, draw_plot, mode="sym"
         )
     )
 
@@ -736,6 +767,8 @@ def correct_hysteresis_loop(app_instance):
     sub = QMdiSubWindow()
     sub.setWidget(window)
     sub.setWindowTitle("Loop Correction")
-    sub.resize(1200, 900)
+    #sub.resize(1200, 900)
+    sub.resize(window.sizeHint())
+
     app_instance.mdi_area.addSubWindow(sub)
     sub.show()

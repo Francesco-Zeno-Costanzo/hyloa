@@ -44,6 +44,7 @@ def change_ps(plot_state, window, draw_plot, mode="cp"):
     mode : string, optional, dafult "cp"
         if mode="cp" all correction will be remove from the plot
         id mode="od" the original data will be removed from the plot
+        if mode="sym" the symmetrized data will be removed from the plot
     '''
 
     try:
@@ -70,6 +71,13 @@ def change_ps(plot_state, window, draw_plot, mode="cp"):
                 "y_up" : None,
                 "x_dw" : None,
                 "y_dw" : None,
+            })
+            draw_plot()
+        
+        if mode == "sym":
+            plot_state.update({
+                "s_data_up" : None,
+                "s_data_dw" : None
             })
             draw_plot()
 
@@ -516,7 +524,7 @@ def fit_data(file_combo,
             
         for i , pi in zip(range(len(popt_p)), hc_param_names):
             for j , pj in zip(range(i+1, len(popt_p)), hc_param_names[i+1:]):
-                corr_ij = covm_n[i, j]/np.sqrt(covm_p[i, i]*covm_p[j, j])
+                corr_ij = covm_p[i, j]/np.sqrt(covm_p[i, i]*covm_p[j, j])
                 results_text_lines.append(f"corr({pi}, {pj}) = {corr_ij:.3f}")
 
         # Show textual results

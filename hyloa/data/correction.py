@@ -221,7 +221,13 @@ def apply_shift(field_shift_pc_edit, plot_state, window, fit_data, args=()):
         plot_state["x_up_corr"] -= field_shift
         plot_state["x_dw_corr"] -= field_shift
 
-        fit_data(*args)
+        try :
+            fit_data(*args)
+        except Exception as e:
+            QMessageBox.critical(window, "Error", f"Error during fit:\n{e}")
+            # Return to original values
+            plot_state["x_up_corr"] += field_shift
+            plot_state["x_dw_corr"] += field_shift
 
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error applying shift:\n{e}")

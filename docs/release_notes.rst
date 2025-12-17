@@ -2,6 +2,13 @@
 HYLOA Release Notes
 =========================
 
+Version 1.10.2 - 2025-12-17
+---------------------------
+This patch introduces improvements to the hysteresis loop correction panel, allowing you to fit a cubic Bspline to calculate the anisotropy field.
+The correction procedure is now more fluid, allowing for multiple iterations on the same data.
+The window has also been improved, making it more robust for multiple screens.
+Changes have also been made to the shell, which now behaves more like a Python shell.
+
 Version 1.10.1 - 2025-12-05
 ---------------------------
 Fix installation on windows via setup.bat file

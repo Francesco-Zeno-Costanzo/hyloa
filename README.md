@@ -31,6 +31,7 @@ HYsteresis LOop Analyzer is a Python package that allows you to **load, analyze 
 
 HYLOA is distributed **exclusively as a wheel (.whl)** through GitHub Releases.  
 The recommended installation method is to install the `.whl` file directly, without cloning the repository.
+Is also recommended to use the last releases.
 
 ---
 

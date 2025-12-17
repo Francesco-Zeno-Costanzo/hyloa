@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyloa"
-version = "1.10.1"
+version = "1.10.2"
 description = "A package for analyzing hysteresis loops"
 readme = "README.md"
 requires-python = ">=3.10.12"

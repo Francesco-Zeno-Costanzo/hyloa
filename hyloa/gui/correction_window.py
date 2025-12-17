@@ -62,6 +62,8 @@ def correct_hysteresis_loop(app_instance):
     (e.g. 'a + b*x + c*x**2').
     To proceed with the fit of the physical quantities, you must first press the button to perform the drift correction.
 
+    • There is also the option to replace one branch by duplicating the other. This operation can only be performed on the correct data.
+
     • Configure the second fit block. This works exactly like the 'Quick Fit' window and can be used
     to extract properties such as coercive field or remanence. This second fit operates on the *corrected* data.
     So in this case the fit ranges must be chosen according to the *scaled* data.
@@ -158,7 +160,10 @@ def correct_hysteresis_loop(app_instance):
             "You may use any polynomial or analytical function, but it is strongly recommended to avoid excessively "
             "high polynomial orders. The constant term MUST be the first parameter, exactly as shown in the example below.\n"
             "  (e.g. 'a + b*x + c*x**2').\n"
-            "To proceed with the fit of the physical quantities, you must first press the button to perform the drift correction.\n"
+            "To proceed with the fit of the physical quantities, you must first press the button to perform the drift correction."
+            "If a file has been selected for saving, the corrected data will be saved.\n"
+            "\n"
+            "• There is also the option to replace one branch by duplicating the other. This operation can only be performed on the correct data.\n"
             "\n"
             "• Configure the second fit block. This works exactly like the 'Quick Fit' window and can be used "
             "to extract properties such as coercive field or remanence. This second fit operates on the *corrected* data.\n"
@@ -174,6 +179,7 @@ def correct_hysteresis_loop(app_instance):
             "  - s = 0 corresponds to an exact interpolation of the points;\n"
             "  - s > 0 allows for smoothing and helps reduce the impact of noise.\n"
             "A reasonable value depends on the data quality and on the estimated experimental error.\n"
+            "If you press the button to symmetrize the data and a file has been selected for saving, the symmetrized data will be saved.\n"
             "\n"
             "• By moving the mouse over the various boxes, a tooltip appears with information relating to them."
         )
@@ -381,13 +387,28 @@ def correct_hysteresis_loop(app_instance):
     left_layout.addLayout(corr_btn_box)
     
     run_button = QPushButton("Apply drift correction")
+    run_button.setToolTip("Remove drift in the saturation zone")
     corr_btn_box.addWidget(run_button, 0, 0)
 
     del_cp_btn = QPushButton("Remove corrections")
+    del_cp_btn.setToolTip("Remove from all done corrections from plot and delete them")
     corr_btn_box.addWidget(del_cp_btn, 0, 1)
 
     del_od_btn = QPushButton("Remove original data")
+    del_od_btn.setToolTip("Remove original data from plot")
     corr_btn_box.addWidget(del_od_btn, 0, 2)
+
+    box_options = QGridLayout()
+    left_layout.addLayout(box_options)
+    # Select option to duplicate a branch
+    double_branch = QComboBox()
+    double_branch.addItem("No")
+    double_branch.addItem("Up")
+    double_branch.addItem("Down")
+    box_options.addWidget(QLabel("Duplicate branch: "), 0, 0)
+    box_options.addWidget(double_branch, 0, 1)
+    double_btn = QPushButton("Duplicate")
+    box_options.addWidget(double_btn, 0, 2)
 
     #===============================================#
     # Set parameters for coercivity computation     #
@@ -471,16 +492,6 @@ def correct_hysteresis_loop(app_instance):
 
     left_layout.addWidget(QLabel("-------- Symmetrization and estimation of the anisotropy field --------"))
 
-    box_options = QGridLayout()
-    left_layout.addLayout(box_options)
-    # Select option to duplicate a branch
-    double_branch = QComboBox()
-    double_branch.addItem("No")
-    double_branch.addItem("Up")
-    double_branch.addItem("Down")
-    box_options.addWidget(QLabel("Duplicate branch: "), 0, 0)
-    box_options.addWidget(double_branch, 0, 1)
-
     box_spline = QGridLayout()
     left_layout.addWidget(QLabel("Smothing factor for up and down brach cubic spline fitting:"))
 
@@ -506,12 +517,15 @@ def correct_hysteresis_loop(app_instance):
     left_layout.addLayout(spl3_btn_box)
     
     spl3_btn = QPushButton("Create spline")
+    spl3_btn.setToolTip("Fit data with a cubic spline.")
     spl3_btn_box.addWidget(spl3_btn, 0, 0)
 
     sym_btn = QPushButton("Symmetrize loop")
+    sym_btn.setToolTip("Create a new loop strating form the preconstructed spline.")
     spl3_btn_box.addWidget(sym_btn, 0, 1)
 
     del_sym_btn = QPushButton("Remove sym loop")
+    del_sym_btn.setToolTip("Remove new loop form the plot and delete them.")
     spl3_btn_box.addWidget(del_sym_btn, 0, 2)
 
     hk_box = QGridLayout()
@@ -721,6 +735,14 @@ def correct_hysteresis_loop(app_instance):
             x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
             hc_params_edit, hc_function_edit, logger, plot_state, draw_plot,
             output_box, window
+        )
+    )
+
+    double_btn.clicked.connect(lambda : flip_data(
+            file_combo,
+            x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            double_branch, plot_state,
+            window, logger, draw_plot
         )
     )
     

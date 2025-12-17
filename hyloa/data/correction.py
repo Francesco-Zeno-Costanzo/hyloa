@@ -36,11 +36,11 @@ def change_ps(plot_state, window, draw_plot, mode="cp"):
     Parameters
     ----------
     plot_state : dict
-        dictionary of the plotted data
+        Dictionary storing the current plotting state.
     window : QWidget
-        The main window widget.
+        Parent widget used to display error message boxes.
     draw_plot : callable
-        Function to update the preview
+        Callback function responsible for redrawing the plot.
     mode : string, optional, dafult "cp"
         if mode="cp" all correction will be remove from the plot
         id mode="od" the original data will be removed from the plot
@@ -109,6 +109,92 @@ def flip(plot_state, window, draw_plot):
         QMessageBox.critical(window, "Error", f"Error during flip:\n{e}")
 
 #================================================#
+# Function to flip a selected branch             #
+#================================================#
+
+def flip_data(file_combo,
+              x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+              double_branch, plot_state,
+              window, logger, draw_plot):
+    '''
+    Parameters
+    ----------
+    file_combo : QComboBox
+        Combo box to select source data file.
+    x_up_combo : QComboBox
+        Combo box to select X column for Up branch.
+    y_up_combo : QComboBox
+        Combo box to select Y column for Up branch.
+    x_down_combo : QComboBox
+        Combo box to select X column for Down branch.
+    y_down_combo : QComboBox
+        Combo box to select Y column for Down branch.
+    double_branch : QComboBox
+        Combo box to select a branch duplication.
+    plot_state : dict
+        Dictionary storing the current plotting state.
+    window : QWidget
+        Parent widget used to display error message boxes.
+    logger : logging.Logger
+        Logger instance used to record spline computation details.
+    draw_plot : callable
+        Callback function responsible for redrawing the plot.
+    '''
+    try:
+        idx_src  = file_combo.currentIndex()
+        x_up_col = x_up_combo.currentText()
+        y_up_col = y_up_combo.currentText()
+        x_dw_col = x_down_combo.currentText()
+        y_dw_col = y_down_combo.currentText()
+
+        x_up = plot_state["x_up_corr"]
+        y_up = plot_state["y_up_corr"]
+        x_dw = plot_state["x_dw_corr"]
+        y_dw = plot_state["y_dw_corr"]
+        e_up = plot_state["e_up"]
+        e_dw = plot_state["e_dw"]
+
+        if x_up is None:
+            QMessageBox.critical(window, "Error", "This can be done only on corrected data.")
+            return
+
+        db = double_branch.currentText()
+
+        if db == "No":
+            # Do nothing if button will be pressed
+            return
+
+        elif db == "Up":
+            x_dw, y_dw = -np.copy(x_up), -np.copy(y_up)
+            x_dw, y_dw = x_dw[::-1], y_dw[::-1]  # reverse to maintain order
+            e_dw       = np.copy(e_up)[::-1]
+
+        elif db == "Down":
+            x_up, y_up = -np.copy(x_dw), -np.copy(y_dw)
+            x_up, y_up = x_up[::-1], y_up[::-1]  # reverse to maintain order
+            e_up       = np.copy(e_dw)[::-1]
+
+        plot_state.update({
+            "x_up_corr": x_up,
+            "y_up_corr": y_up,
+            "e_up"     : e_up,
+            "x_dw_corr": x_dw,
+            "y_dw_corr": y_dw,
+            "e_dw"     : e_dw,
+        })
+        draw_plot()
+
+        log_lines = []
+        log_lines.append(f"Flipped {db} branch in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}.")
+        
+        logger.info("\n".join(log_lines))
+
+    
+    except Exception as e:
+        QMessageBox.critical(window, "Error", f"Error during branch flipping:\n{e}")
+
+
+#================================================#
 # Function to correct field                      #
 #================================================#
 
@@ -120,10 +206,10 @@ def apply_shift(field_shift_pc_edit, plot_state, window, fit_data, args=()):
     ----------
     field_shift_pc_edit : QLineEdit
         Value for field shifting
-    window : QWidget
-        The main window widget.
     plot_state : dict
-        dictionary of the plotted data
+        Dictionary storing the current plotting state.
+    window : QWidget
+        Parent widget used to display error message boxes.
     fit_data : callable
         Function for fitting data
     args : tuple
@@ -205,16 +291,16 @@ def perform_correction(file_combo, save_file_combo,
         Line edit for smoothing parameter for spline for up branch
     smooth_dw_edit : QlineEdit
         Line edit for smoothing parameter for spline for down branch
-    logger : Logger
-        Logger of the application.
+    logger : logging.Logger
+        Logger instance used to record spline computation details.
     plot_state : dict
-        dictionary of the plotted data
-    draw_plot : callable
-        Function to update the preview
+        Dictionary storing the current plotting state.
+    draw_plot : callable    
+        Callback function responsible for redrawing the plot.
     output_box : QTextEdit
         Text edit for displaying output results.
     window : QWidget
-        The main window widget.
+        Parent widget used to display error message boxes.
     '''
     try:
         idx_src      = file_combo.currentIndex()
@@ -435,16 +521,16 @@ def fit_data(file_combo,
         Line edit for coercive fit parameter names.
     hc_function_edit : QLineEdit
         Line edit for coercive fit function.
-    logger : Logger
-        Logger of the application.
+    logger : logging.Logger
+        Logger instance used to record spline computation details.
     plot_state : dict
-        dictionary of the plotted data
-    draw_plot : callable
-        Function to update the preview
+        Dictionary storing the current plotting state.
+    draw_plot : callable    
+        Callback function responsible for redrawing the plot.
     output_box : QTextEdit
         Text edit for displaying output results.
     window : QWidget
-        The main window widget.
+        Parent widget used to display error message boxes.
     '''
     try : 
         idx_src = file_combo.currentIndex()

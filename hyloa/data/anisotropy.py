@@ -208,11 +208,11 @@ def compute_Hk(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
         where the relative difference between up and down branches is below
         the chosen limit.
     plot_state : dict
-        Dictionary storing the current plot state,.
+        Dictionary storing the current plot state.
     logger : logging.Logger
         Logger instance used to record the computation results.
     window : QWidget
-        Parent window used for error dialogs.
+        Parent widget used to display error message boxes.
     output_box : QTextEdit
         Text box where the computed anisotropy field and related information
         are displayed.
@@ -323,13 +323,13 @@ def symmetrize(file_combo, save_file_combo,
     dataframes : list of pandas.DataFrame
         List of dataframes loaded in the application.
     logger : logging.Logger
-        Logger instance used to record the symmetrization process.
+        Logger instance used to record spline computation details.
     plot_state : dict
-        Dictionary storing the current plot state.
+        Dictionary storing the current plotting state.
     draw_plot : callable
-        Function used to refresh the plot after symmetrization.
+        Callback function responsible for redrawing the plot.
     window : QWidget
-        Parent window used for error dialogs.
+        Parent widget used to display error message boxes.
 
     Notes
     -----

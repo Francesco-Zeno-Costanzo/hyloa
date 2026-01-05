@@ -28,7 +28,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QMdiArea, QMdiSubWindow, QWidget, QVBoxLayout,
     QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox, QHBoxLayout,
-    QListWidget, QDialog, QInputDialog, QScrollArea
+    QListWidget, QDialog, QInputDialog, QScrollArea, QDesktopWidget
 )
 from PyQt5.QtGui import QPixmap
 
@@ -60,7 +60,19 @@ class MainApp(QMainWindow):
 
         super().__init__()
         self.setWindowTitle("Hysteresis Loop Analyzer - tmp session")
-        self.setGeometry(100, 100, 1000, 700)
+        
+        # Set geometry with percentages of screen size
+        screen = QApplication.primaryScreen().availableGeometry()
+        width  = int(screen.width()  * 0.5)
+        height = int(screen.height() * 0.5)
+        self.resize(width,  height)
+        
+        # Center the window
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
 
         # MDI area
         self.mdi_area = QMdiArea()
@@ -89,7 +101,7 @@ class MainApp(QMainWindow):
         self.log_sub   = None
 
         self.init_sidebar()
-        self.show()
+    
 
     def init_sidebar(self):
         ''' Create sidebar with buttons
@@ -226,6 +238,8 @@ class MainApp(QMainWindow):
             " Analysis \n"
             "#=========#\n"
             "In the analysis section, ”create plot” button opens a command window that allows you to create and customize a graph.\n"
+            "The ”worksheet” button opens a window that allows you to create a worksheet where you can combine data from different files, "
+            "or load from other files. You can make plots, fit data, and simply arithmetic operations between columns.\n"
             "It is also possible to write and/or load a Python file to perform further analysis of the data via the ”script” button.\n"
             "”Annotation” opens a text box that allows you to write comments that will then be saved in the log file.\n\n"
             "#=========#\n"
@@ -242,7 +256,20 @@ class MainApp(QMainWindow):
             "Thehre is also a log Panel that displays real-time logs of all operations."
         )
 
-        QMessageBox.information(self.mdi_area, "A Short Guide to Hyloa", help_text)
+        
+        msg = QMessageBox(self)
+        msg.setWindowTitle("A Short Guide to Hyloa")
+        msg.setIcon(QMessageBox.Information)
+
+        text = QTextEdit()
+        text.setPlainText(help_text)
+        text.setReadOnly(True)
+        text.setMinimumSize(700, 500)
+
+        layout = msg.layout()
+        layout.addWidget(text, 0, 0, 1, layout.columnCount())
+
+        msg.exec_()
 
     def conf_logging(self):
         ''' Function that call the logging configuration

@@ -974,8 +974,10 @@ def open_curve_fitting_window(app_instance, plot_widget):
 
             result_lines = []
             for p, val, err in zip(param_names, params, np.sqrt(np.diag(pcov))):
-                
-                result_lines.append(f"{p} = {format_value_error(val, err)}")    
+                try:
+                    result_lines.append(f"{p} = {format_value_error(val, err)}")    
+                except Exception as e:
+                    result_lines.append(f"{p} = {val:.6f} ± {err:.6f}")
                 fit_results[p] = val
                 fit_results[f"error_{p}"] = err
 

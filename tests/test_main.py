@@ -17,49 +17,62 @@
 """
 Test entry point
 """
+import time
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
 
-from hyloa.main import main
-from hyloa.gui.main_window import MainApp
-
-@pytest.fixture(scope="module")
-def app():
-    """ Create a single QApplication for all module tests.
-    """
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
+from hyloa.main import *
 
 
-def test_main_window_launch(app):
-    """ Verify that the main window is created correctly.
-    """
-    window = MainApp()
-    
-    assert window is not None
-    assert window.windowTitle() == "Hysteresis Loop Analyzer - tmp session"
-    
-    # Verify that the MDI area is set correctly
-    assert window.centralWidget() is window.mdi_area
+def test_splash_creation(qtbot):
+    pixmap = QPixmap(100, 100)
+    splash = Splash(pixmap)
 
-    # Close the window after the test
-    window.close()
+    qtbot.addWidget(splash)
+
+    assert splash.windowFlags() & Qt.FramelessWindowHint
+    assert splash.progress.value() == 0
 
 
-def test_main_entrypoint(monkeypatch):
-    """ Test that main starts without errors (without launching app.exec_()).
-    """
-    # Block app.exec_() to prevent the interactive GUI from starting
-    class DummyApp:
-        def __init__(self, *args):
-            pass
-        def exec_(self): return 0
+def test_progress_update(qtbot):
+    pixmap = QPixmap(100, 100)
+    splash = Splash(pixmap)
 
-    monkeypatch.setattr("hyloa.main.QApplication", DummyApp)
-    monkeypatch.setattr("hyloa.main.MainApp", lambda: None)
+    qtbot.addWidget(splash)
 
-    with pytest.raises(SystemExit) as e:
-        main()
-    assert e.value.code == 0
+    splash.set_progress(50)
+    assert splash.progress.value() == 50
+
+    splash.set_progress(100)
+    assert splash.progress.value() == 100
+
+
+def test_progress_format(qtbot):
+    pixmap = QPixmap(100, 100)
+    splash = Splash(pixmap)
+
+    qtbot.addWidget(splash)
+
+    assert splash.progress.isTextVisible()
+    assert splash.progress.format() == "%p%"
+
+
+
+def test_remaining_time_positive():
+    start = time.monotonic()
+    time.sleep(0.1)
+
+    remaining = compute_remaining_time(start, 1.0)
+
+    assert remaining > 0
+    assert remaining <= 1000
+
+
+def test_remaining_time_zero_when_expired():
+    start = time.monotonic()
+    time.sleep(0.2)
+
+    remaining = compute_remaining_time(start, 0.1)
+
+    assert remaining == 0

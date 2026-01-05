@@ -604,15 +604,21 @@ def fit_data(file_combo,
         # Store numerical results
         results_text_lines.append("Coercive fit results:")
         for p, val, err in zip(hc_param_names, popt_n, np.sqrt(np.diag(covm_n))):
-            results_text_lines.append(f"{p} = {format_value_error(val, err)}")    
-            
+            try :
+                results_text_lines.append(f"{p} = {format_value_error(val, err)}")
+            except Exception as e:
+                results_text_lines.append(f"{p} = {val:.6f} ± {err:.6f}")
+
         for i , pi in zip(range(len(popt_n)), hc_param_names):
             for j , pj in zip(range(i+1, len(popt_n)), hc_param_names[i+1:]):
                 corr_ij = covm_n[i, j]/np.sqrt(covm_n[i, i]*covm_n[j, j])
                 results_text_lines.append(f"corr({pi}, {pj}) = {corr_ij:.3f}")
         
         for p, val, err in zip(hc_param_names, popt_p, np.sqrt(np.diag(covm_p))):
-            results_text_lines.append(f"{p} = {format_value_error(val, err)}")    
+            try :
+                results_text_lines.append(f"{p} = {format_value_error(val, err)}")
+            except Exception as e:
+                results_text_lines.append(f"{p} = {val:.6f} ± {err:.6f}")    
             
         for i , pi in zip(range(len(popt_p)), hc_param_names):
             for j , pj in zip(range(i+1, len(popt_p)), hc_param_names[i+1:]):

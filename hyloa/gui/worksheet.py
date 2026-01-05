@@ -1079,7 +1079,10 @@ class WorksheetWindow(QMdiSubWindow):
                 # Show fit results
                 lines = []
                 for p, val, err in zip(param_names, params, np.sqrt(np.diag(pcov))):
-                    lines.append(f"{p} = {format_value_error(val, err)}")
+                    try:
+                        lines.append(f"{p} = {format_value_error(val, err)}")    
+                    except Exception as e:
+                        lines.append(f"{p} = {val:.6f} ± {err:.6f}")
                 
                 for i , pi in zip(range(len(params)), param_names):
                     for j , pj in zip(range(i+1, len(params)), param_names[i+1:]):

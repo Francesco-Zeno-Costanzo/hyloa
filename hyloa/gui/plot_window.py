@@ -32,7 +32,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QComboBox, QMessageBox, QDialog, QFormLayout,
     QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy, QFrame,
-    QCheckBox, QDialogButtonBox
+    QCheckBox, QDialogButtonBox, QMenu, QAction
 
 )
 
@@ -98,9 +98,7 @@ class PlotControlWidget(QWidget):
         top_buttons = [
             ("Create plot",   self.plot),
             ("Customization", self.customize_plot_style),
-            ("Appearance",    self.customize_plot_appearance),
-            ("Curve Fitting", self.curve_fitting),
-            ("Normalize",     self.normalize),
+            ("Appearance",    self.customize_plot_appearance)            
         ]
         for text, func in top_buttons:
             btn = QPushButton(text)
@@ -108,21 +106,39 @@ class PlotControlWidget(QWidget):
             top_button_layout.addWidget(btn)
         main_layout.addLayout(top_button_layout)
 
-        # Bottom buttons row
-        bottom_button_layout = QHBoxLayout()
-        bottom_buttons = [
-            ("Close loop",   self.close_loop),
-            ("Flip x axis",  self.x_inversion),
-            ("Flip y axis",  self.y_inversion),
-            ("Flip a branch", self.revert_branch),
-            ("Correct loop", self.correction)
+        # mid buttons row
+        mid_button_layout = QHBoxLayout()
+        mid_buttons = [
+            ("Normalize",     self.normalize),
+            ("Close loop",    self.close_loop),
+            ("Curve Fitting", self.curve_fitting),
+            ("Correct loop",  self.correction)
         ]
-        for text, func in bottom_buttons:
+        for text, func in mid_buttons:
             btn = QPushButton(text)
             btn.clicked.connect(func)
-            bottom_button_layout.addWidget(btn)
-        main_layout.addLayout(bottom_button_layout)
+            mid_button_layout.addWidget(btn)
 
+        flip_button = QPushButton("Flip data")
+        flip_menu   = QMenu(flip_button)
+
+        flip_x_action      = QAction("Flip X axis", self)
+        flip_y_action      = QAction("Flip Y axis", self)
+        flip_branch_action = QAction("Flip branch", self)
+
+        flip_x_action.triggered.connect(self.x_inversion)
+        flip_y_action.triggered.connect(self.y_inversion)
+        flip_branch_action.triggered.connect(self.revert_branch)
+
+        flip_menu.addAction(flip_x_action)
+        flip_menu.addAction(flip_y_action)
+        flip_menu.addSeparator()
+        flip_menu.addAction(flip_branch_action)
+
+        flip_button.setMenu(flip_menu)
+        mid_button_layout.addWidget(flip_button)
+
+        main_layout.addLayout(mid_button_layout)
         
         main_layout.addWidget(QLabel("Select data, add to or hide cycles:"))
         # Section for adding data

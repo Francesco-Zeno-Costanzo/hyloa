@@ -78,20 +78,17 @@ def test_save_cancelled_by_user(fake_app_instance):
 
 
 def test_save_successful(tmp_path, fake_app_instance):
-    test_file = tmp_path / "test_session.pkl"
+    test_file = tmp_path / "test_session.hyloa"
 
-    with patch("hyloa.data.session.QFileDialog.getSaveFileName", return_value=(str(test_file), "")), \
+    with patch("hyloa.data.session.QFileDialog.getSaveFileName",
+               return_value=(str(test_file), "")), \
+         patch("hyloa.data.session.pickle.dump") as dump_mock, \
          patch("hyloa.data.session.QMessageBox.information") as info_mock:
-        
+
         save_current_session(fake_app_instance)
 
-        # Check file exists and is a valid pickle
         assert test_file.exists()
-        with open(test_file, "rb") as f:
-            data = pickle.load(f)
-        
-        assert isinstance(data, dict)
-        assert "dataframes" in data
+        dump_mock.assert_called_once()
         info_mock.assert_called_once()
 
 

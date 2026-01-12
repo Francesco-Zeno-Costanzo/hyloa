@@ -19,8 +19,12 @@
 Code to save a session (i.e. alla dta loaded all plot crated and so on) in .pkl files
 """
 import os
+import sys
+import gzip
 import pickle
 import logging
+from datetime import datetime
+
 
 from PyQt5.QtCore import QTimer
 
@@ -36,7 +40,9 @@ from hyloa.gui.worksheet import WorksheetWindow
 
 def save_current_session(app_instance, parent_widget=None):
     '''
-    Save the current session to a .pkl file.
+    Save the current session to a HYLOA session file (.hyloa)
+    Session files are intended to be opened only by HYLOA.
+    Backward compatibility is guaranteed across minor versions.
 
     Parameters
     ----------
@@ -53,16 +59,27 @@ def save_current_session(app_instance, parent_widget=None):
         parent_widget,
         "Save session",
         "",
-        "Pickle Files (*.pkl)"
+        "HYLOA Session (*.hyloa)"
     )
 
     if not file_path:
         QMessageBox.warning(parent_widget, "Warning", "No file selected for saving.")
         return
+    
+    if not file_path.lower().endswith(".hyloa"):
+        file_path += ".hyloa"
+
 
     try:
         # Build the dictionary for saving data 
         session_data = {
+
+            "__hyloa__":           True,
+            "file_format_version": 1,
+            "app_version":         getattr(app_instance, "version", "unknown"),
+            "created_on":          datetime.now().isoformat(),
+            "platform":            sys.platform,
+
             "dataframes":   app_instance.dataframes,
             "header_lines": app_instance.header_lines,
             "logger_path":  app_instance.logger_path,
@@ -117,8 +134,8 @@ def save_current_session(app_instance, parent_widget=None):
 
         }
 
-        with open(file_path, "wb") as f:
-            pickle.dump(session_data, f)
+        with gzip.open(file_path, "wb") as f:
+            pickle.dump(session_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         QMessageBox.information(parent_widget, "Session saved",
                                 f"Session saved in file:\n{file_path}")
@@ -128,7 +145,7 @@ def save_current_session(app_instance, parent_widget=None):
 
 def load_previous_session(app_instance, parent_widget=None):
     '''
-    Load a previously saved session from a .pkl file.
+    Load a previously saved session from a .hyloa file.
 
     Parameters
     ----------
@@ -142,7 +159,7 @@ def load_previous_session(app_instance, parent_widget=None):
         parent_widget,
         "Load session",
         "",
-        "Pickle Files (*.pkl)",
+        "HYLOA Session (*.hyloa);;Legacy Pickle (*.pkl)",
         options=options
     )
 
@@ -151,8 +168,13 @@ def load_previous_session(app_instance, parent_widget=None):
         return
 
     try:
-        with open(file_path, "rb") as f:
-            session_data = pickle.load(f)
+        try:
+            with gzip.open(file_path, "rb") as f:
+                session_data = pickle.load(f)
+        except OSError:
+            # --- fallback to legacy pickle ---
+            with open(file_path, "rb") as f:
+                session_data = pickle.load(f)
 
         # Reload attributes of main app instance
         app_instance.dataframes     = session_data.get("dataframes", [])
@@ -176,6 +198,19 @@ def load_previous_session(app_instance, parent_widget=None):
 
         
         app_instance.logger = logging.getLogger(__name__)
+
+        is_new_format = session_data.get("__hyloa__", False)
+        file_version  = session_data.get("file_format_version", 0)
+
+        if is_new_format:
+            app_instance.logger.info(
+                f"Loaded HYLOA session (format v{file_version})"
+            )
+        else:
+            app_instance.logger.info(
+                "Loaded legacy HYLOA session (no signature)"
+            )
+
         app_instance.logger.info("Logger restored from session file.")
 
         app_instance.open_default_panels()

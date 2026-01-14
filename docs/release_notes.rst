@@ -2,6 +2,14 @@
 HYLOA Release Notes
 =========================
 
+Version 1.10.3 - 2026-01-12
+---------------------------
+The main changes of this patch are the introduction of a loading screen, with the logo and the progress bar,
+and the change of session files that are now compressed via "gzip", with an ".hyloa" extension and a simple signature.
+The program can always handle the old session files.
+There is also a bug fix in the loops' correction process: the second shift option is now applied only if the fit converges.
+Visual re-adjustments of buttons in the worksheet and control windows.
+
 Version 1.10.2 - 2025-12-17
 ---------------------------
 This patch introduces improvements to the hysteresis loop correction panel, allowing you to fit a cubic Bspline to calculate the anisotropy field.

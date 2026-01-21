@@ -25,6 +25,8 @@ from scipy.optimize import curve_fit
         
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QKeySequence
+from PyQt5.QtCore import QItemSelectionModel
+
 
 from PyQt5.QtWidgets import (
     QFileDialog, QMessageBox, QMdiSubWindow, QLineEdit,
@@ -32,7 +34,8 @@ from PyQt5.QtWidgets import (
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
     QDialogButtonBox, QInputDialog, QAction, QApplication,
     QFormLayout, QTextEdit, QSizePolicy, QCheckBox, QStackedWidget,
-    QListWidget, QGroupBox
+    QListWidget, QAbstractItemView
+
 )
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -83,6 +86,8 @@ class WorksheetWindow(QMdiSubWindow):
 
         # Enable copy/paste functionality with ctrl+c / ctrl+v
         self.table.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
 
         copy_action = QAction("Copy", self.table)
         copy_action.setShortcut(QKeySequence.Copy)
@@ -103,6 +108,13 @@ class WorksheetWindow(QMdiSubWindow):
         # Makes title editable
         self.table.horizontalHeader().setSectionsMovable(True)
         self.table.horizontalHeader().sectionDoubleClicked.connect(self.edit_column_name)
+
+        # Selection of a single or several columns
+        self._column_selection_anchor = None
+        self.table.horizontalHeader().sectionClicked.connect(
+            self.on_column_header_clicked
+        )
+
 
         self.btn_add_col    = QPushButton("Add column")
         self.btn_rmv_col    = QPushButton("Remove column")
@@ -199,9 +211,65 @@ class WorksheetWindow(QMdiSubWindow):
 
         super().closeEvent(event)
 
-    def copy_selection(self):
-        ''' Copy selected cells to clipboard in tab-delimited format.
+    def on_column_header_clicked(self, col):
         '''
+        Handle column header click for selection with modifiers.
+
+        Parameters
+        ----------
+        col : int
+            The index of the clicked column.
+        '''
+        modifiers = QApplication.keyboardModifiers()
+
+        sel_model = self.table.selectionModel()
+        col_index = self.table.model().index(0, col)
+
+        if modifiers & Qt.ControlModifier:
+            sel_model.select(
+                col_index,
+                QItemSelectionModel.Select | QItemSelectionModel.Columns
+            )
+        elif modifiers & Qt.ShiftModifier:
+            sel_model.select(
+                col_index,
+                QItemSelectionModel.SelectCurrent | QItemSelectionModel.Columns
+            )
+        else:
+            sel_model.clearSelection()
+            sel_model.select(
+                col_index,
+                QItemSelectionModel.Select | QItemSelectionModel.Columns
+            )
+
+
+    def copy_selection(self):
+        '''
+        Copy selected columns or selected cells to clipboard
+        in tab-delimited format.
+        '''
+
+        clipboard       = QApplication.clipboard()
+        selection_model = self.table.selectionModel()
+
+        selected_columns = selection_model.selectedColumns()
+
+        # Case 1: Selection of the columns
+        if selected_columns:
+            cols   = sorted(c.column() for c in selected_columns)
+            copied = []
+
+            for row in range(self.table.rowCount()):
+                row_data = []
+                for col in cols:
+                    item = self.table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                copied.append("\t".join(row_data))
+
+            clipboard.setText("\n".join(copied))
+            return
+
+        # Case 2: Selection of the cells
         selection = self.table.selectedRanges()
         if not selection:
             return
@@ -214,7 +282,7 @@ class WorksheetWindow(QMdiSubWindow):
                 item = self.table.item(row, col)
                 row_data.append(item.text() if item else "")
             copied.append("\t".join(row_data))
-        clipboard = QApplication.clipboard()
+        
         clipboard.setText("\n".join(copied))
     
     def paste_selection(self):
@@ -225,26 +293,31 @@ class WorksheetWindow(QMdiSubWindow):
         if not text:
             return
 
-        rows = text.split("\n")
-        start = self.table.currentRow(), self.table.currentColumn()
+        # Remove empty line (clipboard behaviour)
+        rows = [r for r in text.split("\n")  if r.strip("\t ") != ""]
+        data = [row.split("\t") for row in rows] 
+        
+        start_col = self.table.currentColumn()
+        start_row = self.table.currentRow()
 
-        for i, row in enumerate(rows):
-            cells = row.split("\t")
-            for j, cell in enumerate(cells):
-                r = start[0] + i
-                c = start[1] + j
-                
-                # Expand table if needed in rows
-                if r >= self.table.rowCount():
-                    self.table.insertRow(self.table.rowCount())
-                
-                # Expand table if needed in collumns
-                if c >= self.table.columnCount():
-                    self.table.insertColumn(self.table.columnCount())
-                    # Add column's name
-                    if self.table.horizontalHeaderItem(c) is None:
-                        self.table.setHorizontalHeaderItem(c, QTableWidgetItem(f"Col {c+1}"))
-                
+        num_cols  = max(len(r) for r in data)
+
+        # Ensure enough columns
+        while start_col + num_cols > self.table.columnCount():
+            c = self.table.columnCount()
+            self.table.insertColumn(c)
+            self.table.setHorizontalHeaderItem(
+                c, QTableWidgetItem(f"Col {c+1}")
+            )
+
+        # Ensure enough rows
+        while start_row + len(data) > self.table.rowCount():
+            self.table.insertRow(self.table.rowCount())
+
+        for i, row in enumerate(data):
+            for j, cell in enumerate(row):
+                r = start_row + i
+                c = start_col + j
                 self.table.setItem(r, c, QTableWidgetItem(cell))
 
 
@@ -312,6 +385,17 @@ class WorksheetWindow(QMdiSubWindow):
         selected = self.table.selectionModel().selectedColumns()
         if not selected:
             return  # Nothing selected to remove so return
+        
+        if len(selected) > 1:
+            reply = QMessageBox.question(
+                self,
+                "Remove columns",
+                f"Remove {len(selected)} columns?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return
+
         
         # Remove columns in reverse order to avoid index shifting
         for col in sorted([c.column() for c in selected], reverse=True):

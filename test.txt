@@ -1,0 +1,855 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-8.3.5, pluggy-1.6.0
+PyQt5 5.15.11 -- Qt runtime 5.15.15 -- Qt compiled 5.15.14
+rootdir: /home/francesco/GitHub/hyloa
+configfile: pyproject.toml
+plugins: anyio-4.6.2.post1, qt-4.4.0, cov-6.1.1, mock-3.14.1
+collected 75 items
+
+tests/test_anisotropy.py F.....F                                         [  9%]
+tests/test_correction.py ......FFFFFF                                    [ 25%]
+tests/test_io.py ................                                        [ 46%]
+tests/test_log_window.py ......                                          [ 54%]
+tests/test_logger.py ..                                                  [ 57%]
+tests/test_main.py .....                                                 [ 64%]
+tests/test_processing.py .......                                         [ 73%]
+tests/test_session.py .......                                            [ 82%]
+tests/test_utils_err_format.py .............                             [100%]
+
+=================================== FAILURES ===================================
+________________________ test_compute_b_spline_success _________________________
+
+file_combo = <MagicMock id='140544895564048'>
+x_up_combo = <MagicMock id='140544895564048'>
+y_up_combo = <MagicMock id='140544895564048'>
+x_down_combo = <MagicMock id='140544895564048'>
+y_down_combo = <MagicMock id='140544895564048'>
+data_sel = <MagicMock id='140544895564048'>
+smooth_up_edit = <MagicMock id='140543839217808'>
+smooth_dw_edit = <MagicMock id='140543839217808'>
+plot_state = {'done_spl3': False, 'e_dw': array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+       0.01, 0.0...01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+       0.01, 0.01, 0.01, 0.01, 0.01, 0.01]), 'fit_hc_n': None, ...}
+logger = <MagicMock id='140543839233424'>
+window = <MagicMock id='140543839274080'>
+draw_plot = <MagicMock id='140543839281904'>
+
+    def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+                         data_sel, smooth_up_edit, smooth_dw_edit,
+                         plot_state, logger, window, draw_plot):
+    
+        '''
+        Compute cubic B-spline interpolations for the corrected hysteresis loop branches.
+    
+        This function applies a cubic B-spline interpolation separately to the
+        corrected up and down branches of a hysteresis loop. The spline is computed
+        using the corrected data stored in plot_state and is intended as a smooth
+        representation of the loop after tilt/drift correction.
+    
+        The spline can only be computed after the correction step has been performed,
+        since it operates on the corrected arrays (x_up_corr, y_up_corr,
+        x_dw_corr, y_dw_corr). The resulting splines are stored in plot_state
+        and immediately visualized via the provided plotting callback.
+    
+        For numerical stability and consistency with SciPy requirements, the data
+        are internally sorted to ensure a strictly monotonic x-axis. Duplicate x
+        values are explicitly checked and rejected, as they would invalidate the
+        spline computation.
+    
+        Parameters
+        ----------
+        file_combo : QComboBox
+            Combo box used to select the source data file (used for logging purposes).
+        x_up_combo, y_up_combo : QComboBox
+            Combo boxes selecting the x and y columns corresponding to the up branch.
+        x_down_combo, y_down_combo : QComboBox
+            Combo boxes selecting the x and y columns corresponding to the down branch.
+        data_sel : QComboBox
+            Combo box to select data type (corrected or original).
+        smooth_up_edit : QLineEdit
+            Input field specifying the smoothing parameter s for the up branch spline.
+            Must be a non-negative float.
+        smooth_dw_edit : QLineEdit
+            Input field specifying the smoothing parameter s for the down branch spline.
+            Must be a non-negative float.
+        plot_state : dict
+            Dictionary storing the current plotting state.
+        logger : logging.Logger
+            Logger instance used to record spline computation details.
+        window : QWidget
+            Parent widget used to display error message boxes.
+        draw_plot : callable
+            Callback function responsible for redrawing the plot after the spline
+            computation.
+    
+        Notes
+        -----
+        - The spline is computed using scipy.interpolate.splrep and evaluated
+          on a dense, uniformly spaced grid spanning the corrected x-range.
+        - The spline represents the full corrected curve.
+        '''
+    
+        try :
+    
+            idx_src  = file_combo.currentIndex()
+            selected = data_sel.currentText()
+            x_up_col = x_up_combo.currentText()
+            y_up_col = y_up_combo.currentText()
+            x_dw_col = x_down_combo.currentText()
+            y_dw_col = y_down_combo.currentText()
+    
+            s_up = float(smooth_up_edit.text())
+            s_dw = float(smooth_dw_edit.text())
+    
+            if s_up < 0 or s_dw < 0:
+                QMessageBox.critical(window, "Error", "Smoothing parameter must be non-negative.")
+                return
+    
+            #Read data
+            if selected == "Corrected":
+                x_up = plot_state["x_up_corr"]
+                y_up = plot_state["y_up_corr"]
+                x_dw = plot_state["x_dw_corr"]
+                y_dw = plot_state["y_dw_corr"]
+                e_up = plot_state["e_up"]
+                e_dw = plot_state["e_dw"]
+            else:
+>               x_up = plot_state["x_up"]
+E               KeyError: 'x_up'
+
+hyloa/data/anisotropy.py:106: KeyError
+
+During handling of the above exception, another exception occurred:
+
+mock_combo = <MagicMock id='140544895564048'>
+mock_lineedit = <MagicMock id='140543839217808'>
+mock_logger = <MagicMock id='140543839233424'>
+mock_window = <MagicMock id='140543839274080'>
+mock_draw_plot = <MagicMock id='140543839281904'>
+valid_plot_state = {'done_spl3': False, 'e_dw': array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+       0.01, 0.0...01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+       0.01, 0.01, 0.01, 0.01, 0.01, 0.01]), 'fit_hc_n': None, ...}
+
+    def test_compute_b_spline_success(
+        mock_combo, mock_lineedit, mock_logger, mock_window, mock_draw_plot, valid_plot_state):
+        # Act
+>       compute_b_spline(
+            mock_combo, mock_combo, mock_combo,
+            mock_combo, mock_combo, mock_combo,
+            mock_lineedit, mock_lineedit,
+            valid_plot_state,
+            mock_logger,
+            mock_window,
+            mock_draw_plot
+        )
+
+tests/test_anisotropy.py:138: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+file_combo = <MagicMock id='140544895564048'>
+x_up_combo = <MagicMock id='140544895564048'>
+y_up_combo = <MagicMock id='140544895564048'>
+x_down_combo = <MagicMock id='140544895564048'>
+y_down_combo = <MagicMock id='140544895564048'>
+data_sel = <MagicMock id='140544895564048'>
+smooth_up_edit = <MagicMock id='140543839217808'>
+smooth_dw_edit = <MagicMock id='140543839217808'>
+plot_state = {'done_spl3': False, 'e_dw': array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+       0.01, 0.0...01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+       0.01, 0.01, 0.01, 0.01, 0.01, 0.01]), 'fit_hc_n': None, ...}
+logger = <MagicMock id='140543839233424'>
+window = <MagicMock id='140543839274080'>
+draw_plot = <MagicMock id='140543839281904'>
+
+    def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+                         data_sel, smooth_up_edit, smooth_dw_edit,
+                         plot_state, logger, window, draw_plot):
+    
+        '''
+        Compute cubic B-spline interpolations for the corrected hysteresis loop branches.
+    
+        This function applies a cubic B-spline interpolation separately to the
+        corrected up and down branches of a hysteresis loop. The spline is computed
+        using the corrected data stored in plot_state and is intended as a smooth
+        representation of the loop after tilt/drift correction.
+    
+        The spline can only be computed after the correction step has been performed,
+        since it operates on the corrected arrays (x_up_corr, y_up_corr,
+        x_dw_corr, y_dw_corr). The resulting splines are stored in plot_state
+        and immediately visualized via the provided plotting callback.
+    
+        For numerical stability and consistency with SciPy requirements, the data
+        are internally sorted to ensure a strictly monotonic x-axis. Duplicate x
+        values are explicitly checked and rejected, as they would invalidate the
+        spline computation.
+    
+        Parameters
+        ----------
+        file_combo : QComboBox
+            Combo box used to select the source data file (used for logging purposes).
+        x_up_combo, y_up_combo : QComboBox
+            Combo boxes selecting the x and y columns corresponding to the up branch.
+        x_down_combo, y_down_combo : QComboBox
+            Combo boxes selecting the x and y columns corresponding to the down branch.
+        data_sel : QComboBox
+            Combo box to select data type (corrected or original).
+        smooth_up_edit : QLineEdit
+            Input field specifying the smoothing parameter s for the up branch spline.
+            Must be a non-negative float.
+        smooth_dw_edit : QLineEdit
+            Input field specifying the smoothing parameter s for the down branch spline.
+            Must be a non-negative float.
+        plot_state : dict
+            Dictionary storing the current plotting state.
+        logger : logging.Logger
+            Logger instance used to record spline computation details.
+        window : QWidget
+            Parent widget used to display error message boxes.
+        draw_plot : callable
+            Callback function responsible for redrawing the plot after the spline
+            computation.
+    
+        Notes
+        -----
+        - The spline is computed using scipy.interpolate.splrep and evaluated
+          on a dense, uniformly spaced grid spanning the corrected x-range.
+        - The spline represents the full corrected curve.
+        '''
+    
+        try :
+    
+            idx_src  = file_combo.currentIndex()
+            selected = data_sel.currentText()
+            x_up_col = x_up_combo.currentText()
+            y_up_col = y_up_combo.currentText()
+            x_dw_col = x_down_combo.currentText()
+            y_dw_col = y_down_combo.currentText()
+    
+            s_up = float(smooth_up_edit.text())
+            s_dw = float(smooth_dw_edit.text())
+    
+            if s_up < 0 or s_dw < 0:
+                QMessageBox.critical(window, "Error", "Smoothing parameter must be non-negative.")
+                return
+    
+            #Read data
+            if selected == "Corrected":
+                x_up = plot_state["x_up_corr"]
+                y_up = plot_state["y_up_corr"]
+                x_dw = plot_state["x_dw_corr"]
+                y_dw = plot_state["y_dw_corr"]
+                e_up = plot_state["e_up"]
+                e_dw = plot_state["e_dw"]
+            else:
+                x_up = plot_state["x_up"]
+                y_up = plot_state["y_up"]
+                x_dw = plot_state["x_dw"]
+                y_dw = plot_state["y_dw"]
+                e_up = None
+                e_dw = None
+    
+            if x_up is None:
+                QMessageBox.critical(window, "Error", "Spline must be applied on corrected data.")
+                return
+    
+            #=========================================================#
+            # Up branch spline                                        #
+            #=========================================================#
+    
+            # Ensure monotonic x
+            idx = np.argsort(x_up)
+            x_up, y_up = x_up[idx], y_up[idx]
+    
+            # Check duplicates
+            if np.any(np.diff(x_up) == 0):
+                QMessageBox.critical(window, "Error", "Duplicate x values detected in up branch.")
+                return
+    
+            # Compute spline
+            try:
+                tck_up = splrep(x_up, y_up, s=s_up)
+            except Exception as e:
+                QMessageBox.critical(window, "Error", f"Spline fit up branch failed: {e}.")
+                return
+    
+            try :
+                x_dense_up = np.linspace(x_up.min(), x_up.max(), 5000)
+                y_dense_up = BSpline(*tck_up)(x_dense_up)
+            except Exception as e:
+                QMessageBox.critical(window, "Error", f"Error in spline conputation for up branch: {e}.")
+                return
+    
+            #=========================================================#
+            # Dw branch spline                                        #
+            #=========================================================#
+    
+            # Ensure monotonic x
+            idx = np.argsort(x_dw)
+            x_dw, y_dw = x_dw[idx], y_dw[idx]
+    
+            # Check duplicates
+            if np.any(np.diff(x_dw) == 0):
+                QMessageBox.critical(window, "Error", "Duplicate x values detected in dw branch.")
+                return
+    
+            # Compute spline
+            try:
+                tck_dw = splrep(x_dw, y_dw, s=s_dw)
+            except Exception as e:
+                QMessageBox.critical(window, "Error", f"Spline fit dw branch failed: {e}.")
+                return
+    
+            try :
+                x_dense_dw = np.linspace(x_dw.min(), x_dw.max(), 5000)
+                y_dense_dw = BSpline(*tck_dw)(x_dense_dw)
+            except Exception as e:
+                QMessageBox.critical(window, "Error", f"Error in spline conputation for dw branch: {e}.")
+                return
+    
+            plot_state.update({
+                "fit_hc_p"  : None,
+                "fit_hc_n"  : None,
+                "done_spl3" : True,
+                "spline_up" : (x_dense_up, y_dense_up),
+                "spline_dw" : (x_dense_dw, y_dense_dw)
+            })
+            draw_plot()
+    
+            log_lines = []
+            log_lines.append(f"Computed Bspline for data in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}.")
+            log_lines.append(f"With smoting parameter {s_up} for up branch and {s_dw} for down branch.\n")
+            logger.info(f"Bspline results" + "\n".join(log_lines))
+    
+        except Exception as e:
+>           QMessageBox.critical(window, "Error", f"Error during spline interpolation:\n{e}")
+E           TypeError: critical(parent: Optional[QWidget], title: Optional[str], text: Optional[str], buttons: Union[QMessageBox.StandardButtons, QMessageBox.StandardButton] = QMessageBox.Ok, defaultButton: QMessageBox.StandardButton = QMessageBox.NoButton): argument 1 has unexpected type 'MagicMock'
+
+hyloa/data/anisotropy.py:186: TypeError
+__________________________ test_symmetrize_with_save ___________________________
+
+file_combo = <MagicMock id='140543838277632'>
+save_file_combo = <MagicMock id='140543839694720'>
+x_up_combo = <MagicMock id='140543838277632'>
+y_up_combo = <MagicMock id='140543838277632'>
+x_down_combo = <MagicMock id='140543838277632'>
+y_down_combo = <MagicMock id='140543838277632'>
+data_sel = <MagicMock id='140543838277632'>
+x_up_dest = <MagicMock id='140543838266528'>
+y_up_dest = <MagicMock id='140543839623520'>
+x_dw_dest = <MagicMock id='140543839959072'>
+y_dw_dest = <MagicMock id='140543839951248'>
+dataframes = [       H    M
+0    0.0  0.0
+1    0.0  0.0
+2    0.0  0.0
+3    0.0  0.0
+4    0.0  0.0
+..   ...  ...
+495  0.0  0.0
+496  ...  0.0  0.0
+..   ...  ...
+495  0.0  0.0
+496  0.0  0.0
+497  0.0  0.0
+498  0.0  0.0
+499  0.0  0.0
+
+[500 rows x 2 columns]]
+logger = <MagicMock id='140543838033072'>
+plot_state = {'spline_dw': (array([-10.        ,  -9.95991984,  -9.91983968,  -9.87975952,
+        -9.83967936,  -9.7995992 ,  -9.7...943888,   9.75951904,   9.7995992 ,   9.83967936,
+         9.87975952,   9.91983968,   9.95991984,  10.        ]), ...}
+draw_plot = <MagicMock id='140543839656000'>
+window = <MagicMock id='140543839663728'>
+
+    def symmetrize(file_combo, save_file_combo,
+                   x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
+                   x_up_dest,  y_up_dest,  x_dw_dest,    y_dw_dest,
+                   dataframes, logger, plot_state, draw_plot,
+                   window):
+        '''
+        Symmetrize a hysteresis loop using spline-interpolated up and down branches.
+    
+        This function performs a symmetrization of the hysteresis loop starting
+        from the cubic spline representations of the corrected up and down
+        branches. The symmetrized loop is constructed by averaging the field
+        values and antisymmetrizing the magnetization, enforcing physical
+        symmetry conditions.
+    
+        A linear spline is built from the averaged data and evaluated on the
+        original corrected field arrays. A small random noise, estimated from
+        the data, is added to mimic experimental uncertainty.
+    
+        Optionally, the symmetrized data can be saved into a user-selected
+        destination data file.
+    
+        Parameters
+        ----------
+        file_combo : QComboBox
+            Combo box used to select the source data file.
+        save_file_combo : QComboBox
+            Combo box used to select the destination file for saving the
+            symmetrized data. If set to "No save", the data are not written.
+        x_up_combo : QComboBox
+            Combo box selecting the X column for the up branch.
+        y_up_combo : QComboBox
+            Combo box selecting the Y column for the up branch.
+        x_down_combo : QComboBox
+            Combo box selecting the X column for the down branch.
+        y_down_combo : QComboBox
+            Combo box selecting the Y column for the down branch.
+        data_sel : QComboBox
+            Combo box to select data type (corrected or original).
+        x_up_dest : QComboBox
+            Combo box selecting the destination X column for the symmetrized
+            up branch.
+        y_up_dest : QComboBox
+            Combo box selecting the destination Y column for the symmetrized
+            up branch.
+        x_dw_dest : QComboBox
+            Combo box selecting the destination X column for the symmetrized
+            down branch.
+        y_dw_dest : QComboBox
+            Combo box selecting the destination Y column for the symmetrized
+            down branch.
+        dataframes : list of pandas.DataFrame
+            List of dataframes loaded in the application.
+        logger : logging.Logger
+            Logger instance used to record spline computation details.
+        plot_state : dict
+            Dictionary storing the current plotting state.
+        draw_plot : callable
+            Callback function responsible for redrawing the plot.
+        window : QWidget
+            Parent widget used to display error message boxes.
+    
+        Notes
+        -----
+        This function requires that both the drift correction and spline
+        interpolation steps have already been completed.
+        '''
+        try :
+            idx_src  = file_combo.currentIndex()
+            selected = data_sel.currentText()
+            x_up_col = x_up_combo.currentText()
+            y_up_col = y_up_combo.currentText()
+            x_dw_col = x_down_combo.currentText()
+            y_dw_col = y_down_combo.currentText()
+    
+            save_choice  = save_file_combo.currentIndex()  # 0 = No save, >0 => file index adjust
+    
+            if save_choice == 0:
+                save_idx = None
+            else:
+                # save_file_combo items: ["No save", "File 1", "File 2"...]
+                save_idx = save_choice - 1
+    
+            x_up, y_up = plot_state["spline_up"]
+            x_dw, y_dw = plot_state["spline_dw"]
+    
+            if selected == "Corrected":
+                x_data_up = plot_state["x_up_corr"]
+                x_data_dw = plot_state["x_dw_corr"]
+                y_data_up = plot_state["y_up_corr"]
+            else:
+>               x_data_up = plot_state["x_up"]
+E               KeyError: 'x_up'
+
+hyloa/data/anisotropy.py:377: KeyError
+
+During handling of the above exception, another exception occurred:
+
+mock_combo = <MagicMock id='140543838277632'>
+mock_save_combo_file1 = <MagicMock id='140543839694720'>
+mock_logger = <MagicMock id='140543838033072'>
+mock_draw_plot = <MagicMock id='140543839656000'>
+mock_window = <MagicMock id='140543839663728'>
+plot_state_with_splines_and_corr = {'spline_dw': (array([-10.        ,  -9.95991984,  -9.91983968,  -9.87975952,
+        -9.83967936,  -9.7995992 ,  -9.7...943888,   9.75951904,   9.7995992 ,   9.83967936,
+         9.87975952,   9.91983968,   9.95991984,  10.        ]), ...}
+dataframes = [       H    M
+0    0.0  0.0
+1    0.0  0.0
+2    0.0  0.0
+3    0.0  0.0
+4    0.0  0.0
+..   ...  ...
+495  0.0  0.0
+496  ...  0.0  0.0
+..   ...  ...
+495  0.0  0.0
+496  0.0  0.0
+497  0.0  0.0
+498  0.0  0.0
+499  0.0  0.0
+
+[500 rows x 2 columns]]
+
+    def test_symmetrize_with_save(
+        mock_combo, mock_save_combo_file1, mock_logger, mock_draw_plot,
+        mock_window, plot_state_with_splines_and_corr, dataframes):
+    
+        # Dest columns
+        x_up_dest = MagicMock()
+        y_up_dest = MagicMock()
+        x_dw_dest = MagicMock()
+        y_dw_dest = MagicMock()
+    
+        x_up_dest.currentText.return_value = "H"
+        y_up_dest.currentText.return_value = "M"
+        x_dw_dest.currentText.return_value = "H"
+        y_dw_dest.currentText.return_value = "M"
+    
+>       symmetrize(
+            mock_combo, mock_save_combo_file1,
+            mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
+            x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
+            dataframes, mock_logger, plot_state_with_splines_and_corr,
+            mock_draw_plot, mock_window
+        )
+
+tests/test_anisotropy.py:283: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+file_combo = <MagicMock id='140543838277632'>
+save_file_combo = <MagicMock id='140543839694720'>
+x_up_combo = <MagicMock id='140543838277632'>
+y_up_combo = <MagicMock id='140543838277632'>
+x_down_combo = <MagicMock id='140543838277632'>
+y_down_combo = <MagicMock id='140543838277632'>
+data_sel = <MagicMock id='140543838277632'>
+x_up_dest = <MagicMock id='140543838266528'>
+y_up_dest = <MagicMock id='140543839623520'>
+x_dw_dest = <MagicMock id='140543839959072'>
+y_dw_dest = <MagicMock id='140543839951248'>
+dataframes = [       H    M
+0    0.0  0.0
+1    0.0  0.0
+2    0.0  0.0
+3    0.0  0.0
+4    0.0  0.0
+..   ...  ...
+495  0.0  0.0
+496  ...  0.0  0.0
+..   ...  ...
+495  0.0  0.0
+496  0.0  0.0
+497  0.0  0.0
+498  0.0  0.0
+499  0.0  0.0
+
+[500 rows x 2 columns]]
+logger = <MagicMock id='140543838033072'>
+plot_state = {'spline_dw': (array([-10.        ,  -9.95991984,  -9.91983968,  -9.87975952,
+        -9.83967936,  -9.7995992 ,  -9.7...943888,   9.75951904,   9.7995992 ,   9.83967936,
+         9.87975952,   9.91983968,   9.95991984,  10.        ]), ...}
+draw_plot = <MagicMock id='140543839656000'>
+window = <MagicMock id='140543839663728'>
+
+    def symmetrize(file_combo, save_file_combo,
+                   x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
+                   x_up_dest,  y_up_dest,  x_dw_dest,    y_dw_dest,
+                   dataframes, logger, plot_state, draw_plot,
+                   window):
+        '''
+        Symmetrize a hysteresis loop using spline-interpolated up and down branches.
+    
+        This function performs a symmetrization of the hysteresis loop starting
+        from the cubic spline representations of the corrected up and down
+        branches. The symmetrized loop is constructed by averaging the field
+        values and antisymmetrizing the magnetization, enforcing physical
+        symmetry conditions.
+    
+        A linear spline is built from the averaged data and evaluated on the
+        original corrected field arrays. A small random noise, estimated from
+        the data, is added to mimic experimental uncertainty.
+    
+        Optionally, the symmetrized data can be saved into a user-selected
+        destination data file.
+    
+        Parameters
+        ----------
+        file_combo : QComboBox
+            Combo box used to select the source data file.
+        save_file_combo : QComboBox
+            Combo box used to select the destination file for saving the
+            symmetrized data. If set to "No save", the data are not written.
+        x_up_combo : QComboBox
+            Combo box selecting the X column for the up branch.
+        y_up_combo : QComboBox
+            Combo box selecting the Y column for the up branch.
+        x_down_combo : QComboBox
+            Combo box selecting the X column for the down branch.
+        y_down_combo : QComboBox
+            Combo box selecting the Y column for the down branch.
+        data_sel : QComboBox
+            Combo box to select data type (corrected or original).
+        x_up_dest : QComboBox
+            Combo box selecting the destination X column for the symmetrized
+            up branch.
+        y_up_dest : QComboBox
+            Combo box selecting the destination Y column for the symmetrized
+            up branch.
+        x_dw_dest : QComboBox
+            Combo box selecting the destination X column for the symmetrized
+            down branch.
+        y_dw_dest : QComboBox
+            Combo box selecting the destination Y column for the symmetrized
+            down branch.
+        dataframes : list of pandas.DataFrame
+            List of dataframes loaded in the application.
+        logger : logging.Logger
+            Logger instance used to record spline computation details.
+        plot_state : dict
+            Dictionary storing the current plotting state.
+        draw_plot : callable
+            Callback function responsible for redrawing the plot.
+        window : QWidget
+            Parent widget used to display error message boxes.
+    
+        Notes
+        -----
+        This function requires that both the drift correction and spline
+        interpolation steps have already been completed.
+        '''
+        try :
+            idx_src  = file_combo.currentIndex()
+            selected = data_sel.currentText()
+            x_up_col = x_up_combo.currentText()
+            y_up_col = y_up_combo.currentText()
+            x_dw_col = x_down_combo.currentText()
+            y_dw_col = y_down_combo.currentText()
+    
+            save_choice  = save_file_combo.currentIndex()  # 0 = No save, >0 => file index adjust
+    
+            if save_choice == 0:
+                save_idx = None
+            else:
+                # save_file_combo items: ["No save", "File 1", "File 2"...]
+                save_idx = save_choice - 1
+    
+            x_up, y_up = plot_state["spline_up"]
+            x_dw, y_dw = plot_state["spline_dw"]
+    
+            if selected == "Corrected":
+                x_data_up = plot_state["x_up_corr"]
+                x_data_dw = plot_state["x_dw_corr"]
+                y_data_up = plot_state["y_up_corr"]
+            else:
+                x_data_up = plot_state["x_up"]
+                x_data_dw = plot_state["x_dw"]
+                y_data_up = plot_state["y_up"]
+    
+            dy_data_err = np.std(y_data_up[0:25])
+    
+            x_mean = (x_up + x_dw)/2
+            y_mean = (y_up - y_dw[::-1])/2
+    
+            spl = InterpolatedUnivariateSpline(x_mean, y_mean, k=1)
+    
+            dy_err = (2*np.random.random(x_data_up.size) - 1) * dy_data_err
+    
+            x_new_up, x_new_dw = x_data_up, -x_data_dw
+            y_new_up, y_new_dw = spl(x_data_up) + dy_err, -spl(x_data_dw) + dy_err
+    
+            plot_state.update({
+                "s_data_up" : (x_new_up, y_new_up),
+                "s_data_dw" : (x_new_dw, y_new_dw)
+            })
+            draw_plot()
+    
+    
+            log_lines = []
+            log_lines.append(f"Symmetrizied loop in file {idx_src + 1}, columns {x_up_col}/{y_up_col} and {x_dw_col}/{y_dw_col}.")
+    
+            logger.info("\n".join(log_lines))
+    
+            # Save corrected columns if requested
+            if save_idx is not None:
+                df_dest = dataframes[save_idx]
+    
+                df_dest[x_up_dest.currentText()] = x_new_up
+                df_dest[y_up_dest.currentText()] = y_new_up
+    
+                df_dest[x_dw_dest.currentText()] = x_new_dw
+                df_dest[y_dw_dest.currentText()] = y_new_dw
+    
+                logger.info("Corrected columns saved to destination file.")
+    
+    
+        except Exception as e:
+>           QMessageBox.critical(window, "Error", f"Error symmetrization:\n{e}")
+E           TypeError: critical(parent: Optional[QWidget], title: Optional[str], text: Optional[str], buttons: Union[QMessageBox.StandardButtons, QMessageBox.StandardButton] = QMessageBox.Ok, defaultButton: QMessageBox.StandardButton = QMessageBox.NoButton): argument 1 has unexpected type 'MagicMock'
+
+hyloa/data/anisotropy.py:419: TypeError
+_______________________ test_flip_data_no_corrected_data _______________________
+
+mock_msgbox = <MagicMock name='critical' id='140543840040128'>
+mock_combo = <MagicMock id='140543838287184'>
+mock_double_branch = <MagicMock id='140543839974880'>
+base_plot_state = {'done_corr': True, 'done_spl3': True, 'e_dw': array([0.1, 0.1]), 'e_up': array([0.1, 0.1]), ...}
+mock_window = <MagicMock id='140543839597280'>
+mock_logger = <MagicMock id='140543838321296'>
+mock_draw_plot = <MagicMock id='140543838311072'>
+
+    @patch("hyloa.data.correction.QMessageBox.critical")
+    def test_flip_data_no_corrected_data(
+        mock_msgbox, mock_combo, mock_double_branch,
+        base_plot_state, mock_window, mock_logger, mock_draw_plot):
+    
+        base_plot_state["x_up_corr"] = None
+    
+>       flip_data(
+            mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
+            mock_double_branch, base_plot_state, mock_window, mock_logger,
+            mock_draw_plot
+        )
+E       TypeError: flip_data() missing 1 required positional argument: 'draw_plot'
+
+tests/test_correction.py:168: TypeError
+___________________________ test_flip_data_no_action ___________________________
+
+mock_combo = <MagicMock id='140543840060800'>
+mock_double_branch = <MagicMock id='140543838188592'>
+base_plot_state = {'done_corr': True, 'done_spl3': True, 'e_dw': array([0.1, 0.1]), 'e_up': array([0.1, 0.1]), ...}
+mock_window = <MagicMock id='140543839606848'>
+mock_logger = <MagicMock id='140543838240720'>
+mock_draw_plot = <MagicMock id='140543838264992'>
+
+    def test_flip_data_no_action(
+        mock_combo, mock_double_branch, base_plot_state,
+        mock_window, mock_logger, mock_draw_plot):
+    
+        mock_double_branch.currentText.return_value = "No"
+    
+        # Original State
+        x_up_orig = base_plot_state["x_up_corr"].copy()
+    
+>       flip_data(
+            mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
+            mock_double_branch, base_plot_state, mock_window, mock_logger,
+            mock_draw_plot
+        )
+E       TypeError: flip_data() missing 1 required positional argument: 'draw_plot'
+
+tests/test_correction.py:186: TypeError
+______________________ test_flip_data_duplicate_up_branch ______________________
+
+mock_combo = <MagicMock id='140543838461552'>
+mock_double_branch = <MagicMock id='140543838404416'>
+base_plot_state = {'done_corr': True, 'done_spl3': True, 'e_dw': array([0.1, 0.1]), 'e_up': array([0.1, 0.1]), ...}
+mock_window = <MagicMock id='140543839317840'>
+mock_logger = <MagicMock id='140543838259232'>
+mock_draw_plot = <MagicMock id='140543838639088'>
+
+    def test_flip_data_duplicate_up_branch(
+        mock_combo, mock_double_branch, base_plot_state,
+          mock_window, mock_logger, mock_draw_plot):
+    
+        mock_double_branch.currentText.return_value = "Up"
+    
+        x_up = base_plot_state["x_up_corr"].copy()
+        y_up = base_plot_state["y_up_corr"].copy()
+        e_up = base_plot_state["e_up"].copy()
+    
+>       flip_data(
+            mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
+            mock_double_branch, base_plot_state, mock_window, mock_logger,
+            mock_draw_plot
+        )
+E       TypeError: flip_data() missing 1 required positional argument: 'draw_plot'
+
+tests/test_correction.py:205: TypeError
+_____________________________ test_apply_shift_ok ______________________________
+
+mock_lineedit = <MagicMock id='140543838756032'>
+base_plot_state = {'done_corr': True, 'done_spl3': True, 'e_dw': array([0.1, 0.1]), 'e_up': array([0.1, 0.1]), ...}
+mock_window = <MagicMock id='140543838258224'>
+mock_fit_data = <MagicMock id='140543838267824'>
+
+    def test_apply_shift_ok(mock_lineedit,base_plot_state,mock_window,mock_fit_data):
+    
+        x_up_orig = base_plot_state["x_up_corr"].copy()
+        x_dw_orig = base_plot_state["x_dw_corr"].copy()
+    
+        args = ("a", "b")
+    
+>       apply_shift(mock_lineedit, base_plot_state, mock_window, mock_fit_data, args=args)
+E       TypeError: apply_shift() missing 7 required positional arguments: 'dataframes', 'save_file_combo', 'data_sel', 'field_shift_pc_edit', 'plot_state', 'window', and 'fit_data'
+
+tests/test_correction.py:225: TypeError
+________________________ test_apply_shift_invalid_value ________________________
+
+mock_msgbox = <MagicMock name='critical' id='140543838306416'>
+mock_lineedit = <MagicMock id='140543838649600'>
+base_plot_state = {'done_corr': True, 'done_spl3': True, 'e_dw': array([0.1, 0.1]), 'e_up': array([0.1, 0.1]), ...}
+mock_window = <MagicMock id='140543839599056'>
+mock_fit_data = <MagicMock id='140543838312704'>
+
+    @patch("hyloa.data.correction.QMessageBox.critical")
+    def test_apply_shift_invalid_value(
+        mock_msgbox, mock_lineedit, base_plot_state, mock_window, mock_fit_data):
+    
+        mock_lineedit.text.return_value = "abc"
+    
+>       apply_shift(mock_lineedit, base_plot_state, mock_window, mock_fit_data)
+E       TypeError: apply_shift() missing 7 required positional arguments: 'dataframes', 'save_file_combo', 'data_sel', 'field_shift_pc_edit', 'plot_state', 'window', and 'fit_data'
+
+tests/test_correction.py:240: TypeError
+_________________________ test_apply_shift_fit_raises __________________________
+
+mock_msgbox = <MagicMock name='critical' id='140543838816672'>
+mock_lineedit = <MagicMock id='140543838238704'>
+base_plot_state = {'done_corr': True, 'done_spl3': True, 'e_dw': array([0.1, 0.1]), 'e_up': array([0.1, 0.1]), ...}
+mock_window = <MagicMock id='140543838830064'>
+
+    @patch("hyloa.data.correction.QMessageBox.critical")
+    def test_apply_shift_fit_raises(mock_msgbox, mock_lineedit, base_plot_state, mock_window):
+    
+        x_up_orig = base_plot_state["x_up_corr"].copy()
+        x_dw_orig = base_plot_state["x_dw_corr"].copy()
+    
+        def failing_fit(*args):
+            raise RuntimeError("fit failed")
+    
+>       apply_shift(mock_lineedit, base_plot_state, mock_window, failing_fit, args=("x",))
+E       TypeError: apply_shift() missing 7 required positional arguments: 'dataframes', 'save_file_combo', 'data_sel', 'field_shift_pc_edit', 'plot_state', 'window', and 'fit_data'
+
+tests/test_correction.py:254: TypeError
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.10.12-final-0 _______________
+
+Name                             Stmts   Miss  Cover   Missing
+--------------------------------------------------------------
+hyloa/__init__.py                    1      0   100%
+hyloa/data/__init__.py               0      0   100%
+hyloa/data/anisotropy.py           150     77    49%   99-104, 107-183, 364, 373-375, 378-415
+hyloa/data/correction.py           276    249    10%   147-212, 253-294, 372-554, 604-718
+hyloa/data/io.py                   209    121    42%   85-87, 165-278, 327-381, 430-431, 465-466
+hyloa/data/processing.py           285    149    48%   45-46, 70-72, 82, 84, 88, 106-107, 159-160, 201-274, 310-311, 314-315, 328-330, 337-344, 359-360, 407-408, 422-445, 459-482, 500-552, 587-588
+hyloa/data/session.py              115     29    75%   176-177, 189-197, 206, 252-254, 263-265, 270-296
+hyloa/gui/__init__.py                0      0   100%
+hyloa/gui/command_window.py        132    132     0%   23-231
+hyloa/gui/correction_window.py     332    323     3%   88-810
+hyloa/gui/log_window.py             31      0   100%
+hyloa/gui/main_window.py           315    315     0%   25-600
+hyloa/gui/plot_window.py           554    515     7%   70-83, 93-173, 192-246, 251-274, 281, 288, 293, 299, 304, 309, 314, 319, 324, 329, 334, 359-365, 381-390, 409-528, 550-665, 676-736, 759-849, 866-1027
+hyloa/gui/script_window.py         186    186     0%   21-468
+hyloa/gui/worksheet.py             871    822     6%   71-174, 186-212, 223-240, 252-286, 291-321, 331-372, 378-380, 385-402, 415-416, 427-432, 441-516, 528-546, 552-636, 645-649, 675-845, 851-968, 973-1050, 1060-1219, 1227-1257, 1269-1348, 1370-1396, 1401-1415, 1421-1434, 1454-1498, 1509, 1525-1538, 1549-1559, 1570-1591, 1602, 1624-1625
+hyloa/main.py                       53     21    60%   111-140, 143
+hyloa/utils/__init__.py              0      0   100%
+hyloa/utils/check_version.py        27     27     0%   21-93
+hyloa/utils/err_format.py           40      5    88%   73-75, 87, 105
+hyloa/utils/logging_setup.py        28      0   100%
+--------------------------------------------------------------
+TOTAL                             3605   2971    18%
+=========================== short test summary info ============================
+FAILED tests/test_anisotropy.py::test_compute_b_spline_success - TypeError: c...
+FAILED tests/test_anisotropy.py::test_symmetrize_with_save - TypeError: criti...
+FAILED tests/test_correction.py::test_flip_data_no_corrected_data - TypeError...
+FAILED tests/test_correction.py::test_flip_data_no_action - TypeError: flip_d...
+FAILED tests/test_correction.py::test_flip_data_duplicate_up_branch - TypeErr...
+FAILED tests/test_correction.py::test_apply_shift_ok - TypeError: apply_shift...
+FAILED tests/test_correction.py::test_apply_shift_invalid_value - TypeError: ...
+FAILED tests/test_correction.py::test_apply_shift_fit_raises - TypeError: app...
+========================= 8 failed, 67 passed in 4.08s =========================

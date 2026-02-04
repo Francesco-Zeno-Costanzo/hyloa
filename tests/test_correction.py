@@ -165,8 +165,11 @@ def test_flip_data_no_corrected_data(
 
     base_plot_state["x_up_corr"] = None
 
+    mock_data_sel = MagicMock()
+    mock_data_sel.currentText.return_value = "Corrected"
+
     flip_data(
-        mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
+        mock_combo, mock_combo, mock_combo, mock_combo, mock_combo, mock_data_sel,
         mock_double_branch, base_plot_state, mock_window, mock_logger,
         mock_draw_plot
     )
@@ -183,8 +186,11 @@ def test_flip_data_no_action(
     # Original State
     x_up_orig = base_plot_state["x_up_corr"].copy()
 
+    mock_data_sel = MagicMock()
+    mock_data_sel.currentText.return_value = "Corrected"
+
     flip_data(
-        mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
+        mock_combo, mock_combo, mock_combo, mock_combo, mock_combo, mock_data_sel,
         mock_double_branch, base_plot_state, mock_window, mock_logger,
         mock_draw_plot
     )
@@ -202,8 +208,11 @@ def test_flip_data_duplicate_up_branch(
     y_up = base_plot_state["y_up_corr"].copy()
     e_up = base_plot_state["e_up"].copy()
 
+    mock_data_sel = MagicMock()
+    mock_data_sel.currentText.return_value = "Corrected"
+
     flip_data(
-        mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
+        mock_combo, mock_combo, mock_combo, mock_combo, mock_combo, mock_data_sel,
         mock_double_branch, base_plot_state, mock_window, mock_logger,
         mock_draw_plot
     )
@@ -220,14 +229,31 @@ def test_apply_shift_ok(mock_lineedit,base_plot_state,mock_window,mock_fit_data)
     x_up_orig = base_plot_state["x_up_corr"].copy()
     x_dw_orig = base_plot_state["x_dw_corr"].copy()
 
-    args = ("a", "b")
+    save_file_combo = MagicMock()
+    save_file_combo.currentIndex.return_value = 0
 
-    apply_shift(mock_lineedit, base_plot_state, mock_window, mock_fit_data, args=args)
+    mock_data_sel = MagicMock()
+    mock_data_sel.currentText.return_value = "Corrected"
+
+    logger = MagicMock()
+
+    apply_shift(
+        MagicMock(), MagicMock(), MagicMock(), MagicMock(),
+        MagicMock(),
+        save_file_combo,
+        mock_data_sel,
+        mock_lineedit,
+        base_plot_state,
+        mock_window,
+        mock_fit_data,
+        args=("a", "b"),
+        logger=logger
+    )
 
     assert (base_plot_state["x_up_corr"] == x_up_orig - 1.5).all()
     assert (base_plot_state["x_dw_corr"] == x_dw_orig - 1.5).all()
 
-    mock_fit_data.assert_called_once_with(*args)
+    mock_fit_data.assert_called_once_with(*("a", "b"))
 
 from unittest.mock import patch
 
@@ -237,7 +263,26 @@ def test_apply_shift_invalid_value(
 
     mock_lineedit.text.return_value = "abc"
 
-    apply_shift(mock_lineedit, base_plot_state, mock_window, mock_fit_data)
+    save_file_combo = MagicMock()
+    save_file_combo.currentIndex.return_value 
+
+    mock_data_sel = MagicMock()
+    mock_data_sel.currentText.return_value = "Corrected"
+
+    logger = MagicMock()
+
+    apply_shift(
+        MagicMock(), MagicMock(), MagicMock(), MagicMock(),
+        MagicMock(),
+        save_file_combo,
+        mock_data_sel,
+        mock_lineedit,
+        base_plot_state,
+        mock_window,
+        mock_fit_data,
+        args=("a", "b"),
+        logger=logger
+    )
 
     mock_msgbox.assert_called_once()
     mock_fit_data.assert_not_called()
@@ -251,7 +296,26 @@ def test_apply_shift_fit_raises(mock_msgbox, mock_lineedit, base_plot_state, moc
     def failing_fit(*args):
         raise RuntimeError("fit failed")
 
-    apply_shift(mock_lineedit, base_plot_state, mock_window, failing_fit, args=("x",))
+    save_file_combo = MagicMock()
+    save_file_combo.currentIndex.return_value 
+
+    mock_data_sel = MagicMock()
+    mock_data_sel.currentText.return_value = "Corrected"
+
+    logger = MagicMock()
+
+    apply_shift(
+        MagicMock(), MagicMock(), MagicMock(), MagicMock(),
+        MagicMock(),
+        save_file_combo,
+        mock_data_sel,
+        mock_lineedit,
+        base_plot_state,
+        mock_window,
+        failing_fit,
+        args=("a", "b"),
+        logger=logger
+    )
 
     assert (base_plot_state["x_up_corr"] == x_up_orig).all()
     assert (base_plot_state["x_dw_corr"] == x_dw_orig).all()

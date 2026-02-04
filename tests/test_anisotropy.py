@@ -72,6 +72,10 @@ def valid_plot_state():
     y_dw = -np.tanh(x)
 
     return {
+        "x_up": x,
+        "y_up": y_up,
+        "x_dw": x,
+        "y_dw": y_dw,
         "x_up_corr": x,
         "y_up_corr": y_up,
         "x_dw_corr": x,
@@ -111,6 +115,10 @@ def plot_state_with_splines_and_corr():
         "x_dw_corr": x,
         "y_up_corr": y_up,
         "y_dw_corr": y_dw,
+        "x_up": x,
+        "y_up": y_up,
+        "x_dw": x,
+        "y_dw": y_dw,
     }
 
 @pytest.fixture
@@ -137,7 +145,7 @@ def test_compute_b_spline_success(
     # Act
     compute_b_spline(
         mock_combo, mock_combo, mock_combo,
-        mock_combo, mock_combo,
+        mock_combo, mock_combo, mock_combo,
         mock_lineedit, mock_lineedit,
         valid_plot_state,
         mock_logger,
@@ -171,7 +179,7 @@ def test_compute_b_spline_negative_smoothing(
 
     compute_b_spline(
         mock_combo, mock_combo, mock_combo,
-        mock_combo, mock_combo,
+        mock_combo, mock_combo, mock_combo,
         mock_lineedit, mock_lineedit,
         valid_plot_state,
         mock_logger,
@@ -198,7 +206,7 @@ def test_compute_b_spline_without_correction(
 
     compute_b_spline(
         mock_combo, mock_combo, mock_combo,
-        mock_combo, mock_combo,
+        mock_combo, mock_combo, mock_combo,
         mock_lineedit, mock_lineedit,
         plot_state,
         mock_logger,
@@ -282,7 +290,7 @@ def test_symmetrize_with_save(
 
     symmetrize(
         mock_combo, mock_save_combo_file1,
-        mock_combo, mock_combo, mock_combo, mock_combo,
+        mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
         x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
         dataframes, mock_logger, plot_state_with_splines_and_corr,
         mock_draw_plot, mock_window

@@ -24,7 +24,7 @@ from hyloa.utils.err_format import format_value_error
 
 
 def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
-                     smooth_up_edit, smooth_dw_edit,
+                     data_sel, smooth_up_edit, smooth_dw_edit,
                      plot_state, logger, window, draw_plot):
     
     '''
@@ -53,6 +53,8 @@ def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_co
         Combo boxes selecting the x and y columns corresponding to the up branch.
     x_down_combo, y_down_combo : QComboBox
         Combo boxes selecting the x and y columns corresponding to the down branch.
+    data_sel : QComboBox
+        Combo box to select data type (corrected or original).
     smooth_up_edit : QLineEdit
         Input field specifying the smoothing parameter s for the up branch spline.
         Must be a non-negative float.
@@ -79,6 +81,7 @@ def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_co
     try :
 
         idx_src  = file_combo.currentIndex()
+        selected = data_sel.currentText()
         x_up_col = x_up_combo.currentText()
         y_up_col = y_up_combo.currentText()
         x_dw_col = x_down_combo.currentText()
@@ -91,12 +94,21 @@ def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_co
             QMessageBox.critical(window, "Error", "Smoothing parameter must be non-negative.")
             return
 
-        x_up = plot_state["x_up_corr"]
-        y_up = plot_state["y_up_corr"]
-        x_dw = plot_state["x_dw_corr"]
-        y_dw = plot_state["y_dw_corr"]
-        e_up = plot_state["e_up"]
-        e_dw = plot_state["e_dw"]
+        #Read data
+        if selected == "Corrected":
+            x_up = plot_state["x_up_corr"]
+            y_up = plot_state["y_up_corr"]
+            x_dw = plot_state["x_dw_corr"]
+            y_dw = plot_state["y_dw_corr"]
+            e_up = plot_state["e_up"]
+            e_dw = plot_state["e_dw"]
+        else:
+            x_up = plot_state["x_up"]
+            y_up = plot_state["y_up"]
+            x_dw = plot_state["x_dw"]
+            y_dw = plot_state["y_dw"]
+            e_up = None
+            e_dw = None
 
         if x_up is None:
             QMessageBox.critical(window, "Error", "Spline must be applied on corrected data.")
@@ -273,7 +285,7 @@ def compute_Hk(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
         QMessageBox.critical(window, "Error", f"Error during anisotropy field calculation:\n{e}")
 
 def symmetrize(file_combo, save_file_combo,
-               x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+               x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
                x_up_dest,  y_up_dest,  x_dw_dest,    y_dw_dest,
                dataframes, logger, plot_state, draw_plot,
                window):
@@ -308,6 +320,8 @@ def symmetrize(file_combo, save_file_combo,
         Combo box selecting the X column for the down branch.
     y_down_combo : QComboBox
         Combo box selecting the Y column for the down branch.
+    data_sel : QComboBox
+        Combo box to select data type (corrected or original).
     x_up_dest : QComboBox
         Combo box selecting the destination X column for the symmetrized
         up branch.
@@ -338,6 +352,7 @@ def symmetrize(file_combo, save_file_combo,
     '''
     try :
         idx_src  = file_combo.currentIndex()
+        selected = data_sel.currentText()
         x_up_col = x_up_combo.currentText()
         y_up_col = y_up_combo.currentText()
         x_dw_col = x_down_combo.currentText()
@@ -354,10 +369,16 @@ def symmetrize(file_combo, save_file_combo,
         x_up, y_up = plot_state["spline_up"]
         x_dw, y_dw = plot_state["spline_dw"] 
         
-        x_data_up = plot_state["x_up_corr"]
-        x_data_dw = plot_state["x_dw_corr"]
+        if selected == "Corrected":
+            x_data_up = plot_state["x_up_corr"]
+            x_data_dw = plot_state["x_dw_corr"]
+            y_data_up = plot_state["y_up_corr"]
+        else:
+            x_data_up = plot_state["x_up"]
+            x_data_dw = plot_state["x_dw"]
+            y_data_up = plot_state["y_up"]
 
-        dy_data_err = np.std(plot_state["y_dw_corr"][0:25])
+        dy_data_err = np.std(y_data_up[0:25])
 
         x_mean = (x_up + x_dw)/2
         y_mean = (y_up - y_dw[::-1])/2

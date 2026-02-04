@@ -114,9 +114,11 @@ def flip(plot_state, window, draw_plot):
 
 def flip_data(file_combo,
               x_up_combo, y_up_combo, x_down_combo, y_down_combo,
-              double_branch, plot_state,
+              data_sel, double_branch, plot_state,
               window, logger, draw_plot):
     '''
+    Function to duplicate a branch by flipping it to recontruct a simmetric loop.
+
     Parameters
     ----------
     file_combo : QComboBox
@@ -129,6 +131,8 @@ def flip_data(file_combo,
         Combo box to select X column for Down branch.
     y_down_combo : QComboBox
         Combo box to select Y column for Down branch.
+    data_sel : QComboBox
+        Combo box to select data type (corrected or original).
     double_branch : QComboBox
         Combo box to select a branch duplication.
     plot_state : dict
@@ -142,17 +146,31 @@ def flip_data(file_combo,
     '''
     try:
         idx_src  = file_combo.currentIndex()
+        selected = data_sel.currentText()
         x_up_col = x_up_combo.currentText()
         y_up_col = y_up_combo.currentText()
         x_dw_col = x_down_combo.currentText()
         y_dw_col = y_down_combo.currentText()
 
-        x_up = plot_state["x_up_corr"]
-        y_up = plot_state["y_up_corr"]
-        x_dw = plot_state["x_dw_corr"]
-        y_dw = plot_state["y_dw_corr"]
-        e_up = plot_state["e_up"]
-        e_dw = plot_state["e_dw"]
+        #Read data
+        if selected == "Corrected":
+            x_up = plot_state["x_up_corr"]
+            y_up = plot_state["y_up_corr"]
+            x_dw = plot_state["x_dw_corr"]
+            y_dw = plot_state["y_dw_corr"]
+            e_up = plot_state["e_up"]
+            e_dw = plot_state["e_dw"]
+        else:
+            x_up = plot_state["x_up"]
+            y_up = plot_state["y_up"]
+            x_dw = plot_state["x_dw"]
+            y_dw = plot_state["y_dw"]
+            tail = np.concatenate((y_up[0:25], y_dw[-25:], 
+                                   y_up[-25:], y_dw[0:25]))
+            dy_data_err = np.std(tail)
+            dy_err = (2*np.random.random(x_up.size) - 1) * dy_data_err
+            e_up = dy_err
+            e_dw = dy_err
 
         if x_up is None:
             QMessageBox.critical(window, "Error", "This can be done only on corrected data.")
@@ -198,12 +216,26 @@ def flip_data(file_combo,
 # Function to correct field                      #
 #================================================#
 
-def apply_shift(field_shift_pc_edit, plot_state, window, fit_data, args=()):
+def apply_shift(x_up_dest, y_up_dest, x_dw_dest, y_dw_dest, dataframes, save_file_combo,
+                data_sel, field_shift_pc_edit, plot_state, window, fit_data, args=(),
+                logger=None):
     '''
     Function add a field shift after the corrections
 
     Parameters
     ----------
+    x_up_dest : QComboBox
+        Combo box to select X column in which to store the correct up branch.
+    y_up_dest : QComboBox
+        Combo box to select Y column in which to store the correct up branch.
+    x_dw_dest : QComboBox
+        Combo box to select X column in which to store the correct down branch.
+    y_dw_dest : QComboBox
+        Combo box to select Y column in which to store the correct down branch.
+    dataframes : list of pd.DataFrame
+        List of dataframes containing loaded data.
+    save_file_combo : QComboBox
+        Combo box to select destination data file.
     field_shift_pc_edit : QLineEdit
         Value for field shifting
     plot_state : dict
@@ -214,20 +246,49 @@ def apply_shift(field_shift_pc_edit, plot_state, window, fit_data, args=()):
         Function for fitting data
     args : tuple
         Argumets to pass to fit_data
+    logger : logging.Logger
+        Logger instance used to record spline computation details.
     '''
+
+    save_choice  = save_file_combo.currentIndex()  # 0 = No save, >0 => file index adjust
+    selected     = data_sel.currentText()
+        
+    if save_choice == 0:
+        save_idx = None
+    else:
+        # save_file_combo items: ["No save", "File 1", "File 2"...]
+        save_idx = save_choice - 1
+
+    #Read data
+    if selected == "Corrected":
+        name_up = "x_up_corr"
+        name_dw = "x_dw_corr"
+  
+    else:
+        name_up = "x_up"
+        name_dw = "x_dw"
+
     try:
 
         field_shift = float(field_shift_pc_edit.text())
-        plot_state["x_up_corr"] -= field_shift
-        plot_state["x_dw_corr"] -= field_shift
+        plot_state[name_up] -= field_shift
+        plot_state[name_dw] -= field_shift
 
         try :
             fit_data(*args)
+            if save_idx is not None:
+                df_dest = dataframes[save_idx]
+
+                df_dest[x_up_dest.currentText()] = plot_state[name_up]
+                df_dest[x_dw_dest.currentText()] = plot_state[name_dw]
+
+                logger.info("Corrected columns saved to destination file.")
+
         except Exception as e:
             QMessageBox.critical(window, "Error", f"Error during fit:\n{e}")
             # Return to original values
-            plot_state["x_up_corr"] += field_shift
-            plot_state["x_dw_corr"] += field_shift
+            plot_state[name_up] += field_shift
+            plot_state[name_dw] += field_shift
 
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error applying shift:\n{e}")
@@ -498,7 +559,7 @@ def perform_correction(file_combo, save_file_combo,
 #===================================================================#       
 
 def fit_data(file_combo,
-             x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+             x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
              x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
              hc_params_edit, hc_function_edit, logger, plot_state, draw_plot,
              output_box, window):
@@ -515,6 +576,8 @@ def fit_data(file_combo,
         Combo box to select X column for Down branch.
     y_down_combo : QComboBox
         Combo box to select Y column for Down branch.
+    data_sel : QComboBox
+        Combo box to select data type (corrected or original).
     x_start_up_hc_edit : QLineEdit
         Line edit for Up branch coercive fit start limit.
     x_end_up_hc_edit : QLineEdit
@@ -539,7 +602,8 @@ def fit_data(file_combo,
         Parent widget used to display error message boxes.
     '''
     try : 
-        idx_src = file_combo.currentIndex()
+        idx_src  = file_combo.currentIndex()
+        selected = data_sel.currentText()
     
         # Read x/y column names
         x_up_col = x_up_combo.currentText()
@@ -548,12 +612,25 @@ def fit_data(file_combo,
         y_dw_col = y_down_combo.currentText()
 
         #Read data
-        x_up = plot_state["x_up_corr"]
-        y_up = plot_state["y_up_corr"]
-        x_dw = plot_state["x_dw_corr"]
-        y_dw = plot_state["y_dw_corr"]
-        e_up = plot_state["e_up"]
-        e_dw = plot_state["e_dw"]
+        if selected == "Corrected":
+            x_up = plot_state["x_up_corr"]
+            y_up = plot_state["y_up_corr"]
+            x_dw = plot_state["x_dw_corr"]
+            y_dw = plot_state["y_dw_corr"]
+            e_up = plot_state["e_up"]
+            e_dw = plot_state["e_dw"]
+        else:
+            x_up = plot_state["x_up"]
+            y_up = plot_state["y_up"]
+            x_dw = plot_state["x_dw"]
+            y_dw = plot_state["y_dw"]
+
+            tail = np.concatenate((y_up[0:25], y_dw[-25:], 
+                                   y_up[-25:], y_dw[0:25]))
+            dy_data_err = np.std(tail)
+            dy_err = (2*np.random.random(x_up.size) - 1) * dy_data_err
+            e_up = dy_err
+            e_dw = dy_err
         
         if e_up is None:
             QMessageBox.critical(window, "Error", f"You need to correct data first")

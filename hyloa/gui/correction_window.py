@@ -411,6 +411,19 @@ def correct_hysteresis_loop(app_instance):
     box_options.addWidget(double_btn, 0, 2)
 
     #===============================================#
+    # Data selection for parameter estimations      #
+    #===============================================#
+
+    data_used = QGridLayout()
+    left_layout.addLayout(data_used)
+    # Select option to duplicate a branch
+    data_sel = QComboBox()
+    data_sel.addItem("Original")
+    data_sel.addItem("Corrected")
+    data_used.addWidget(QLabel("Select data for fit: "), 0, 0)
+    data_used.addWidget(data_sel, 0, 1)
+
+    #===============================================#
     # Set parameters for coercivity computation     #
     #===============================================#
 
@@ -731,7 +744,7 @@ def correct_hysteresis_loop(app_instance):
 
     fit_btn.clicked.connect(lambda : fit_data(
             file_combo,
-            x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
             x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
             hc_params_edit, hc_function_edit, logger, plot_state, draw_plot,
             output_box, window
@@ -740,25 +753,26 @@ def correct_hysteresis_loop(app_instance):
 
     double_btn.clicked.connect(lambda : flip_data(
             file_combo,
-            x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
             double_branch, plot_state,
             window, logger, draw_plot
         )
     )
     
     field_shift_btn.clicked.connect(lambda: apply_shift(
+            x_up_dest, y_up_dest, x_dw_dest, y_dw_dest, dataframes, save_file_combo, data_sel,
             field_shift_pc_edit, plot_state, window, fit_data, args=(
                 file_combo,
-                x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+                x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
                 x_start_up_hc_edit, x_end_up_hc_edit, x_start_dw_hc_edit, x_end_dw_hc_edit,
                 hc_params_edit, hc_function_edit, logger, plot_state, draw_plot,
                 output_box, window
-            )
-        )
+            ),
+            logger=logger)
     )
 
     spl3_btn.clicked.connect(lambda: compute_b_spline(
-            file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
             smooth_up_edit, smooth_dw_edit,
             plot_state, logger, window, draw_plot
 
@@ -767,7 +781,7 @@ def correct_hysteresis_loop(app_instance):
 
     sym_btn.clicked.connect(lambda: symmetrize(
             file_combo, save_file_combo,
-            x_up_combo, y_up_combo, x_down_combo, y_down_combo,
+            x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
             x_up_dest,  y_up_dest,  x_dw_dest,    y_dw_dest,
             dataframes, logger, plot_state, draw_plot,
             window, 

@@ -1232,13 +1232,6 @@ class WorksheetWindow(QMdiSubWindow):
             "minimized": self.isMinimized()
         }
 
-        # Store columns order (if they were rearanged)
-        header = self.table.horizontalHeader()
-        column_order = [
-            header.logicalIndex(header.visualIndex(i))
-            for i in range(header.count())
-        ]
-
 
         # Retrieve geometry of all plot windows
         for pid, sub in list(self.plot_subwindows.items()):
@@ -1264,7 +1257,6 @@ class WorksheetWindow(QMdiSubWindow):
         return {
             "name":           self.name,
             "data":           self.to_dataframe(),
-            "column_order":   column_order,
             "geometry":       ws_geom,
             "plots":          self.plots,
             "customizations": customizations_serializable
@@ -1294,13 +1286,6 @@ class WorksheetWindow(QMdiSubWindow):
                     # All empty, remove the row
                     self.table.removeRow(r)
 
-        # Restore column order
-        order = data_dict.get("column_order")
-        if order:
-            header = self.table.horizontalHeader()
-            for visual_pos, logical_idx in enumerate(order):
-                current_visual = header.visualIndex(logical_idx)
-                header.moveSection(current_visual, visual_pos)
 
 
         # Restore worksheet geometry: apply move/resize after being added to MDI

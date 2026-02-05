@@ -44,9 +44,13 @@ class LogWindow(QPlainTextEdit):
             return
 
         try:
-            with open(self.app_instance.logger_path, "r") as f:
-                lines = f.readlines()
-
+            try :
+                with open(self.app_instance.logger_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            except UnicodeDecodeError:
+                with open(self.app_instance.logger_path, "r", encoding="cp1252") as f:
+                    lines = f.readlines()
+            
             if len(lines) == self.last_line_count:
                 return
 

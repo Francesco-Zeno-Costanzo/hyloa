@@ -261,34 +261,41 @@ def apply_shift(x_up_dest, y_up_dest, x_dw_dest, y_dw_dest, dataframes, save_fil
 
     #Read data
     if selected == "Corrected":
-        name_up = "x_up_corr"
-        name_dw = "x_dw_corr"
+        name_xup = "x_up_corr"
+        name_xdw = "x_dw_corr"
+        name_yup = "y_up_corr"
+        name_ydw = "y_dw_corr"
   
     else:
-        name_up = "x_up"
-        name_dw = "x_dw"
+        name_xup = "x_up"
+        name_xdw = "x_dw"
+        name_yup = "y_up"
+        name_ydw = "y_dw"
 
     try:
 
         field_shift = float(field_shift_pc_edit.text())
-        plot_state[name_up] -= field_shift
-        plot_state[name_dw] -= field_shift
+        plot_state[name_xup] -= field_shift
+        plot_state[name_xdw] -= field_shift
 
         try :
             fit_data(*args)
             if save_idx is not None:
                 df_dest = dataframes[save_idx]
 
-                df_dest[x_up_dest.currentText()] = plot_state[name_up]
-                df_dest[x_dw_dest.currentText()] = plot_state[name_dw]
+                df_dest[x_up_dest.currentText()] = plot_state[name_xup]
+                df_dest[x_dw_dest.currentText()] = plot_state[name_xdw]
+                df_dest[y_up_dest.currentText()] = plot_state[name_yup]
+                df_dest[y_dw_dest.currentText()] = plot_state[name_ydw]
+
 
                 logger.info("Corrected columns saved to destination file.")
 
         except Exception as e:
             QMessageBox.critical(window, "Error", f"Error during fit:\n{e}")
             # Return to original values
-            plot_state[name_up] += field_shift
-            plot_state[name_dw] += field_shift
+            plot_state[name_xup] += field_shift
+            plot_state[name_xdw] += field_shift
 
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error applying shift:\n{e}")

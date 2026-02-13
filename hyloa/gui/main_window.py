@@ -34,6 +34,7 @@ from PyQt5.QtGui import QPixmap
 
 # Code for data management
 from hyloa.data.io import load_files
+from hyloa.data.ws_data import WsData
 from hyloa.data.io import duplicate_file
 from hyloa.data.io import save_modified_data
 from hyloa.data.session import save_current_session
@@ -79,21 +80,22 @@ class MainApp(QMainWindow):
         self.setCentralWidget(self.mdi_area)
 
         # Attributes to manage information and configuration
-        self.dataframes           = []     # List to store loaded DataFrames
-        self.header_lines         = []     # List to store the initial lines of files
-        self.logger               = None   # Logger for the entire application
-        self.logger_path          = None   # Path to the log file
-        self.fit_results          = {}     # Dictionary to save fitting results
-        self.number_plots         = 0      # Number of all created plots
-        self.figures_map          = {}     # dict to store all figures
-        self.plot_widgets         = {}     # {int: PlotControlWidget}
-        self.plot_names           = {}     # {int: "name of the figure"}
-        self.plot_subwindows      = {}     # {plot_index: QMdiSubWindow for control panel}
-        self.figure_subwindows    = {}     # {plot_index: QMdiSubWindow for figure window}
-        self.number_worksheets    = 0      # Number of all created worksheets
-        self.worksheet_windows    = {}     # {int: WorksheetWindow}
-        self.worksheet_names      = {}     # {int: str}
-        self.worksheet_subwindows = {}     # {int: QMdiSubWindow}
+        self.dataframes           = []       # List to store loaded DataFrames
+        self.header_lines         = []       # List to store the initial lines of files
+        self.logger               = None     # Logger for the entire application
+        self.logger_path          = None     # Path to the log file
+        self.fit_results          = {}       # Dictionary to save fitting results
+        self.number_plots         = 0        # Number of all created plots
+        self.figures_map          = {}       # dict to store all figures
+        self.plot_widgets         = {}       # {int: PlotControlWidget}
+        self.plot_names           = {}       # {int: "name of the figure"}
+        self.plot_subwindows      = {}       # {plot_index: QMdiSubWindow for control panel}
+        self.figure_subwindows    = {}       # {plot_index: QMdiSubWindow for figure window}
+        self.number_worksheets    = 0        # Number of all created worksheets
+        self.worksheet_windows    = {}       # {int: WorksheetWindow}
+        self.worksheet_names      = {}       # {int: str}
+        self.worksheet_subwindows = {}       # {int: QMdiSubWindow}
+        self.worksheet_dfs        = WsData() # To handle worksheet comunication
 
 
         # Interface

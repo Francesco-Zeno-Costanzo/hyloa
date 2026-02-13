@@ -33,7 +33,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
     QDialogButtonBox, QInputDialog, QAction, QApplication,
-    QFormLayout, QTextEdit, QSizePolicy, QCheckBox, QStackedWidget,
+    QFormLayout, QTextEdit, QSizePolicy, QCheckBox,
     QListWidget, QAbstractItemView
 
 )
@@ -49,6 +49,7 @@ from matplotlib import colors as mcolors, markers, lines as mlines
 
 from hyloa.data.io import detect_header_length
 from hyloa.utils.err_format import format_value_error
+from hyloa.gui.worksheet_utils import ColumnSelectionDialog, ColumnMathDialog
 
 class WorksheetWindow(QMdiSubWindow):
     ''' A worksheet subwindow for managing tabular data and plotting.
@@ -174,6 +175,15 @@ class WorksheetWindow(QMdiSubWindow):
         self.plot_customization = {}   # {"figure":..., "ax":..., "canvas":..., "customizations": {...}}
 
     
+    def sync_to_data(self):
+        '''
+        Function to update dataframe storage
+        '''
+        if self.app_instance and hasattr(self.app_instance, "worksheet_dfs"):
+            df = self.to_dataframe()
+            self.app_instance.worksheet_dfs.add(self.name, df)
+
+    
     def closeEvent(self, event):
         '''
         Cleanup when the worksheet window is closed.
@@ -206,6 +216,10 @@ class WorksheetWindow(QMdiSubWindow):
                             parent.worksheet_names.pop(idx, None)
                             parent.worksheet_subwindows.pop(idx, None)
                             break
+            # Remove associated dataframe
+            if self.app_instance and hasattr(self.app_instance, "worksheet_dfs"):
+                self.app_instance.worksheet_dfs.remove(self.name)
+
         except Exception as e:
             print(f"[DEBUG] Error during worksheet cleanup: {e}")
 
@@ -286,7 +300,9 @@ class WorksheetWindow(QMdiSubWindow):
         clipboard.setText("\n".join(copied))
     
     def paste_selection(self):
-        ''' Paste tab-delimited data from clipboard into the table starting at current cell.
+        ''' 
+        Paste tab-delimited data from clipboard into
+        the table starting at current cell.
         '''
         clipboard = QApplication.clipboard()
         text = clipboard.text()
@@ -319,6 +335,8 @@ class WorksheetWindow(QMdiSubWindow):
                 r = start_row + i
                 c = start_col + j
                 self.table.setItem(r, c, QTableWidgetItem(cell))
+        
+        self.sync_to_data()
 
 
     def load_file_into_table(self):
@@ -367,6 +385,8 @@ class WorksheetWindow(QMdiSubWindow):
                     else:
                         item = QTableWidgetItem(str(val))
                     self.table.setItem(r, c, item)
+            
+            self.sync_to_data()
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error in loading file:\n{e}")
@@ -378,6 +398,7 @@ class WorksheetWindow(QMdiSubWindow):
         col_count = self.table.columnCount()
         self.table.insertColumn(col_count)
         self.table.setHorizontalHeaderItem(col_count, QTableWidgetItem(f"Col {col_count+1}"))
+        self.sync_to_data()
 
     def remove_column(self):
         ''' Remove the currently selected column(s) from the table.
@@ -400,6 +421,8 @@ class WorksheetWindow(QMdiSubWindow):
         # Remove columns in reverse order to avoid index shifting
         for col in sorted([c.column() for c in selected], reverse=True):
             self.table.removeColumn(col)
+        
+        self.sync_to_data()
 
     def auto_expand_rows(self, row, col):
         '''
@@ -461,6 +484,7 @@ class WorksheetWindow(QMdiSubWindow):
 
         # Right list = columns of selected dataframe
         col_list = QListWidget()
+        col_list.setSelectionMode(QAbstractItemView.MultiSelection)
         layout.addWidget(col_list)
 
         # Update columns when a dataframe is selected
@@ -486,32 +510,49 @@ class WorksheetWindow(QMdiSubWindow):
 
         # === When Import is clicked ===
         def do_import():
-            df_idx = df_list.currentRow()
-            col_idx = col_list.currentRow()
+            df_idx     = df_list.currentRow()
+            selections = col_list.selectedItems()
 
-            if df_idx < 0 or col_idx < 0:
+            if df_idx < 0 or not selections:
                 QMessageBox.warning(dialog, "Error", "Please select a dataframe and a column.")
                 return
 
-            df       = data.dataframes[df_idx]
-            col_name = df.columns[col_idx]
-            values   = df[col_name].values
+            df = data.dataframes[df_idx]
+            # Determine max length first
+            max_len = max(len(df[item.text()]) for item in selections)
 
-            # Add column in worksheet
-            new_col_index = self.table.columnCount()
-            self.table.insertColumn(new_col_index)
-            self.table.setHorizontalHeaderItem(new_col_index, QTableWidgetItem(col_name))
-
-            while self.table.rowCount() < len(values):
+            # Ensure table has enough rows
+            while self.table.rowCount() < max_len:
                 self.table.insertRow(self.table.rowCount())
+                
+            # Import each selected column
+            for item in selections:
 
-            for r, val in enumerate(values):
-                self.table.setItem(r, new_col_index, QTableWidgetItem(str(val)))
+                col_name = item.text()
+                values   = df[col_name].values
+
+                new_col_index = self.table.columnCount()
+                self.table.insertColumn(new_col_index)
+                self.table.setHorizontalHeaderItem(
+                    new_col_index,
+                    QTableWidgetItem(col_name)
+                )
+
+                for r, val in enumerate(values):
+                    self.table.setItem(
+                        r,
+                        new_col_index,
+                        QTableWidgetItem(str(val))
+                    )
+            
+            self.sync_to_data()
 
             dialog.accept()
 
         import_btn.clicked.connect(do_import)
         cancel_btn.clicked.connect(dialog.reject)
+
+       
 
         dialog.exec_()
 
@@ -618,6 +659,8 @@ class WorksheetWindow(QMdiSubWindow):
                     self.table.setHorizontalHeaderItem(new_col_index, QTableWidgetItem(col_name))
                     for r, val in enumerate(data):
                         self.table.setItem(r, new_col_index, QTableWidgetItem(str(val)))
+                
+                self.sync_to_data()
                 return  # Avoid adding extra column below
 
             else:
@@ -632,6 +675,8 @@ class WorksheetWindow(QMdiSubWindow):
                 if pd.notna(val):
                     self.table.setItem(r, new_col_index, QTableWidgetItem(str(val)))
 
+            self.sync_to_data()
+
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Operation failed:\n{e}")
 
@@ -642,21 +687,27 @@ class WorksheetWindow(QMdiSubWindow):
 
         The user chooses X, Y, and optionally error bar columns.
         '''
-        df = self.to_dataframe()
-        dialog = ColumnSelectionDialog(df.columns, self)
+       
+        data      = self.app_instance.worksheet_dfs
+        flat_cols = list(data.get_all_columns().keys())
+
+        if not flat_cols:
+            QMessageBox.warning(self, "Error", "No data available.")
+            return
+
+        dialog = ColumnSelectionDialog(flat_cols, self)
+
         if dialog.exec_() == QDialog.Accepted:
             selections = dialog.get_selection()
-            self.open_plot_window(df, selections)
+            self.open_plot_window(selections)
 
 
-    def open_plot_window(self, df, selections, show=True, plot_id=None, customizations=None):
+    def open_plot_window(self, selections, show=True, plot_id=None, customizations=None):
         '''
         Open a new subwindow with a plot of the selected columns.
 
         Parameters
         ----------
-        df : pd.DataFrame
-            The DataFrame containing the data.
         selections : list of dict
             List of selections, each a dict with keys:
             'x', 'y', 'x_err', 'y_err' for column names.
@@ -673,13 +724,45 @@ class WorksheetWindow(QMdiSubWindow):
             The subwindow containing the plot.
         '''
         fig = Figure(figsize=(6, 4))
-        ax = fig.add_subplot(111)
+        ax  = fig.add_subplot(111)
+
+        data     = self.app_instance.worksheet_dfs
+        flat_map = data.get_all_columns()
+        
+        def resolve_column(col_name):
+            '''
+            Simple function to ensure retrocompatibility
+            '''
+            # New format with flat mapping → directly resolve
+            if col_name in flat_map:
+                return flat_map[col_name]
+
+            # Legacy format without flat mapping
+            current_ws = self.name 
+
+            df = data.get(current_ws)
+            if df is not None and col_name in df.columns:
+                return current_ws, col_name
+            
 
         for i, sel in enumerate(selections, start=1):
-            x = df[sel["x"]].values
-            y = df[sel["y"]].values
-            xerr = df[sel["x_err"]].values if sel["x_err"] else None
-            yerr = df[sel["y_err"]].values if sel["y_err"] else None
+
+            x_ws, x_col = resolve_column(sel["x"])
+            x = data.get(x_ws)[x_col].values
+
+            y_ws, y_col = resolve_column(sel["y"])
+            y = data.get(y_ws)[y_col].values
+
+            xerr = None
+            if sel["x_err"]:
+                dx_ws, dx_col = resolve_column(sel["x_err"])
+                xerr = data.get(dx_ws)[dx_col].values
+            
+            yerr = None
+            if sel["y_err"]:
+                dy_ws, dy_col = resolve_column(sel["y_err"])
+                yerr = data.get(dy_ws)[dy_col].values
+
 
             label = sel["y"] if len(selections) == 1 else f"{sel['y']}"
 
@@ -1286,7 +1369,9 @@ class WorksheetWindow(QMdiSubWindow):
                     # All empty, remove the row
                     self.table.removeRow(r)
 
-
+        # Sync with central data model BEFORE recreating plots
+        if self.app_instance and hasattr(self.app_instance, "worksheet_dfs"):
+            self.app_instance.worksheet_dfs.add(self.name, df)
 
         # Restore worksheet geometry: apply move/resize after being added to MDI
         geom = data_dict.get("geometry")
@@ -1321,7 +1406,7 @@ class WorksheetWindow(QMdiSubWindow):
             # Create sub but don't show it yet
             cst = data_dict.get("customizations", {}).get(plot_id, {})
             sub = self.open_plot_window(
-                df, selections, show=False,
+                selections, show=False,
                 plot_id=int(plot_id),
                 customizations=cst
             )
@@ -1346,292 +1431,3 @@ class WorksheetWindow(QMdiSubWindow):
             else:
                 # If no geom info, just show it
                 QTimer.singleShot(0, sub.show)
-
-#===========================================================================================#
-#===========================================================================================#
-#===========================================================================================#
-
-
-class ColumnSelectionDialog(QDialog):
-    '''
-    Dialog for selecting columns to plot.
-    '''
-    def __init__(self, columns, parent=None):
-        '''
-        Initialize the column selection dialog.
-
-        Parameters
-        ----------
-        columns : list of str
-            List of column names available for selection.
-        parent : QWidget, optional
-            The parent widget (default is None).
-        '''
-        super().__init__(parent)
-        self.setWindowTitle("Select columns for Plotting")
-
-        self.columns = columns
-        self.curve_rows = []
-
-        self.layout = QVBoxLayout()
-
-        # Area for curve selections
-        self.curves_layout = QVBoxLayout()
-        self.layout.addLayout(self.curves_layout)
-
-        # Button to add more curves
-        btn_add = QPushButton("Add curve")
-        btn_add.clicked.connect(self.add_curve_row)
-        self.layout.addWidget(btn_add)
-
-        # OK/Cancel buttons
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        self.layout.addWidget(buttons)
-
-        self.setLayout(self.layout)
-
-        # Add the first curve selection row
-        self.add_curve_row()
-    
-    def add_curve_row(self):
-        ''' Add a new row for selecting X, Y, Xerr, Yerr columns.
-        '''
-        row_layout = QHBoxLayout()
-
-        x_combo = QComboBox(); x_combo.addItems(self.columns)
-        y_combo = QComboBox(); y_combo.addItems(self.columns)
-
-        xerr_combo = QComboBox(); xerr_combo.addItem("None"); xerr_combo.addItems(self.columns)
-        yerr_combo = QComboBox(); yerr_combo.addItem("None"); yerr_combo.addItems(self.columns)
-
-        row_layout.addWidget(QLabel("X:")); row_layout.addWidget(x_combo)
-        row_layout.addWidget(QLabel("Y:")); row_layout.addWidget(y_combo)
-        row_layout.addWidget(QLabel("Xerr:")); row_layout.addWidget(xerr_combo)
-        row_layout.addWidget(QLabel("Yerr:")); row_layout.addWidget(yerr_combo)
-
-        self.curves_layout.addLayout(row_layout)
-        self.curve_rows.append((x_combo, y_combo, xerr_combo, yerr_combo))
-
-
-    def get_selection(self):
-        ''' Get the list of selected columns for all curves.
-        '''
-        selections = []
-        for x_combo, y_combo, xerr_combo, yerr_combo in self.curve_rows:
-            x = x_combo.currentText()
-            y = y_combo.currentText()
-            x_err = xerr_combo.currentText()
-            y_err = yerr_combo.currentText()
-
-            selections.append({
-                "x": x,
-                "y": y,
-                "x_err": None if x_err == "None" else x_err,
-                "y_err": None if y_err == "None" else y_err,
-            })
-        return selections
-
-#===========================================================================================#
-#===========================================================================================#
-#===========================================================================================#
-
-class ColumnMathDialog(QDialog):
-    ''' Dialog for performing arithmetic operations between columns.
-    '''
-    def __init__(self, columns, parent=None):
-        '''
-        Initialize the column math dialog.
-
-        Parameters
-        ----------
-        columns : list of str
-            List of column names available for selection.
-        parent : QWidget, optional
-            The parent widget (default is None).
-        '''
-        super().__init__(parent)
-        self.setWindowTitle("Column Math")
-
-        self.mode = QComboBox()
-        self.mode.addItems([
-            "Arithmetic between columns",
-            "Generate linspace",
-            "Generate logspace",
-            "Generate function from linspace/logspace"
-        ])
-
-        # Create the stcack area for dynamic widgets
-        self.stack = QStackedWidget()
-        self.pages = {
-            "Arithmetic between columns": self.create_arithmetic_page(columns),
-            "Generate linspace": self.create_space_page(),
-            "Generate logspace": self.create_space_page(),
-            "Generate function from linspace/logspace": self.create_function_page()
-        }
-
-        # Add pages to stack
-        for page in self.pages.values():
-            self.stack.addWidget(page)
-        
-        # Name new column
-        self.new_name = QLineEdit()
-        self.new_name.setPlaceholderText("New column name")
-
-        # Layout
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("Mode:"))
-        layout.addWidget(self.mode)
-        layout.addWidget(self.stack)
-        layout.addWidget(QLabel("New column name:"))
-        layout.addWidget(self.new_name)
-
-        # Buttons
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        layout.addWidget(btns)
-        self.setLayout(layout)
-
-        # Connections
-        self.mode.currentTextChanged.connect(self.switch_page)
-
-    def switch_page(self, mode):
-        '''
-        Switch the displayed page based on selected mode.
-
-        Parameters
-        ----------
-        mode : str
-            The selected mode.
-        '''
-        self.stack.setCurrentWidget(self.pages[mode])
-
-    def create_arithmetic_page(self, columns):
-        '''
-        Create the page for arithmetic operations between columns.
-
-        Parameters
-        ----------
-        columns : list of str
-            List of column names available for selection.
-        
-        Returns
-        -------
-        QWidget
-            The created page widget.
-        '''
-        page   = QWidget()
-        layout = QVBoxLayout(page)
-
-        self.col_a         = QComboBox(); self.col_a.addItems(columns)
-        self.op            = QComboBox(); self.op.addItems(["+", "-", "*", "/", "mean"])
-        self.col_b         = QComboBox(); self.col_b.addItems(["<Constant>"] + list(columns))
-        self.constant_edit = QLineEdit(); self.constant_edit.setPlaceholderText("Constant value")
-        self.col_b.currentTextChanged.connect(self.toggle_constant)
-
-        layout.addWidget(QLabel("Column A:")); layout.addWidget(self.col_a)
-        layout.addWidget(QLabel("Operation:")); layout.addWidget(self.op)
-        layout.addWidget(QLabel("Column B or constant:"))
-        layout.addWidget(self.col_b); layout.addWidget(self.constant_edit)
-        return page
-    
-    def create_space_page(self):
-        '''
-        Create the page for generating linspace or logspace.
-        
-        Returns
-        -------
-        QWidget
-            The created page widget.
-        '''
-        page   = QWidget()
-        layout = QVBoxLayout(page)
-
-        self.start_edit = QLineEdit(); self.start_edit.setPlaceholderText("Start value")
-        self.stop_edit  = QLineEdit(); self.stop_edit.setPlaceholderText("Stop value")
-        self.num_edit   = QLineEdit(); self.num_edit.setPlaceholderText("Number of points")
-
-        layout.addWidget(QLabel("Start:")); layout.addWidget(self.start_edit)
-        layout.addWidget(QLabel("Stop:")); layout.addWidget(self.stop_edit)
-        layout.addWidget(QLabel("Number of points:")); layout.addWidget(self.num_edit)
-        return page
-    
-    def create_function_page(self):
-        '''
-        Create the page for generating a function from linspace/logspace.
-
-        Returns
-        -------
-        QWidget
-            The created page widget.
-        '''
-        page   = QWidget()
-        layout = QVBoxLayout(page)
-
-        self.space_type = QComboBox()
-        self.space_type.addItems(["linspace", "logspace"])
-
-        self.start_edit = QLineEdit(); self.start_edit.setPlaceholderText("Start value")
-        self.stop_edit  = QLineEdit(); self.stop_edit.setPlaceholderText("Stop value")
-        self.num_edit   = QLineEdit(); self.num_edit.setPlaceholderText("Number of points")
-        self.func_edit  = QLineEdit(); self.func_edit.setPlaceholderText("Must be numpy function, e.g. np.sin(x)")
-
-        for label, widget in [
-            ("Space type:", self.space_type),
-            ("Start:", self.start_edit),
-            ("Stop:", self.stop_edit),
-            ("Number of points:", self.num_edit),
-            ("Function f(x):", self.func_edit)
-        ]:
-            layout.addWidget(QLabel(label))
-            layout.addWidget(widget)
-
-        return page
-        
-    def toggle_constant(self, text):
-        '''
-        Enable/disable constant input based on selection.
-
-        Parameters
-        ----------
-        text : str
-            The current text of the col_b combo box.
-        '''
-        self.constant_edit.setEnabled(text == "<Constant>")
-
-    def get_selection(self):
-        '''
-        Get the selected columns, operation, constant, and new column name.
-        
-        Returns
-        -------
-        dict
-            A dictionary with keys:
-            - mode: selected mode
-            - col_a: first column
-            - op: operation
-            - col_b: second column or None
-            - const: constant value or None
-            - space_type: linspace or logspace
-            - start: start value for linspace/logspace
-            - stop: stop value for linspace/logspace
-            - num: number of points for linspace/logspace
-            - func: function for generating new column
-            - new_name: name of the new column
-        '''
-        mode = self.mode.currentText()
-        return {
-            "mode":       mode,
-            "col_a":      getattr(self, "col_a", None).currentText() if hasattr(self, "col_a") else None,
-            "op":         getattr(self, "op", None).currentText() if hasattr(self, "op") else None,
-            "col_b":      None if not hasattr(self, "col_b") or self.col_b.currentText() == "<Constant>" else self.col_b.currentText(),
-            "const":      self.constant_edit.text() if hasattr(self, "constant_edit") else "",
-            "space_type": self.space_type.currentText() if hasattr(self, "space_type") else "linspace",
-            "start":      self.start_edit.text() if hasattr(self, "start_edit") else "",
-            "stop":       self.stop_edit.text() if hasattr(self, "stop_edit") else "",
-            "num":        self.num_edit.text() if hasattr(self, "num_edit") else "",
-            "func":       self.func_edit.text().strip() if hasattr(self, "func_edit") else "",
-            "new_name":   self.new_name.text().strip()
-        }

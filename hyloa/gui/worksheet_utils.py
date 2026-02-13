@@ -20,8 +20,9 @@ Code for the worksheet's windows.
 
 from PyQt5.QtWidgets import (
     QLineEdit, QWidget, QVBoxLayout, QPushButton, 
-    QHBoxLayout, QDialog, QLabel, QComboBox,
-    QDialogButtonBox, QStackedWidget
+    QFrame, QDialog, QLabel, QComboBox, QGridLayout,
+    QDialogButtonBox, QStackedWidget, QScrollArea,
+    QHBoxLayout
 )
 
 
@@ -42,28 +43,34 @@ class ColumnSelectionDialog(QDialog):
         '''
         super().__init__(parent)
         self.setWindowTitle("Select columns for Plotting")
+        self.setMinimumWidth(500)
 
         self.columns = columns
         self.curve_rows = []
 
-        self.layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
 
-        # Area for curve selections
-        self.curves_layout = QVBoxLayout()
-        self.layout.addLayout(self.curves_layout)
+        # Create a scroll area for curve selections
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+
+        self.scroll_widget = QWidget()
+        self.curves_layout = QVBoxLayout(self.scroll_widget)
+        self.curves_layout.setSpacing(10)
+
+        self.scroll_area.setWidget(self.scroll_widget)
+        main_layout.addWidget(self.scroll_area)
 
         # Button to add more curves
         btn_add = QPushButton("Add curve")
         btn_add.clicked.connect(self.add_curve_row)
-        self.layout.addWidget(btn_add)
+        main_layout.addWidget(btn_add)
 
         # OK/Cancel buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        self.layout.addWidget(buttons)
-
-        self.setLayout(self.layout)
+        main_layout.addWidget(buttons)
 
         # Add the first curve selection row
         self.add_curve_row()
@@ -71,7 +78,30 @@ class ColumnSelectionDialog(QDialog):
     def add_curve_row(self):
         ''' Add a new row for selecting X, Y, Xerr, Yerr columns.
         '''
-        row_layout = QHBoxLayout()
+        curve_index = len(self.curve_rows) + 1
+
+         # === Main container for one curve ===
+        container = QFrame()
+        container.setFrameShape(QFrame.StyledPanel)
+
+        container_layout = QVBoxLayout(container)
+
+        # ---- Header row (Curve X + Remove button) ----
+        header_layout = QHBoxLayout()
+
+        title_label = QLabel(f"Curve {curve_index}")
+        title_label.setStyleSheet("font-weight: bold;")
+
+        remove_btn = QPushButton("Remove")
+        remove_btn.setMaximumWidth(80)
+
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        header_layout.addWidget(remove_btn)
+
+        container_layout.addLayout(header_layout)
+
+        grid  = QGridLayout()
 
         x_combo = QComboBox(); x_combo.addItems(self.columns)
         y_combo = QComboBox(); y_combo.addItems(self.columns)
@@ -79,24 +109,73 @@ class ColumnSelectionDialog(QDialog):
         xerr_combo = QComboBox(); xerr_combo.addItem("None"); xerr_combo.addItems(self.columns)
         yerr_combo = QComboBox(); yerr_combo.addItem("None"); yerr_combo.addItems(self.columns)
 
-        row_layout.addWidget(QLabel("X:")); row_layout.addWidget(x_combo)
-        row_layout.addWidget(QLabel("Y:")); row_layout.addWidget(y_combo)
-        row_layout.addWidget(QLabel("Xerr:")); row_layout.addWidget(xerr_combo)
-        row_layout.addWidget(QLabel("Yerr:")); row_layout.addWidget(yerr_combo)
+        # Layout grid (clean and aligned)
+        grid.addWidget(QLabel("x:"),     0, 0)
+        grid.addWidget(x_combo,          0, 1)
 
-        self.curves_layout.addLayout(row_layout)
-        self.curve_rows.append((x_combo, y_combo, xerr_combo, yerr_combo))
+        grid.addWidget(QLabel("y:"),     1, 0)
+        grid.addWidget(y_combo,          1, 1)
 
+        grid.addWidget(QLabel("xerr:"),  0, 2)
+        grid.addWidget(xerr_combo,       0, 3)
+
+        grid.addWidget(QLabel("yerr:"),  1, 2)
+        grid.addWidget(yerr_combo,       1, 3)
+
+        container_layout.addLayout(grid)
+        self.curves_layout.addWidget(container)
+
+        remove_btn.clicked.connect(
+            lambda: self.remove_curve(container)
+        )
+
+        self.curve_rows.append({
+            "container" : container,
+            "title"     : title_label,
+            "x"         : x_combo,
+            "y"         : y_combo,
+            "xerr"      : xerr_combo,
+            "yerr"      : yerr_combo
+        })
+
+    def remove_curve(self, container):
+        '''Remove a curve container.'''
+
+        # Remove from layout
+        container.setParent(None)
+        container.deleteLater()
+
+        # Remove from internal list
+        self.curve_rows = [
+            row for row in self.curve_rows
+            if row["container"] != container
+        ]
+
+        # Renumber remaining curves
+        for i, row in enumerate(self.curve_rows):
+            row["title"].setText(f"Curve {i+1}")
 
     def get_selection(self):
-        ''' Get the list of selected columns for all curves.
+        ''' 
+        Get the list of selected columns for all curves.
+
+        Return
+        ------
+        selections : list
+            A list of dictionaries, each containing:
+            - x: selected X column
+            - y: selected Y column
+            - x_err: selected X error column or None 
         '''
         selections = []
-        for x_combo, y_combo, xerr_combo, yerr_combo in self.curve_rows:
-            x = x_combo.currentText()
-            y = y_combo.currentText()
-            x_err = xerr_combo.currentText()
-            y_err = yerr_combo.currentText()
+        
+        for row in self.curve_rows:
+
+            x = row["x"].currentText()
+            y = row["y"].currentText()
+
+            x_err = row["xerr"].currentText()
+            y_err = row["yerr"].currentText()
 
             selections.append({
                 "x": x,

@@ -613,8 +613,14 @@ class WorksheetWindow(QMdiSubWindow):
             if mode == "Arithmetic between columns":
                 col_a, op, col_b, const_str = sel["col_a"], sel["op"], sel["col_b"], sel["const"]
                 series_a = df[col_a].astype(float)
-                series_b = df[col_b].astype(float) if col_b else float(const_str)
-
+                
+                if col_b:
+                    series_b = df[col_b].astype(float)
+                else:
+                    if not const_str:
+                        raise ValueError("Constant value required.")
+                    series_b = float(const_str)
+                
                 result = {
                     "+": series_a + series_b,
                     "-": series_a - series_b,
@@ -624,6 +630,20 @@ class WorksheetWindow(QMdiSubWindow):
                 }.get(op)
                 if result is None:
                     raise ValueError("Unknown operation")
+            
+            elif mode == "Custom expression between columns":
+                expr = sel["expr"]
+
+                allowed_dict = {
+                    "np": np,
+                    **{col: df[col].values for col in df.columns}
+                }
+
+                try:
+                    result = eval(expr, {"__builtins__": {}}, allowed_dict)
+                except Exception as e:
+                    QMessageBox.warning(self, "Error", str(e))
+                    return
             
             # Generate linspace
             elif mode in ("Generate linspace", "Generate logspace"):

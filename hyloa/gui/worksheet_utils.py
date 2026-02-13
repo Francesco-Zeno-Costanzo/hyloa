@@ -214,6 +214,7 @@ class ColumnMathDialog(QDialog):
         self.mode   = QComboBox()
         self.mode.addItems([
             "Arithmetic between columns",
+            "Custom expression between columns",
             "Generate linspace",
             "Generate logspace",
             "Generate function from linspace/logspace"
@@ -227,6 +228,7 @@ class ColumnMathDialog(QDialog):
         self.stack = QStackedWidget()
         self.pages = {
             "Arithmetic between columns": self.create_arithmetic_page(columns),
+            "Custom expression between columns": self.create_expression_page(columns),
             "Generate linspace": self.create_space_page(),
             "Generate logspace": self.create_space_page(),
             "Generate function from linspace/logspace": self.create_function_page()
@@ -299,6 +301,27 @@ class ColumnMathDialog(QDialog):
         form.addRow("Constant:", self.constant_edit)
         return page
     
+    def create_expression_page(self, columns):
+
+        page = QWidget()
+        form = QFormLayout(page)
+
+        info = QLabel(
+            "Write a numpy-compatible expression.\n"
+            "Available variables: " + ", ".join(columns)
+        )
+        info.setWordWrap(True)
+
+        self.expr_edit = QLineEdit()
+        self.expr_edit.setPlaceholderText(
+            "(col1 - col2) / col3"
+        )
+
+        form.addRow(info)
+        form.addRow("Expression:", self.expr_edit)
+
+        return page
+    
     def create_space_page(self):
         '''
         Create the page for generating linspace or logspace.
@@ -347,7 +370,7 @@ class ColumnMathDialog(QDialog):
             ("Stop:", self.stop_edit),
             ("Number of points:", self.num_edit),
             ("Function f(x):", self.func_edit)]:
-            
+
             form.addRow(label, widget)
 
         return page
@@ -390,6 +413,7 @@ class ColumnMathDialog(QDialog):
             "op":         getattr(self, "op", None).currentText() if hasattr(self, "op") else None,
             "col_b":      None if not hasattr(self, "col_b") or self.col_b.currentText() == "<Constant>" else self.col_b.currentText(),
             "const":      self.constant_edit.text() if hasattr(self, "constant_edit") else "",
+            "expr":       self.expr_edit.text().strip() if hasattr(self, "expr_edit") else "",
             "space_type": self.space_type.currentText() if hasattr(self, "space_type") else "linspace",
             "start":      self.start_edit.text() if hasattr(self, "start_edit") else "",
             "stop":       self.stop_edit.text() if hasattr(self, "stop_edit") else "",

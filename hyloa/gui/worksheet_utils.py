@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
     QLineEdit, QWidget, QVBoxLayout, QPushButton, 
     QFrame, QDialog, QLabel, QComboBox, QGridLayout,
     QDialogButtonBox, QStackedWidget, QScrollArea,
-    QHBoxLayout
+    QHBoxLayout, QGroupBox, QFormLayout
 )
 
 
@@ -206,13 +206,22 @@ class ColumnMathDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Column Math")
 
-        self.mode = QComboBox()
+        main_layout = QVBoxLayout(self)
+
+        # Mode selection
+        mode_group  = QGroupBox("Operation mode")
+        mode_layout = QVBoxLayout()
+        self.mode   = QComboBox()
         self.mode.addItems([
             "Arithmetic between columns",
             "Generate linspace",
             "Generate logspace",
             "Generate function from linspace/logspace"
         ])
+        mode_layout.addWidget(self.mode)
+        mode_group.setLayout(mode_layout)
+        main_layout.addWidget(mode_group)
+
 
         # Create the stcack area for dynamic widgets
         self.stack = QStackedWidget()
@@ -227,24 +236,25 @@ class ColumnMathDialog(QDialog):
         for page in self.pages.values():
             self.stack.addWidget(page)
         
+        content_group  = QGroupBox("Parameters")
+        content_layout = QVBoxLayout()
+        content_layout.addWidget(self.stack)
+        content_group.setLayout(content_layout)
+
+        main_layout.addWidget(content_group)
+        
         # Name new column
+        name_layout   = QFormLayout()
         self.new_name = QLineEdit()
         self.new_name.setPlaceholderText("New column name")
-
-        # Layout
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("Mode:"))
-        layout.addWidget(self.mode)
-        layout.addWidget(self.stack)
-        layout.addWidget(QLabel("New column name:"))
-        layout.addWidget(self.new_name)
+        name_layout.addRow("New column name:", self.new_name)
+        main_layout.addLayout(name_layout)
 
         # Buttons
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
-        layout.addWidget(btns)
-        self.setLayout(layout)
+        main_layout.addWidget(btns)
 
         # Connections
         self.mode.currentTextChanged.connect(self.switch_page)
@@ -274,8 +284,8 @@ class ColumnMathDialog(QDialog):
         QWidget
             The created page widget.
         '''
-        page   = QWidget()
-        layout = QVBoxLayout(page)
+        page = QWidget()
+        form = QFormLayout(page)
 
         self.col_a         = QComboBox(); self.col_a.addItems(columns)
         self.op            = QComboBox(); self.op.addItems(["+", "-", "*", "/", "mean"])
@@ -283,10 +293,10 @@ class ColumnMathDialog(QDialog):
         self.constant_edit = QLineEdit(); self.constant_edit.setPlaceholderText("Constant value")
         self.col_b.currentTextChanged.connect(self.toggle_constant)
 
-        layout.addWidget(QLabel("Column A:")); layout.addWidget(self.col_a)
-        layout.addWidget(QLabel("Operation:")); layout.addWidget(self.op)
-        layout.addWidget(QLabel("Column B or constant:"))
-        layout.addWidget(self.col_b); layout.addWidget(self.constant_edit)
+        form.addRow("Column A:", self.col_a)
+        form.addRow("Operation:", self.op)
+        form.addRow("Column B:", self.col_b)
+        form.addRow("Constant:", self.constant_edit)
         return page
     
     def create_space_page(self):
@@ -298,16 +308,17 @@ class ColumnMathDialog(QDialog):
         QWidget
             The created page widget.
         '''
-        page   = QWidget()
-        layout = QVBoxLayout(page)
+        page = QWidget()
+        form = QFormLayout(page)
 
         self.start_edit = QLineEdit(); self.start_edit.setPlaceholderText("Start value")
         self.stop_edit  = QLineEdit(); self.stop_edit.setPlaceholderText("Stop value")
         self.num_edit   = QLineEdit(); self.num_edit.setPlaceholderText("Number of points")
 
-        layout.addWidget(QLabel("Start:")); layout.addWidget(self.start_edit)
-        layout.addWidget(QLabel("Stop:")); layout.addWidget(self.stop_edit)
-        layout.addWidget(QLabel("Number of points:")); layout.addWidget(self.num_edit)
+        form.addRow("Start:", self.start_edit)
+        form.addRow("Stop:", self.stop_edit)
+        form.addRow("Number of points:", self.num_edit)
+        
         return page
     
     def create_function_page(self):
@@ -319,8 +330,8 @@ class ColumnMathDialog(QDialog):
         QWidget
             The created page widget.
         '''
-        page   = QWidget()
-        layout = QVBoxLayout(page)
+        page = QWidget()
+        form = QFormLayout(page)
 
         self.space_type = QComboBox()
         self.space_type.addItems(["linspace", "logspace"])
@@ -335,10 +346,9 @@ class ColumnMathDialog(QDialog):
             ("Start:", self.start_edit),
             ("Stop:", self.stop_edit),
             ("Number of points:", self.num_edit),
-            ("Function f(x):", self.func_edit)
-        ]:
-            layout.addWidget(QLabel(label))
-            layout.addWidget(widget)
+            ("Function f(x):", self.func_edit)]:
+            
+            form.addRow(label, widget)
 
         return page
         

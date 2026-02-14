@@ -34,7 +34,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
     QDialogButtonBox, QInputDialog, QAction, QApplication,
     QFormLayout, QTextEdit, QSizePolicy, QCheckBox,
-    QListWidget, QAbstractItemView
+    QListWidget, QAbstractItemView, QGridLayout
 
 )
 
@@ -743,8 +743,27 @@ class WorksheetWindow(QMdiSubWindow):
         QMdiSubWindow
             The subwindow containing the plot.
         '''
+
+        # --- handle plot_id ---
+        if plot_id is None:
+            self.plot_count += 1
+            plot_id = self.plot_count
+        else:
+            # keep track of highest id
+            try:
+                pid_int = int(plot_id)
+                if pid_int > self.plot_count:
+                    self.plot_count = pid_int
+            except Exception:
+                pass
+
         fig = Figure(figsize=(6, 4))
         ax  = fig.add_subplot(111)
+
+        self.figure[plot_id] = {
+            "figure": fig, "ax": ax, 
+            "sub": None, "curves": []
+        }
 
         data     = self.app_instance.worksheet_dfs
         flat_map = data.get_all_columns()
@@ -796,8 +815,34 @@ class WorksheetWindow(QMdiSubWindow):
                 # Set label for legend
                 err_c[0].set_label(label)
 
+                # Save data in figure fot fitting
+                line_obj = err_c[0]
+                self.figure[plot_id]["curves"].append({
+                    "line": line_obj,
+                    "x": np.array(x),
+                    "y": np.array(y),
+                    "xerr": np.array(xerr) if xerr is not None else None,
+                    "yerr": np.array(yerr) if yerr is not None else None,
+                    "x_ws": x_ws,
+                    "y_ws": y_ws,
+                    "x_col": x_col,
+                    "y_col": y_col
+                })
+
             else:
-                ax.plot(x, y, "o-", label=label)
+                line_obj, = ax.plot(x, y, "o-", label=label)
+
+                self.figure[plot_id]["curves"].append({
+                    "line": line_obj,
+                    "x": np.array(x),
+                    "y": np.array(y),
+                    "xerr": None,
+                    "yerr": None,
+                    "x_ws": x_ws,
+                    "y_ws": y_ws,
+                    "x_col": x_col,
+                    "y_col": y_col
+                })
 
         # Log the creation of the plot with selcected columns
         if self.logger is not None:
@@ -872,18 +917,6 @@ class WorksheetWindow(QMdiSubWindow):
         vlayout.addWidget(canvas)
         plot_container.setLayout(vlayout)
 
-        # --- handle plot_id ---
-        if plot_id is None:
-            self.plot_count += 1
-            plot_id = self.plot_count
-        else:
-            # keep track of highest id
-            try:
-                pid_int = int(plot_id)
-                if pid_int > self.plot_count:
-                    self.plot_count = pid_int
-            except Exception:
-                pass
         
         sub = QMdiSubWindow()
         sub.setWindowTitle(f"From {self.name} plot {plot_id}")
@@ -897,7 +930,8 @@ class WorksheetWindow(QMdiSubWindow):
             "toolbar": toolbar
         }
 
-        self.figure[plot_id]             = {"figure": fig, "ax": ax, "sub": sub}
+        self.figure[plot_id]["sub"] = sub
+
         self.plot_customization[plot_id] = {
             "figure": fig,
             "ax": ax,
@@ -1172,12 +1206,9 @@ class WorksheetWindow(QMdiSubWindow):
         # Create the fitting window
         window = QWidget()
         window.setWindowTitle("Quick Curve Fitting")
-        layout = QHBoxLayout(window)
+        layout = QVBoxLayout(window)
         window.setLayout(layout)
 
-        # === Left column: select data and plot ===
-        selection_layout = QVBoxLayout()
-        layout.addLayout(selection_layout)
 
         def show_help_dialog():
             help_text = (
@@ -1192,62 +1223,113 @@ class WorksheetWindow(QMdiSubWindow):
 
         help_button = QPushButton("Help")
         help_button.clicked.connect(show_help_dialog)
-        selection_layout.addWidget(help_button, alignment=Qt.AlignLeft)
+        layout.addWidget(help_button, alignment=Qt.AlignLeft)
+
+        # === left column fit parameter ===      
+        selection_layout = QHBoxLayout()
+        layout.addLayout(selection_layout)
+
+        
+        param_layout = QGridLayout()
+        selection_layout.addLayout(param_layout)
 
         # Select target plot
-        selection_layout.addWidget(QLabel("Select target plot:"))
+        param_layout.addWidget(QLabel("Select target plot:"), 0, 0)
         plot_combo = QComboBox()
+
         for pid, info in self.figure.items():
             sub_title = info["sub"].windowTitle()
             plot_combo.addItem(f"Plot {pid}: {sub_title}", pid)
-        selection_layout.addWidget(plot_combo)
+        param_layout.addWidget(plot_combo, 0, 1)
 
-        # Select X and Y columns
-        selection_layout.addWidget(QLabel("Column X:"))
-        x_combo = QComboBox(); x_combo.addItems(df.columns)
-        selection_layout.addWidget(x_combo)
+        param_layout.addWidget(QLabel("Select curve:"), 1, 0)
+        curve_combo = QComboBox()
+        param_layout.addWidget(curve_combo, 1, 1)
 
-        selection_layout.addWidget(QLabel("Column Y:"))
-        y_combo = QComboBox(); y_combo.addItems(df.columns)
-        selection_layout.addWidget(y_combo)
+        param_layout.addWidget(QLabel("x_start:"), 2, 0)
+        x_start_edit = QLineEdit("-10")
+        param_layout.addWidget(x_start_edit, 2, 1)
 
-        # === Right column fit parameter ===
-        param_layout = QVBoxLayout()
-        layout.addLayout(param_layout)
+        param_layout.addWidget(QLabel("x_end:"), 3, 0)
+        x_end_edit = QLineEdit("10")
+        param_layout.addWidget(x_end_edit, 3, 1)
 
-        param_layout.addWidget(QLabel("x_start:"))
-        x_start_edit = QLineEdit(str(df[x_combo.currentText()].min()))
-        param_layout.addWidget(x_start_edit)
-
-        param_layout.addWidget(QLabel("x_end:"))
-        x_end_edit = QLineEdit(str(df[x_combo.currentText()].max()))
-        param_layout.addWidget(x_end_edit)
-
-        param_layout.addWidget(QLabel("Parameter names (e.g. a,b):"))
+        param_layout.addWidget(QLabel("Parameter names (e.g. a,b):"), 4, 0)
         param_names_edit = QLineEdit("a,b")
-        param_layout.addWidget(param_names_edit)
+        param_layout.addWidget(param_names_edit, 4, 1)
 
-        param_layout.addWidget(QLabel("Initial values (e.g. 1,1):"))
+        param_layout.addWidget(QLabel("Initial values (e.g. 1,1):"), 5, 0)
         initial_params_edit = QLineEdit("1,1")
-        param_layout.addWidget(initial_params_edit)
+        param_layout.addWidget(initial_params_edit, 5, 1)
 
-        param_layout.addWidget(QLabel("Fitting function (e.g. a*x + b):"))
+        param_layout.addWidget(QLabel("Fitting function (e.g. a*x + b):"), 6, 0)
         function_edit = QLineEdit("a*x + b")
-        param_layout.addWidget(function_edit)
+        param_layout.addWidget(function_edit, 6, 1)
+
+        #======================================================================#
+
+        def update_range():
+            pid = plot_combo.currentData()
+            curve_index = curve_combo.currentData()
+
+            if pid not in self.figure:
+                return
+
+            curves = self.figure[pid]["curves"]
+            if not curves:
+                return
+
+            if curve_index is None:
+                return
+
+            curve_data = curves[curve_index]
+            x_vals = np.array(curve_data["x"], dtype=float)
+            x_vals = x_vals[np.isfinite(x_vals)]
+
+            if len(x_vals) > 0:
+                x_start_edit.setText(str(np.min(x_vals)))
+                x_end_edit.setText(str(np.max(x_vals)))
+
+        def update_curves():
+            curve_combo.clear()
+            pid = plot_combo.currentData()
+            if pid not in self.figure:
+                return
+            for i, curve in enumerate(self.figure[pid]["curves"]):
+                label = curve["line"].get_label()
+                curve_combo.addItem(f"Curve {i+1}: {label}", i)
+            
+            update_range()
+            
+
+        plot_combo.currentIndexChanged.connect(update_curves)
+        curve_combo.currentIndexChanged.connect(update_range)
+        update_curves()
+
+        #======================================================================#
 
         # Output 
         output_box = QTextEdit()
         output_box.setReadOnly(True)
         output_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        layout.addWidget(output_box)
+        selection_layout.addWidget(output_box)
 
         def perform_fit():
             ''' Perform the curve fitting and update the plot.
             '''
             try:
                 # Retrieve data and parameters
-                x = df[x_combo.currentText()].astype(float).values
-                y = df[y_combo.currentText()].astype(float).values
+                pid = plot_combo.currentData()
+                curve_index = curve_combo.currentData()
+
+                if pid not in self.figure:
+                    QMessageBox.warning(window, "Error", "Plot not found!")
+                    return
+
+                curve_data = self.figure[pid]["curves"][curve_index]
+
+                x = np.array(curve_data["x"], dtype=float)
+                y = np.array(curve_data["y"], dtype=float)
 
                 x_start = float(x_start_edit.text())
                 x_end   = float(x_end_edit.text())
@@ -1287,7 +1369,7 @@ class WorksheetWindow(QMdiSubWindow):
                 # Log fit data and results
                 if self.logger is not None:
                     self.logger.info(
-                        f"Performed curve fit on columns X: {x_combo.currentText()}, Y: {y_combo.currentText()} "
+                        f"Performed curve fit on columns X: '{curve_data['x_col']}', Y: '{curve_data['y_col']}' "
                         f"with range [{x_start}, {x_end}] "
                         f"with function: {function_edit.text()} "
                         f"and parameters: {', '.join(param_names)}. Results:\n{str(result_text).replace(chr(10), ' ')}")
@@ -1311,13 +1393,13 @@ class WorksheetWindow(QMdiSubWindow):
 
         fit_button = QPushButton("Run Fit")
         fit_button.clicked.connect(perform_fit)
-        param_layout.addWidget(fit_button)
+        param_layout.addWidget(fit_button, 7, 0, 1, 2, alignment=Qt.AlignCenter)
 
         # Show the fitting window as a subwindow
         sub = QMdiSubWindow()
         sub.setWidget(window)
         sub.setWindowTitle("Quick Curve Fitting")
-        sub.resize(700, 350)
+        sub.resize(550, 300)
         self.mdi_area.addSubWindow(sub)
         sub.show()
 

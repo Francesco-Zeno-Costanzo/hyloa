@@ -32,7 +32,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QComboBox, QMessageBox, QDialog, QFormLayout,
     QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy, QFrame,
-    QCheckBox, QDialogButtonBox, QMenu, QAction
+    QCheckBox, QDialogButtonBox, QMenu, QAction, QGridLayout
 
 )
 
@@ -873,7 +873,7 @@ def open_curve_fitting_window(app_instance, plot_widget):
 
     window = QWidget()
     window.setWindowTitle("Quick Curve Fitting")
-    layout = QHBoxLayout(window)
+    layout = QVBoxLayout(window)
     window.setLayout(layout)
 
     def show_help_dialog():
@@ -890,27 +890,30 @@ def open_curve_fitting_window(app_instance, plot_widget):
 
         QMessageBox.information(window, "Fitting Guide", help_text)
 
-    # Left: selection
-    selection_layout = QVBoxLayout()
-    layout.addLayout(selection_layout)
-
     help_button = QPushButton("Help")
     help_button.clicked.connect(show_help_dialog)
-    selection_layout.addWidget(help_button, alignment=Qt.AlignLeft)
+    layout.addWidget(help_button, alignment=Qt.AlignLeft)
 
+    # Left: selection
+    selection_layout = QHBoxLayout()
+    layout.addLayout(selection_layout)
 
-    selection_layout.addWidget(QLabel("Select the file:"))
+    param_layout = QGridLayout()
+    selection_layout.addLayout(param_layout)
+ 
+
+    param_layout.addWidget(QLabel("Select the file:"), 0, 0)
     file_combo = QComboBox()
     file_combo.addItems([f"File {i+1}" for i in range(len(dataframes))])
-    selection_layout.addWidget(file_combo)
+    param_layout.addWidget(file_combo, 0, 1)
 
-    selection_layout.addWidget(QLabel("Column X:"))
+    param_layout.addWidget(QLabel("Column X:"), 1, 0)
     x_combo = QComboBox()
-    selection_layout.addWidget(x_combo)
+    param_layout.addWidget(x_combo, 1, 1)
 
-    selection_layout.addWidget(QLabel("Column Y:"))
+    param_layout.addWidget(QLabel("Column Y:"), 2, 0)
     y_combo = QComboBox()
-    selection_layout.addWidget(y_combo)
+    param_layout.addWidget(y_combo, 2, 1)
 
     def update_columns():
         idx = file_combo.currentIndex()
@@ -923,34 +926,30 @@ def open_curve_fitting_window(app_instance, plot_widget):
     file_combo.currentIndexChanged.connect(update_columns)
     update_columns()
 
-    # Right: parameters
-    param_layout = QVBoxLayout()
-    layout.addLayout(param_layout)
-
-    param_layout.addWidget(QLabel("x_start:"))
+    param_layout.addWidget(QLabel("x_start:"), 3, 0)
     x_start_edit = QLineEdit("0")
-    param_layout.addWidget(x_start_edit)
+    param_layout.addWidget(x_start_edit, 3, 1)
 
-    param_layout.addWidget(QLabel("x_end:"))
+    param_layout.addWidget(QLabel("x_end:"), 4, 0)
     x_end_edit = QLineEdit("1")
-    param_layout.addWidget(x_end_edit)
+    param_layout.addWidget(x_end_edit, 4, 1)
 
-    param_layout.addWidget(QLabel("Parameter names (es. a,b):"))
+    param_layout.addWidget(QLabel("Parameter names (es. a,b):"), 5, 0)
     param_names_edit = QLineEdit("a,b")
-    param_layout.addWidget(param_names_edit)
+    param_layout.addWidget(param_names_edit, 5, 1)
 
-    param_layout.addWidget(QLabel("Initial values (es. 1,1):"))
+    param_layout.addWidget(QLabel("Initial values (es. 1,1):"), 6, 0)
     initial_params_edit = QLineEdit("1,1")
-    param_layout.addWidget(initial_params_edit)
+    param_layout.addWidget(initial_params_edit, 6, 1)
 
-    param_layout.addWidget(QLabel("Fitting function (es. a*(x-b)):"))
+    param_layout.addWidget(QLabel("Fitting function (es. a*(x-b)):"), 7, 0)
     function_edit = QLineEdit("a*(x - b)")
-    param_layout.addWidget(function_edit)
+    param_layout.addWidget(function_edit, 7, 1)
 
     output_box = QTextEdit()
     output_box.setReadOnly(True)
     output_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    layout.addWidget(output_box)
+    selection_layout.addWidget(output_box)
 
     def perform_fit():
         try:
@@ -1016,7 +1015,7 @@ def open_curve_fitting_window(app_instance, plot_widget):
            
     fit_button = QPushButton("Run Fit")
     fit_button.clicked.connect(perform_fit)
-    param_layout.addWidget(fit_button)
+    param_layout.addWidget(fit_button, 8, 0, 1, 2, alignment=Qt.AlignCenter)
 
     # Sub-window for fitting panel
     sub = QMdiSubWindow()

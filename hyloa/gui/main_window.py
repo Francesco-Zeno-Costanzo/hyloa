@@ -26,9 +26,10 @@ from importlib import resources
 import matplotlib.pyplot as plt
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QMdiArea, QMdiSubWindow, QWidget, QVBoxLayout,
-    QPushButton, QMessageBox, QTextEdit, QLabel, QDockWidget, QGroupBox, QHBoxLayout,
-    QListWidget, QDialog, QInputDialog, QScrollArea, QDesktopWidget
+    QApplication, QMainWindow, QMdiArea, QMdiSubWindow, 
+    QWidget, QVBoxLayout, QPushButton, QMessageBox, QTextEdit,
+    QLabel, QDockWidget, QGroupBox, QHBoxLayout, QListWidget,
+    QDialog, QInputDialog, QScrollArea, QDesktopWidget, QListWidgetItem
 )
 from PyQt5.QtGui import QPixmap
 
@@ -165,7 +166,7 @@ class MainApp(QMainWindow):
 
         scroll_layout.addWidget(self.make_group("File Management", [
             ("Load file",      self.load_data),
-            ("Show file",      self.show_loaded_files),
+            ("Show all files", self.show_loaded_files),
             ("Save file",      self.save_data),
             ("Duplicate file", self.duplicate)
         ]))
@@ -290,16 +291,33 @@ class MainApp(QMainWindow):
         duplicate_file(self)
 
     def show_loaded_files(self):
-        ''' Function that create a window to see all data aviable
+        '''
+        Show a window listing all currently loaded datasets
+        with their column names and basic information.
         '''
         sub = QMdiSubWindow()
-        sub.setWindowTitle("Loaded files")
-        txt = QTextEdit()
-        txt.setText("\n".join(
-            [f'File {i+1}: '+', '.join(df.columns) for i, df in enumerate(self.dataframes)]
-            ) or "No files loaded")
-        sub.setWidget(txt)
+        sub.setWindowTitle("Loaded Data")
+
+        text_widget = QTextEdit()
+        text_widget.setReadOnly(True)
+
+        if not self.dataframes:
+            text_widget.setText("No files loaded.")
+        else:
+            lines = []
+
+            for i, df in enumerate(self.dataframes):
+                lines.append(f"=== File {i+1} ===")
+                lines.append(f"Columns ({len(df.columns)}):")
+                for col in df.columns:
+                    lines.append(f"  - {col}")
+                lines.append("")  # empty line separator
+
+            text_widget.setText("\n".join(lines))
+
+        sub.setWidget(text_widget)
         self.mdi_area.addSubWindow(sub)
+        sub.resize(400, 300)
         sub.show()
 
     def save_data(self):
@@ -496,6 +514,7 @@ class MainApp(QMainWindow):
         load_previous_session(self, parent_widget=self)
         self.refresh_shell_variables()
     
+
     def show_window_navigator(self):
         ''' Function to navigate through all open windows
         '''
@@ -507,64 +526,82 @@ class MainApp(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle("Windows Navigator")
         dialog.setMinimumSize(1000, 600)
+
         layout = QHBoxLayout(dialog)
 
-        # List of all windows
+        # ---------------- LEFT SIDE ----------------
         left_layout = QVBoxLayout()
-        list_widget = QListWidget()
-        for win in subwindows:
-            list_widget.addItem(win.windowTitle())
         left_layout.addWidget(QLabel("Open windows:"))
+
+        list_widget = QListWidget()
         left_layout.addWidget(list_widget)
 
-        # Preview of selected windows
+        for sub in subwindows:
+            item = QListWidgetItem(sub.windowTitle())
+            item.setData(Qt.UserRole, sub)
+            list_widget.addItem(item)
+
+        # ---------------- RIGHT SIDE ----------------
         right_layout = QVBoxLayout()
         right_layout.addWidget(QLabel("Preview selected window:"))
 
         preview_label = QLabel()
         preview_label.setFixedSize(800, 500)
-
-        preview_label.setStyleSheet("border: 1px solid gray; background: white;")
         preview_label.setAlignment(Qt.AlignCenter)
+        preview_label.setStyleSheet("border: 1px solid gray; background: white;")
         right_layout.addWidget(preview_label)
 
-        # Button to bring window to the foreground
         activate_button = QPushButton("Activate selected window")
         right_layout.addWidget(activate_button)
 
-        # Merge layout
-        layout.addLayout(left_layout)
-        layout.addLayout(right_layout)
+        layout.addLayout(left_layout, 1)
+        layout.addLayout(right_layout, 2)
 
+        # ---------------- FUNCTIONS ----------------
         def update_preview():
-            ''' Function to update preview
-            '''
-            idx = list_widget.currentRow()
-            if idx >= 0:
-                sub = subwindows[idx]
-                pixmap = sub.grab()  # Screenshot of the window
-                preview = pixmap.scaled(preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                preview_label.setPixmap(preview)
+            item = list_widget.currentItem()
+            if not item:
+                preview_label.clear()
+                return
 
-        list_widget.currentRowChanged.connect(update_preview)
+            sub = item.data(Qt.UserRole)
+
+            # Force repaint to get the latest content (important for minimized windows)
+            sub.repaint()
+            QApplication.processEvents()
+
+            pixmap = sub.grab()
+            preview = pixmap.scaled(
+                preview_label.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            preview_label.setPixmap(preview)
 
         def activate_window():
-            ''' Function to bring window to the foreground
-            '''
-            idx = list_widget.currentRow()
-            if idx >= 0:
-                win = subwindows[idx]
-                self.mdi_area.setActiveSubWindow(win)
-                win.showNormal()
-                if win.isMinimized:
-                    # Just some random default values to avoid problem
-                    win.resize(400, 400)
-                    win.move(self.width()//4, self.height()//4)
-                win.raise_()
-                dialog.accept()
+            item = list_widget.currentItem()
+            if not item:
+                return
 
+            win = item.data(Qt.UserRole)
+
+            self.mdi_area.setActiveSubWindow(win)
+
+            # If the window is minimized, restore it before activating
+            if win.isMinimized():
+                win.showNormal()
+
+            win.raise_()
+            dialog.accept()
+
+        # ---------------- CONNECTIONS ----------------
+        list_widget.currentItemChanged.connect(update_preview)
         activate_button.clicked.connect(activate_window)
         list_widget.itemDoubleClicked.connect(lambda _: activate_window())
+
+        # Selection of the first item by default
+        if list_widget.count() > 0:
+            list_widget.setCurrentRow(0)
 
         dialog.exec_()
 

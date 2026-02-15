@@ -34,12 +34,10 @@ from PyQt5.QtWidgets import (
     QPushButton, QHBoxLayout, QDialog, QLabel, QComboBox,
     QDialogButtonBox, QInputDialog, QAction, QApplication,
     QFormLayout, QTextEdit, QSizePolicy, QCheckBox,
-    QListWidget, QAbstractItemView, QGridLayout
-
+    QListWidget, QAbstractItemView, QGridLayout,
+    QGroupBox, QStackedWidget, QButtonGroup
 )
-from PyQt5.QtWidgets import QGroupBox, QSizePolicy
-from PyQt5.QtWidgets import QStackedWidget
-from PyQt5.QtWidgets import QButtonGroup
+
 
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas

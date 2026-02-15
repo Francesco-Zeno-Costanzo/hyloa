@@ -44,6 +44,9 @@ user interface organisation, and analysis flexibility.
  operations should be performed on the original data or on the corrected
  data, improving flexibility in the analysis workflow.
 
+**Publishing**
+Published on PyPI, allowing installation via pip and wheel files.
+
 Version 1.10.3 - 2026-01-12
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The main changes of this patch are the introduction of a loading screen, with the logo and the progress bar,

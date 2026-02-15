@@ -25,11 +25,12 @@ import numpy as np
 from PyQt5.QtCore import QRegExp, QSize, Qt, QRect
 from PyQt5.QtGui import (
     QSyntaxHighlighter, QTextCharFormat, QColor, QFont, QPainter,
-    QTextFormat
+    QTextFormat, QKeySequence
 )
 from PyQt5.QtWidgets import ( 
     QWidget, QVBoxLayout, QPushButton, QHBoxLayout,
-    QPlainTextEdit, QFileDialog, QMessageBox, QTextEdit
+    QPlainTextEdit, QFileDialog, QMessageBox, QTextEdit,
+    QAction
 )
 
 
@@ -65,6 +66,17 @@ class ScriptEditor(QPlainTextEdit):
         layout = QVBoxLayout(self.window)
 
         layout.addWidget(self)
+
+        # Shortcut for saving
+        self.save_action = QAction("Save", self)
+        self.save_action.setShortcut(QKeySequence.Save)
+        self.save_action.triggered.connect(self.save_script)
+        self.addAction(self.save_action)
+        # Shortuct for running
+        self.run_action = QAction("Run", self)
+        self.run_action.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_Return))
+        self.run_action.triggered.connect(self.run_script)
+        self.addAction(self.run_action)
 
         button_layout = QHBoxLayout()
         for text, slot in [

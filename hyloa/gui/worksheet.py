@@ -37,6 +37,10 @@ from PyQt5.QtWidgets import (
     QListWidget, QAbstractItemView, QGridLayout
 
 )
+from PyQt5.QtWidgets import QGroupBox, QSizePolicy
+from PyQt5.QtWidgets import QStackedWidget
+from PyQt5.QtWidgets import QButtonGroup
+
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -73,7 +77,7 @@ class WorksheetWindow(QMdiSubWindow):
         self.mdi_area = mdi_area
         self.name = name
         self.setWindowTitle(f"Worksheet - {self.name}")
-        self.resize(600, 600)
+        self.resize(550, 500)
 
         # Logger
         self.logger = logger
@@ -116,7 +120,6 @@ class WorksheetWindow(QMdiSubWindow):
             self.on_column_header_clicked
         )
 
-
         self.btn_add_col    = QPushButton("Add column")
         self.btn_rmv_col    = QPushButton("Remove column")
         self.btn_load       = QPushButton("Load from file")
@@ -126,45 +129,107 @@ class WorksheetWindow(QMdiSubWindow):
         self.btn_fit        = QPushButton("Fit Data")
         self.btn_appearance = QPushButton("Appearance")
         self.btn_import_col = QPushButton("Import Column")
-
-        btn_layout_data = QHBoxLayout()
-        btn_layout_math = QHBoxLayout()
-        btn_layout_plot = QHBoxLayout()
-
-        btn_layout_data.addWidget(self.btn_load)
-        btn_layout_data.addWidget(self.btn_import_col)
-        btn_layout_data.addWidget(self.btn_add_col)
-        btn_layout_data.addWidget(self.btn_rmv_col)
+        self.btn_export     = QPushButton("Save Data")
         
-        btn_layout_math.addWidget(self.btn_math)
-        btn_layout_math.addWidget(self.btn_fit)
+        # ---------- DATA GROUP ----------
+        data_group  = QGroupBox("Data manipulation")
+        data_layout = QHBoxLayout()
+        data_group.setLayout(data_layout)
 
-        btn_layout_plot.addWidget(self.btn_plot)
-        btn_layout_plot.addWidget(self.btn_custom)
-        btn_layout_plot.addWidget(self.btn_appearance)
+        data_layout.addWidget(self.btn_load)
+        data_layout.addWidget(self.btn_import_col)
+        data_layout.addWidget(self.btn_add_col)
+        data_layout.addWidget(self.btn_rmv_col)
+        data_layout.addWidget(self.btn_export)
+        data_layout.addStretch()
+
+        # ---------- PLOT GROUP ----------
+        plot_group  = QGroupBox("Create and customize plots")
+        plot_layout = QHBoxLayout()
+        plot_group.setLayout(plot_layout)
+
+        plot_layout.addWidget(self.btn_plot)
+        plot_layout.addWidget(self.btn_custom)
+        plot_layout.addWidget(self.btn_appearance)
+        plot_layout.addStretch()
+
+        # ---------- ANALYSIS GROUP ----------
+        analysis_group  = QGroupBox("Analysis tools")
+        analysis_layout = QHBoxLayout()
+        analysis_group.setLayout(analysis_layout)
+
+        analysis_layout.addWidget(self.btn_math)
+        analysis_layout.addWidget(self.btn_fit)
+        analysis_layout.addStretch()
+
+        self.tools_stack = QStackedWidget()
+        self.tools_stack.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed
+        )
+
+        self.tools_stack.addWidget(data_group)
+        self.tools_stack.addWidget(plot_group)
+        self.tools_stack.addWidget(analysis_group)
+
+
+        self.btn_data_tab     = QPushButton("Data")
+        self.btn_plot_tab     = QPushButton("Plot")
+        self.btn_analysis_tab = QPushButton("Analysis")
+        self.btn_help         = QPushButton("Help")
+
+        tab_layout = QHBoxLayout()
+        tab_layout.addWidget(self.btn_data_tab)
+        tab_layout.addWidget(self.btn_plot_tab)
+        tab_layout.addWidget(self.btn_analysis_tab)
+        tab_layout.addWidget(self.btn_help)
+        tab_layout.addStretch()
+
+        for btn in [self.btn_data_tab, self.btn_plot_tab, self.btn_analysis_tab]:
+            btn.setCheckable(True)
+        
         
         layout = QVBoxLayout()
-        layout.addLayout(btn_layout_data)
-        layout.addLayout(btn_layout_plot)
-        layout.addLayout(btn_layout_math)
-
-        layout.addWidget(self.table)
+        layout.addLayout(tab_layout)            # Buttons to switch between sections
+        layout.addWidget(self.tools_stack)      # Stacked widget with different sections
+        layout.addWidget(self.table, stretch=1) # Table takes remaining space
 
         container = QWidget()
         container.setLayout(layout)
         self.setWidget(container)
 
+        def show_help_dialog():
+            help_text = (
+                "Worksheet Guide:\n\n"
+                "- Use the 'Data' tab to load data from files, add/remove columns, or import columns from loaded data.\n"
+                "- Use the 'Plot' tab to create and customize plots.\n"
+                "- Use the 'Analysis' tab to perform mathematical operations and curve fitting."
+            )
+            QMessageBox.information(self, "Worksheet Guide", help_text)
+
         # Connect button actions
         self.btn_plot.clicked.connect(self.create_plot)
+        self.btn_export.clicked.connect(self.export_data)
         self.btn_add_col.clicked.connect(self.add_column)
         self.btn_rmv_col.clicked.connect(self.remove_column)
-        self.btn_load.clicked.connect(self.load_file_into_table)
         self.btn_math.clicked.connect(self.open_math_dialog)
         self.btn_custom.clicked.connect(self.customize_plot)
+        self.btn_load.clicked.connect(self.load_file_into_table)
         self.btn_fit.clicked.connect(self.open_curve_fitting_window)
-        self.btn_appearance.clicked.connect(self.customize_plot_appearance)
         self.btn_import_col.clicked.connect(self.import_column_from_main)
+        self.btn_appearance.clicked.connect(self.customize_plot_appearance)
 
+        self.section_group = QButtonGroup(self)
+        self.section_group.setExclusive(True)
+
+        self.section_group.addButton(self.btn_data_tab, 0)
+        self.section_group.addButton(self.btn_plot_tab, 1)
+        self.section_group.addButton(self.btn_analysis_tab, 2)
+
+        self.section_group.buttonClicked[int].connect(self.tools_stack.setCurrentIndex)
+        self.btn_data_tab.setChecked(True)
+
+        self.btn_help.clicked.connect(show_help_dialog)
 
         # Attributes to memorize plot windows
         self.plots              = {}   # {int: {"x":..., "y":..., "x_err":..., "y_err":..., "geom":...}}
@@ -390,6 +455,43 @@ class WorksheetWindow(QMdiSubWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error in loading file:\n{e}")
+    
+    def export_data(self):
+        '''
+        Export current worksheet data to file.
+        '''
+        df = self.to_dataframe()
+
+        if df.empty:
+            QMessageBox.warning(self, "Error", "Worksheet is empty.")
+            return
+
+        options = QFileDialog.Options()
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Export Worksheet Data",
+            f"{self.name}.txt",
+            "CSV files (*.csv);;Text files (*.txt)",
+            options=options
+        )
+
+        if not file_path:
+            return
+
+        try:
+            if selected_filter.startswith("CSV"):
+                df.to_csv(file_path, index=False)
+
+            elif selected_filter.startswith("Text"):
+                df.to_csv(file_path, sep="\t", index=False)
+
+            QMessageBox.information(self, "Success", f"Data exported to:\n{file_path}")
+
+            if self.logger:
+                self.logger.info(f"Worksheet '{self.name}' exported to {file_path}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to export data:\n{e}")
 
 
     def add_column(self):

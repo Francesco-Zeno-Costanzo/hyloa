@@ -32,7 +32,8 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QComboBox, QMessageBox, QDialog, QFormLayout,
     QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy, QFrame,
-    QCheckBox, QDialogButtonBox, QMenu, QAction, QGridLayout
+    QCheckBox, QDialogButtonBox, QMenu, QAction, QGridLayout,
+    QGroupBox, QStackedWidget, QButtonGroup
 
 )
 
@@ -93,31 +94,108 @@ class PlotControlWidget(QWidget):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        # Top buttons row
-        top_button_layout = QHBoxLayout()
-        top_buttons = [
-            ("Create plot",   self.plot),
-            ("Customization", self.customize_plot_style),
-            ("Appearance",    self.customize_plot_appearance)            
-        ]
-        for text, func in top_buttons:
-            btn = QPushButton(text)
-            btn.clicked.connect(func)
-            top_button_layout.addWidget(btn)
-        main_layout.addLayout(top_button_layout)
+        #==========================================#
+        # SECTION BUTTONS (Top navigation)         #
+        #==========================================#
 
-        # mid buttons row
-        mid_button_layout = QHBoxLayout()
-        mid_buttons = [
-            ("Normalize",     self.normalize),
-            ("Close loop",    self.close_loop),
-            ("Curve Fitting", self.curve_fitting),
-            ("Correct loop",  self.correction)
-        ]
-        for text, func in mid_buttons:
-            btn = QPushButton(text)
-            btn.clicked.connect(func)
-            mid_button_layout.addWidget(btn)
+        self.btn_data_tab     = QPushButton("Data")
+        self.btn_style_tab    = QPushButton("Plot style")
+        self.btn_analysis_tab = QPushButton("Analysis")
+        self.btn_help         = QPushButton("Help")
+
+        for btn in [self.btn_data_tab, self.btn_style_tab, self.btn_analysis_tab]:
+            btn.setCheckable(True)
+
+
+        self.section_group = QButtonGroup(self)
+        self.section_group.setExclusive(True)
+        self.section_group.addButton(self.btn_data_tab, 0)
+        self.section_group.addButton(self.btn_style_tab, 1)
+        self.section_group.addButton(self.btn_analysis_tab, 2)
+
+        tab_layout = QHBoxLayout()
+        tab_layout.addWidget(self.btn_data_tab)
+        tab_layout.addWidget(self.btn_style_tab)
+        tab_layout.addWidget(self.btn_analysis_tab)
+        tab_layout.addWidget(self.btn_help)
+        tab_layout.addStretch()
+
+        main_layout.addLayout(tab_layout)
+
+        def show_help_dialog():
+            help_text = (
+                "Plot Control Guide:\n\n"
+                "- Use the 'Data' tab to select data pairs, add/remove cycles, or toggle cycle visibility.\n"
+                "- Use the 'Plot style' tab to customize the appearance of the plot (colors, markers, etc.).\n"
+                "- Use the 'Analysis' tab to perform data analysis operations like normalization, loop closure, curve fitting, data flipping and correction.\n"
+            )
+            QMessageBox.information(self, "Plot Control Guide", help_text)
+
+        self.btn_help.clicked.connect(show_help_dialog)
+
+        #==========================================#
+        # STACKED TOOL SECTIONS                    #
+        #==========================================#
+
+        self.tools_stack = QStackedWidget()
+
+        # -------------------- DATA GROUP --------------------------
+
+        data_group  = QGroupBox("Select data, add to or hide cycles:")
+        data_layout = QHBoxLayout()
+        data_group.setLayout(data_layout)
+
+        btn_create = QPushButton("Create plot")
+        btn_create.clicked.connect(self.plot)
+
+        btn_add = QPushButton("Add cycle")
+        btn_add.clicked.connect(lambda: [self.add_pair(), self.add_pair()])
+
+        btn_remove = QPushButton("Remove last cycle")
+        btn_remove.clicked.connect(self.remove_last_cycle)
+
+        btn_toggle = QPushButton("Hide cycle")
+        btn_toggle.clicked.connect(self.toggle_cycle_visibility)
+
+        data_layout.addWidget(btn_create)
+        data_layout.addWidget(btn_add)
+        data_layout.addWidget(btn_remove)
+        data_layout.addWidget(btn_toggle)
+        data_layout.addStretch()
+
+        # -------------------- STYLE GROUP -------------------------
+
+        style_group  = QGroupBox("Create and customize plots")
+        style_layout = QHBoxLayout()
+        style_group.setLayout(style_layout)
+
+        btn_custom = QPushButton("Customization")
+        btn_custom.clicked.connect(self.customize_plot_style)
+
+        btn_appearance = QPushButton("Appearance")
+        btn_appearance.clicked.connect(self.customize_plot_appearance)
+
+        style_layout.addWidget(btn_custom)
+        style_layout.addWidget(btn_appearance)
+        style_layout.addStretch()
+
+        # -------------------- ANALYSIS GROUP ----------------------
+
+        analysis_group  = QGroupBox("Data Analysis")
+        analysis_layout = QHBoxLayout()
+        analysis_group.setLayout(analysis_layout)
+
+        btn_normalize = QPushButton("Normalize")
+        btn_normalize.clicked.connect(self.normalize)
+
+        btn_close = QPushButton("Close loop")
+        btn_close.clicked.connect(self.close_loop)
+
+        btn_correct = QPushButton("Correct loop")
+        btn_correct.clicked.connect(self.correction)
+
+        btn_fit = QPushButton("Curve Fitting")
+        btn_fit.clicked.connect(self.curve_fitting)
 
         flip_button = QPushButton("Flip data")
         flip_menu   = QMenu(flip_button)
@@ -136,42 +214,50 @@ class PlotControlWidget(QWidget):
         flip_menu.addAction(flip_branch_action)
 
         flip_button.setMenu(flip_menu)
-        mid_button_layout.addWidget(flip_button)
 
-        main_layout.addLayout(mid_button_layout)
-        
-        main_layout.addWidget(QLabel("Select data, add to or hide cycles:"))
-        # Section for adding data
-        add_pair_button = QPushButton("Add cycle")
-        add_pair_button.clicked.connect(lambda: [self.add_pair(), self.add_pair()])
-        # Section for remove data
-        remove_cycle_button = QPushButton("Remove last cycle")
-        remove_cycle_button.clicked.connect(self.remove_last_cycle)
-        # Section for hide data
-        toggle_cycle_button = QPushButton("Hide cycle")
-        toggle_cycle_button.clicked.connect(self.toggle_cycle_visibility)
+        analysis_layout.addWidget(btn_normalize)
+        analysis_layout.addWidget(btn_close)
+        analysis_layout.addWidget(btn_correct)
+        analysis_layout.addWidget(btn_fit)
+        analysis_layout.addWidget(flip_button)
+        analysis_layout.addStretch()
 
-        # Row with button
-        cycle_buttons_layout = QHBoxLayout()
-        cycle_buttons_layout.addWidget(add_pair_button)
-        cycle_buttons_layout.addWidget(remove_cycle_button)
-        cycle_buttons_layout.addWidget(toggle_cycle_button)
-        main_layout.addLayout(cycle_buttons_layout)
+        # Add groups to stack
+        self.tools_stack.addWidget(data_group)
+        self.tools_stack.addWidget(style_group)
+        self.tools_stack.addWidget(analysis_group)
 
+        self.tools_stack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        # Scroll area for dynamic pair selection
+        main_layout.addWidget(self.tools_stack)
+
+        # Connect section switching
+        self.section_group.buttonClicked[int].connect(
+            self.tools_stack.setCurrentIndex
+        )
+
+        self.btn_data_tab.setChecked(True)
+
+        #==========================================#
+        # SCROLL AREA (Expandable)                 #
+        #==========================================#
+
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
+
         self.pair_container = QWidget()
-        self.pair_layout = QVBoxLayout()
+        self.pair_layout    = QVBoxLayout()
         self.pair_container.setLayout(self.pair_layout)
+
         self.scroll_area.setWidget(self.pair_container)
-        main_layout.addWidget(self.scroll_area)
 
-        # Add first pair
+        main_layout.addWidget(self.scroll_area, stretch=1)
+
+        # Add initial pairs
         self.add_pair()
         self.add_pair()
 
+        
     def add_pair(self, file_text=None, x_col=None, y_col=None):
         '''
         Add a new data pair selector to the interface.

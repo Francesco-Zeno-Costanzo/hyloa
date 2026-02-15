@@ -7,6 +7,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Documentation Status](https://readthedocs.org/projects/hysteresisanalysis/badge/?version=latest)](https://hysteresisanalysis.readthedocs.io/en/latest/?badge=latest)
 [![Python Tests](https://github.com/Francesco-Zeno-Costanzo/hyloa/actions/workflows/test.yml/badge.svg)](https://github.com/Francesco-Zeno-Costanzo/hyloa/actions/workflows/test.yml)
+![Version](https://img.shields.io/github/v/release/Francesco-Zeno-Costanzo/hyloa)
 
 **Simple program for an analysis of hysteresis loops.**
 ---
@@ -16,11 +17,13 @@ HYsteresis LOop Analyzer is a Python package that allows you to **load, analyze 
 
 
 ### **Main features:**  
-- ✔️ Loading and managing experimental data files  
-- ✔️ Visualization of hysteresis loops with interactive tools  
-- ✔️ Normalization and closing of cycles for drift correction  
-- ✔️ Custom fits with user-defined templates  
-- ✔️ Saving modified data
+- Loading and managing experimental data files  
+- Visualization of hysteresis loops with interactive tools  
+- Correction and analysis of loops
+- Wokrsheet for general purposes data analysis
+- A simple code editor to write custom scripts for data analysis and visualization
+- An integrated python shell  
+
 
 🔗 **Complete documentation:**  
 📚 [ReadTheDocs - hyloa](https://hysteresisanalysis.readthedocs.io/en/latest/)  
@@ -29,13 +32,31 @@ HYsteresis LOop Analyzer is a Python package that allows you to **load, analyze 
 
 # Installation
 
-HYLOA is distributed **exclusively as a wheel (.whl)** through GitHub Releases.  
-The recommended installation method is to install the `.whl` file directly, without cloning the repository.
-Is also recommended to use the last releases.
+HYLOA is distributed both with **pip** and with **a wheel (.whl)** through GitHub Releases.  
+The recommended installation method is different between Linux and Windows, but in both cases it is possible
+to use either method. The wheel installation allows to choose the version, and is recommended for Windows users,
+bacuse it include a simple installer script which is the **setup.bat** file;
+while the pip installation allows you to get the latest version directly from PyPI.
 
 ---
 
 ## Linux
+
+Obviously is recomended to do this in a **virtual environment** to avoid conflicts with other packages.
+```bash
+python -m venv .venv
+source .venv/bin/activate 
+```
+
+### **Recommended method: pip installation**
+1. Open a terminal and run:
+
+```bash
+pip install hyloa
+```
+This will install the latest version of HYLOA from PyPI.
+
+### **Alternative method: wheel installation**
 
 1. Go to the release page:
 
@@ -59,7 +80,10 @@ python -m pip install hyloa-<version>-py3-none-any.whl
 
 ## Windows (installation using setup.bat)
 
-Each release includes a simple installer script: `setup.bat`.
+To make the installation process easier for Windows users,
+each release includes a simple installer script: `setup.bat`.
+You can use it to install HYLOA and create a desktop shortcut to launch the GUI.
+You only need to do the following:
 
 1. Download from the release page:
    - `hyloa-<version>-py3-none-any.whl`

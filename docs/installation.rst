@@ -123,7 +123,7 @@ Via ``pip install -e .`` the package is linked to the source code, so any change
 
 **Final Notes**
 -----------------
-Distributing HYLOA as a wheel in GitHub Releases or with pipallows users to download
+Distributing HYLOA as a wheel in GitHub Releases or with pip allows users to download
 only the necessary installation files without downloading the whole repository.
 This makes installation fast, clean, and platform-independent.
 The differences in installation methods between Linux and Windows are mainly due to the convenience of providing a simple installer script for Windows users,

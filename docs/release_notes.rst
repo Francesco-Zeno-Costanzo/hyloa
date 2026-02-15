@@ -9,28 +9,19 @@ user interface organisation, and analysis flexibility.
 
 **New Features**
 
-- It is now possible to create plots using data coming from different worksheets.
-This is enabled by a runtime data cache that stores and manages the content
-of each worksheet, allowing seamless cross-referencing during plot creation.
+- It is now possible to create plots using data coming from different worksheets. This is enabled by a runtime data cache that stores and manages the content of each worksheet, allowing seamless cross-referencing during plot creation.
 
-- The column math dialogue has been enhanced to support more complex operations
-between multiple columns, enabling advanced expressions and combined
-transformations.
+- The column math dialogue has been enhanced to support more complex operations between multiple columns, enabling advanced expressions and combined transformations.
 
 **Interface Improvements**
 
-- The plot creation dialogue linked to worksheets has been redesigned for better
-clarity and usability.
+- The plot creation dialogue linked to worksheets has been redesigned for better clarity and usability.
 
-- The curve-fitting window has been improved in both the Worksheet and the
-Plot Control Panel for a more consistent and streamlined workflow.
+- The curve-fitting window has been improved in both the Worksheet and the Plot Control Panel for a more consistent and streamlined workflow.
 
-- The Worksheet interface has been reorganised with grouped tool sections
-(Data / Plot / Analysis) to improve readability and scalability.
+- The Worksheet interface has been reorganised with grouped tool sections (Data / Plot / Analysis) to improve readability and scalability.
 
-- The Plot Control Panel now adopts a structured layout with grouped controls,
-reducing visual clutter and making navigation between data operations,
-styling, and analysis are more intuitive.
+- The Plot Control Panel now adopts a structured layout with grouped controls, reducing visual clutter and making navigation between data operations, styling, and analysis are more intuitive.
 
 - The window to see all loaded files is now more clear and allows to easily identify data from each file.
 
@@ -40,11 +31,10 @@ styling, and analysis are more intuitive.
 
 - Fixed data saving behaviour in the loop correction window.
 
-- The loop correction tool now allows users to choose whether to analyse if
-operations should be performed on the original data or on the corrected
-data, improving flexibility in the analysis workflow.
+- The loop correction tool now allows users to choose whether to analyse if operations should be performed on the original data or on the corrected data, improving flexibility in the analysis workflow.
 
 **Publishing**
+
 Published on PyPI, allowing installation via pip and wheel files.
 
 Version 1.10.3 - 2026-01-12

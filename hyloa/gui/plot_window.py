@@ -552,8 +552,10 @@ def plot_data(plot_window_instance, app_instance):
 
     try:
 
-        X = []
-        Y = []
+        X  = []
+        Y  = []
+        xn = []
+        yn = []
 
         for df_choice, x_var, y_var in selected_pairs:
             df_idx = int(df_choice.currentText().split(" ")[1]) - 1 
@@ -564,23 +566,34 @@ def plot_data(plot_window_instance, app_instance):
                 QMessageBox.critical(None, "Error", "You must select all column pairs!")
                 return
 
-            X.append(dataframes[df_idx][x_col].astype(float).values)
-            Y.append(dataframes[df_idx][y_col].astype(float).values)
+            X.append(dataframes[df_idx][x_col].astype(float).values);xn.append(x_col)
+            Y.append(dataframes[df_idx][y_col].astype(float).values);yn.append(y_col)
+            
             logger.info(f"Plot of: {x_col} vs {y_col}")
 
         if not plot_customizations:
             col = plt.cm.jet(np.linspace(0, 1, len(X)))
             for i in range(0, len(X), 2):
-                ax.plot(X[i],   Y[i],   color=col[i], marker=".", label=f"Cycle {i//2 + 1}")
-                ax.plot(X[i+1], Y[i+1], color=col[i], marker=".")
+                line1, = ax.plot(X[i],   Y[i],   color=col[i], marker=".", label=f"Cycle {i//2 + 1}")
+                line2, = ax.plot(X[i+1], Y[i+1], color=col[i], marker=".")
+            
+                # save name of columns for later use in normalization or loop closure
+                line1._cols = (xn[i], yn[i])
+                line2._cols = (xn[i+1], yn[i+1])
+                line1._file_index = line2._file_index = df_idx
 
 
         else:
             for i, (x, y) in enumerate(zip(X, Y)):
                 if i % 2 == 0:
-                    line1, = ax.plot(x, y, label=f"Cycle {i // 2 + 1}")
+                    line1, = ax.plot(x[1], y[1], label=f"Cycle {i // 2 + 1}")
+                    line1._cols = (xn[i], yn[i])
+                    line1._file_index = df_idx
                 else:
-                    line2, = ax.plot(x, y)
+                    line2, = ax.plot(x[1], y[1])
+                    line2._cols = (xn[i], yn[i])
+                    line2._file_index = df_idx
+
 
                 try:
                     customization = plot_customizations.get(i // 2, {})

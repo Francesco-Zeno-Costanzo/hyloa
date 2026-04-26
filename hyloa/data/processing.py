@@ -21,9 +21,12 @@ Code that contains some standard operations to do on the data.
 import numpy as np
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QComboBox, QCheckBox, QPushButton,
-    QMessageBox, QScrollArea, QWidget, QFormLayout
+    QMessageBox, QScrollArea, QWidget, QHBoxLayout, QMdiSubWindow, QLineEdit,
+    QRadioButton, QButtonGroup
 )
 
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 #==============================================================================================#
 # Function to normalize curves in the interval [-1, 1]                                         #
@@ -40,76 +43,110 @@ def norm_dialog(plot_instance, app_instance):
     app_instance : MainApp
         Main application instance containing the session.
     '''
-    dataframes = app_instance.dataframes
-    if not dataframes:
-        QMessageBox.warning(plot_instance, "Error", "No data loaded")
+    
+    if plot_instance.figure is None:
+        QMessageBox.critical(plot_instance, "Error", "No plot open!")
         return
 
+    fig = plot_instance.figure
+    ax = plot_instance.ax
+
+    lines = ax.lines
+
+    # === Remove grid ===
+    filtered_lines = []
+    for line in lines:
+        x_data, y_data = line.get_xdata(), line.get_ydata()
+        if not (
+            (all(y == 0 for y in y_data) and len(set(x_data)) > 1) or
+            (all(x == 0 for x in x_data) and len(set(y_data)) > 1) or
+            (line.get_gid() == "fit")
+        ):
+            filtered_lines.append(line)
+
+    lines = filtered_lines
+
+    if not lines:
+        QMessageBox.critical(plot_instance, "Error", "No valid cycles in plot!")
+        return
+
+    cycles       = []
+    cycle_map    = {}    # label -> index
+    cycle_checks = {}
+
+    for i in range(0, len(lines), 2):
+        idx = i // 2
+
+        label = plot_instance.plot_customizations.get(
+            idx, {}
+        ).get("label", f"Cycle {idx + 1}")
+
+        cycles.append(label)
+        cycle_map[label] = idx
+
+    # === Dialog ===
     dialog = QDialog(plot_instance)
-    dialog.setWindowTitle("Normalie Cycle")
+    dialog.setWindowTitle("Normalize Cycles")
+
     layout = QVBoxLayout(dialog)
 
-    layout.addWidget(QLabel("Select the file:"))
-    file_combo = QComboBox()
-    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
-    layout.addWidget(file_combo)
-    layout.addWidget(QLabel("Select Y columns to normalize (in pairs):"))
+    layout.addWidget(QLabel("Select cycles to normalize:"))
 
+    scroll_area   = QScrollArea()
+    scroll_widget = QWidget()
+    scroll_layout = QVBoxLayout(scroll_widget)
 
-    column_checks = {}
+    # Checkbox cicli
+    for label in cycles:
+        cb = QCheckBox(label)
+        scroll_layout.addWidget(cb)
+        cycle_checks[label] = cb
 
-    column_area      = QScrollArea()
-    column_container = QWidget()
-    column_layout    = QFormLayout(column_container)
-    column_area.setWidget(column_container)
-    column_area.setWidgetResizable(True)
-    layout.addWidget(column_area)
+    scroll_widget.setLayout(scroll_layout)
+    scroll_area.setWidget(scroll_widget)
+    scroll_area.setWidgetResizable(True)
 
-    def update_column_list():
-        while column_layout.count():
-            item = column_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+    layout.addWidget(scroll_area)
 
-        idx = file_combo.currentIndex()
-        df = dataframes[idx]
-        num_cols = len(df.columns)
-
-        # Determine the columns of the x-axis based on the number of columns. 
-        # This is based on the reasonable assumption that the
-        # quantities are loaded in pairs to form the entire cycle
-        if num_cols >= 8:
-            x_cols = [df.columns[0], df.columns[4]]
-        elif num_cols == 6:
-            x_cols = [df.columns[0], df.columns[3]]
-        elif num_cols == 4:
-            x_cols = [df.columns[0], df.columns[2]]
-        else:
-            x_cols = []
-
-        column_checks.clear()
-
-        for col in df.columns:
-            if col in x_cols:
-                continue
-            cb = QCheckBox(col)
-            column_checks[col] = cb
-            column_layout.addRow(cb)
-
-    file_combo.currentIndexChanged.connect(update_column_list)
-    update_column_list()
-
+    # === BUtton apply ===
     def on_apply():
-        selected_file_idx = file_combo.currentIndex()
-        selected_cols = [col for col, cb in column_checks.items() if cb.isChecked()]
-        if len(selected_cols) % 2 != 0 or len(selected_cols) == 0:
-            QMessageBox.critical(dialog, "Error", "Select an even number of columns.")
+        selected_cols     = []
+        selected_file_idx = None
+
+        try:
+            for label, cb in cycle_checks.items():
+                if cb.isChecked():
+                    idx = cycle_map[label]
+
+                    line1 = lines[idx * 2]
+                    line2 = lines[idx * 2 + 1]
+
+                    cols1 = getattr(line1, "_cols", None)
+                    cols2 = getattr(line2, "_cols", None)
+
+                    if selected_file_idx is None:
+                        selected_file_idx = getattr(line1, "_file_index", None)
+
+                    if cols1:
+                        selected_cols.append(cols1[1]) # Y column of the first branch
+                    if cols2:
+                        selected_cols.append(cols2[1]) # Y column of the second branch
+
+        except Exception as e:
+            QMessageBox.critical(dialog, "Error", f"Selection error:\n{e}")
             return
+
+        if not selected_cols:
+            QMessageBox.critical(dialog, "Error", "Select at least one cycle.")
+            return
+
         dialog.accept()
+        
         apply_norm(plot_instance, app_instance, selected_file_idx, selected_cols)
 
     apply_button = QPushButton("Apply")
     apply_button.clicked.connect(on_apply)
+
     layout.addWidget(apply_button)
 
     dialog.exec_()
@@ -132,6 +169,10 @@ def apply_norm(plot_instance, app_instance, file_index, selected_cols):
         Instance of the plot class
     app_instance : MainApp
         Main application instance containing the session data.
+    file_index : int
+        Index of the selected DataFrame.
+    selected_cols : list
+        List of columns to normalize (should be pairs).
     '''
 
     parent_widget  = plot_instance
@@ -139,45 +180,43 @@ def apply_norm(plot_instance, app_instance, file_index, selected_cols):
 
     try:
         df = app_instance.dataframes[file_index]
-   
-        N_Y = []
-        for y1, y2 in zip(selected_cols[::2], selected_cols[1::2]):
-            ell_up = df[y1].astype(float).values
-            ell_dw = df[y2].astype(float).values
 
-            # Compute averages at start/end
-            aveup1 = np.mean(ell_up[:5])
-            aveup2 = np.mean(ell_up[-5:])
-            avedw1 = np.mean(ell_dw[:5])
-            avedw2 = np.mean(ell_dw[-5:])
+        y1, y2 = selected_cols
+       
+        ell_up = df[y1].astype(float).values
+        ell_dw = df[y2].astype(float).values
 
-            # Branch direction correction
-            if ((aveup1 > aveup2 and avedw1 > avedw2) or (aveup1 < aveup2 and avedw1 < avedw2)):
-                aveup1 = (aveup1 + avedw1) * 0.5
-                avedw1 = (aveup2 + avedw2) * 0.5
-            else:
-                aveup1 = (aveup1 + avedw2) * 0.5
-                avedw1 = (aveup2 + avedw1) * 0.5
+        # Compute averages at start/end
+        aveup1 = np.mean(ell_up[:5])
+        aveup2 = np.mean(ell_up[-5:])
+        avedw1 = np.mean(ell_dw[:5])
+        avedw2 = np.mean(ell_dw[-5:])
 
-            v_shift = (aveup1 + avedw1) * 0.5
-            v_amplitude = abs(aveup1 - avedw1) * 0.5
+        # Branch direction correction
+        if ((aveup1 > aveup2 and avedw1 > avedw2) or (aveup1 < aveup2 and avedw1 < avedw2)):
+            aveup1 = (aveup1 + avedw1) * 0.5
+            avedw1 = (aveup2 + avedw2) * 0.5
+        else:
+            aveup1 = (aveup1 + avedw2) * 0.5
+            avedw1 = (aveup2 + avedw1) * 0.5
 
-            # Normalize
-            ell_up_normalized = (ell_up - v_shift) / v_amplitude
-            ell_dw_normalized = (ell_dw - v_shift) / v_amplitude
+        v_shift = (aveup1 + avedw1) * 0.5
+        v_amplitude = abs(aveup1 - avedw1) * 0.5
 
-            N_Y.append((y1, ell_up_normalized))
-            N_Y.append((y2, ell_dw_normalized))
+        # Normalize
+        ell_up_normalized = (ell_up - v_shift) / v_amplitude
+        ell_dw_normalized = (ell_dw - v_shift) / v_amplitude
 
-        for col, new_values in N_Y:
-            df[col] = new_values
-            logger.info(f"Normalization applied to {col}.")
+        df[y1] = ell_up_normalized
+        df[y2] = ell_dw_normalized
+        logger.info(f"Normalization applied to {y1} and {y2}.")
 
         # Re-plot
         plot_instance.plot()
 
         QMessageBox.information(plot_instance, "Success",
-                                f"Normalization applied on File {file_index + 1}.")
+            f"Normalization applied on {selected_cols[0]}, {selected_cols[1]}."
+        )
         
     except Exception as e:
         QMessageBox.critical(parent_widget, "Error", f"Error during normalization:\n{e}")
@@ -198,167 +237,370 @@ def close_loop_dialog(plot_instance, app_instance):
     app_instance : MainApp
         Main application instance with session state.
     '''
-    dataframes = app_instance.dataframes
-    if not dataframes:
-        QMessageBox.warning(plot_instance, "Error", "No data loaded.")
+    
+    if plot_instance.figure is None:
+        QMessageBox.critical(plot_instance, "Error", "No plot open!")
         return
 
-    dialog = QDialog(plot_instance)
-    dialog.setWindowTitle("Close Loop")
+    fig = plot_instance.figure
+    ax  = plot_instance.ax
+    lines = ax.lines
 
-    layout = QVBoxLayout(dialog)
+    #===============================
+    # Extract valid lines 
+    #===============================
+    filtered_lines = []
+    for line in lines:
+        x_data, y_data = line.get_xdata(), line.get_ydata()
+        if not (
+            (all(y == 0 for y in y_data) and len(set(x_data)) > 1) or
+            (all(x == 0 for x in x_data) and len(set(y_data)) > 1) or
+            (line.get_gid() == "fit")
+        ):
+            filtered_lines.append(line)
 
-    layout.addWidget(QLabel("Select the file:"))
-    file_combo = QComboBox()
-    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
-    layout.addWidget(file_combo)
-    layout.addWidget(QLabel("Select Y columns to close (in pairs)::"))
+    lines = filtered_lines
 
-    column_checks = {}  # col_name -> QCheckBox
+    if not lines:
+        QMessageBox.critical(plot_instance, "Error", "No valid cycles!")
+        return
 
-    column_area      = QScrollArea()
-    column_container = QWidget()
-    column_layout    = QFormLayout(column_container)
-    column_area.setWidget(column_container)
-    column_area.setWidgetResizable(True)
-    layout.addWidget(column_area)
+    #===============================
+    # Window
+    #===============================
+    window = QWidget()
+    window.setWindowTitle("Cycle Closure")
 
-    def update_column_list():
-        while column_layout.count():
-            item = column_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+    root_layout = QHBoxLayout(window)
 
-        idx = file_combo.currentIndex()
-        df = dataframes[idx]
-        num_cols = len(df.columns)
+    #===============================
+    # Plot preview functions
+    #===============================
+    def get_selected_cycle():
+        for label, cb in cycle_checks.items():
+            if cb.isChecked():
+                idx = cycle_map[label]
+                l1 = lines[idx*2]
+                l2 = lines[idx*2 + 1]
 
-        # Determine the columns of the x-axis based on the number of columns. 
-        # This is based on the reasonable assumption that the
-        # quantities are loaded in pairs to form the entire cycle
-        if num_cols >= 8:
-            x_cols = [df.columns[0], df.columns[4]]
-        elif num_cols == 6:
-            x_cols = [df.columns[0], df.columns[3]]
-        elif num_cols == 4:
-            x_cols = [df.columns[0], df.columns[2]]
+                return l1, l2
+        return None, None
+
+    def update_preview():
+
+        l1, l2 = get_selected_cycle()
+        if l1 is None:
+            return
+
+        x1 = l1.get_xdata()
+        y1 = l1.get_ydata()
+        x2 = l2.get_xdata()
+        y2 = l2.get_ydata()
+
+        field = 0.0
+
+        if global_radio.isChecked():
+
+            y1_new, y2_new = compute_loop_correction(y1, y2)
+
         else:
-            x_cols = []
+            try:
+                field = float(field_edit.text())
+            except:
+                return
 
-        column_checks.clear()
-        for col in df.columns:
-            if col in x_cols:
-                continue
-            cb = QCheckBox(col)
-            column_checks[col] = cb
-            column_layout.addRow(cb)
+            i_up = np.argmin(np.abs(x1 - field))
+            i_dw = np.argmin(np.abs(x2 - field))
+            
+            y1_new, y2_new = compute_loop_correction(y1, y2, i_up, i_dw)
 
-    file_combo.currentIndexChanged.connect(update_column_list)
-    update_column_list()
 
-    def on_apply():
-        selected_file_idx = file_combo.currentIndex()
-        selected_cols = [col for col, cb in column_checks.items() if cb.isChecked()]
-        apply_loop_closure(
-            plot_instance,
-            app_instance,
-            selected_file_idx,
-            selected_cols
-        )
-        dialog.accept()
+        preview_ax.clear()
 
-    apply_button = QPushButton("Apply")
-    apply_button.clicked.connect(on_apply)
-    layout.addWidget(apply_button)
+        preview_ax.plot(x1, y1, 'k-', alpha=0.3)
+        preview_ax.plot(x2, y2, 'k-', alpha=0.3)
+        preview_ax.plot(field*np.ones(10), np.linspace(-1, 1, 10), '--')
 
-    dialog.exec_()
+        preview_ax.plot(x1, y1_new, 'r-')
+        preview_ax.plot(x2, y2_new, 'r-')
 
-def apply_loop_closure(plot_instance, app_instance, file_index, selected_cols):
-    '''
-    Function that corrects the effects of instrumental drift and closes the loop.
+        preview_canvas.draw_idle()
 
-    A gradual correction is applied to the data to reduce the misalignments
-    at the ends of the loop, caused precisely by instrumental drift.
+    #===============================
+    # Left panel for selections
+    #===============================
+    left_widget = QWidget()
+    left_layout = QVBoxLayout(left_widget)
 
-    For each loop the procedure is:
-    
-    1) Calculate the difference in absolute value between the initial and final values of the branches.
-    2) Determine which difference (initial or final) is dominant.
-    3) Apply a linear correction to reduce the misalignment:
-        This correction is applied only on the dominant difference and its intensity
-        decreases linearly while iterating on the points of the loop:
-        
-        - The values of the increasing branch are incremented or decremented.
-        - The values of the decreasing branch are corrected symmetrically.
-    
-    Parameters
-    ----------
-    plot_instance : QWidget
-        Calling plot widget (used for re-plotting).
-    app_instance : MainApp
-        Global app state.
-    file_index : int
-        Index of the selected DataFrame.
-    selected_cols : list of str
-        Columns to correct (should be pairs).
-    '''
-    try:
-        df = app_instance.dataframes[file_index]
-        logger = app_instance.logger
+    scroll_area = QScrollArea()
+    scroll_area.setWidgetResizable(True)
+    scroll_area.setWidget(left_widget)
 
-        if len(selected_cols) < 2:
-            QMessageBox.warning(plot_instance, "Error", "You must select the data pair that creates the cycle.")
-            return
+    root_layout.addWidget(scroll_area, 0)
 
-        if len(selected_cols) % 2 != 0:
-            QMessageBox.warning(plot_instance, "Error", "You must select the data pair that creates the cycle.")
-            return
+    cycle_checks = {}
+    cycle_map    = {}
 
-        N_Y = []
-        for col1, col2 in zip(selected_cols[::2], selected_cols[1::2]):
-            ell_up = df[col1].astype(float).values
-            ell_dw = df[col2].astype(float).values
+    for i in range(0, len(lines), 2):
+        idx = i // 2
 
-            num = len(ell_up)
-            dy_start = abs(ell_up[0] - ell_dw[0])
-            dy_stop = abs(ell_up[-1] - ell_dw[-1])
+        label = plot_instance.plot_customizations.get(
+            idx, {}
+        ).get("label", f"Cycle {idx + 1}")
 
-            if dy_start > dy_stop:
-                if ell_up[0] > ell_dw[0]:
-                    for i in range(num):
-                        ell_up[i] -= (0.5 * (num - 1 - i) * dy_start) / (num - 1)
-                        ell_dw[i] += (0.5 * (num - 1 - i) * dy_start) / (num - 1)
+        cb = QCheckBox(label)
+        left_layout.addWidget(cb)
+
+        cycle_checks[label] = cb
+        cycle_map[label]    = idx
+        cb.stateChanged.connect(update_preview)
+
+    #===============================
+    # Parameters
+    #===============================
+    mode_group = QButtonGroup(window)
+
+    global_radio = QRadioButton("Global closure")
+    field_radio  = QRadioButton("Closure at field")
+
+    global_radio.setChecked(True)
+
+    mode_group.addButton(global_radio)
+    mode_group.addButton(field_radio)
+
+    left_layout.addWidget(global_radio)
+    left_layout.addWidget(field_radio)
+
+    # Usable only in field mode
+    left_layout.addWidget(QLabel("Field:"))
+    field_edit = QLineEdit("0.0")
+    field_edit.setEnabled(False)
+    left_layout.addWidget(field_edit)
+
+    apply_btn = QPushButton("Apply")
+    left_layout.addWidget(apply_btn)
+
+    #===============================
+    # Right field (plot)
+    #===============================
+    right_layout = QVBoxLayout()
+    root_layout.addLayout(right_layout, 1)
+
+   
+    preview_fig    = Figure(figsize=(5,4))
+    preview_canvas = FigureCanvas(preview_fig)
+    preview_ax     = preview_fig.add_subplot(111)
+
+    right_layout.addWidget(preview_canvas)
+
+    state = {
+        "x_up": None,
+        "y_up": None,
+        "x_dw": None,
+        "y_dw": None,
+    }
+
+    field_edit.textChanged.connect(update_preview)
+
+    for cb in cycle_checks.values():
+        cb.stateChanged.connect(update_preview)
+
+    #===============================
+    # Apply closure function
+    #===============================
+    def apply_closure():
+
+        selected_file_idx = None
+        use_global = global_radio.isChecked()
+
+        if not use_global:
+            try:
+                field = float(field_edit.text())
+            except:
+                QMessageBox.critical(window, "Error", "Invalid field")
+                return
+
+        for label, cb in cycle_checks.items():
+            if cb.isChecked():
+
+                idx = cycle_map[label]
+
+                l1 = lines[idx*2]
+                l2 = lines[idx*2+1]
+
+                if selected_file_idx is None:
+                    selected_file_idx = getattr(l1, "_file_index", None)
+                
+                df = app_instance.dataframes[selected_file_idx]
+
+                cols1 = l1._cols
+                cols2 = l2._cols
+
+                x1 = df[cols1[0]].astype(float).values
+                y1 = df[cols1[1]].astype(float).values
+                x2 = df[cols2[0]].astype(float).values
+                y2 = df[cols2[1]].astype(float).values
+               
+
+                if use_global:
+                    y1_new, y2_new = compute_loop_correction(y1, y2)
                 else:
-                    for i in range(num):
-                        ell_up[i] += (0.5 * (num - 1 - i) * dy_start) / (num - 1)
-                        ell_dw[i] -= (0.5 * (num - 1 - i) * dy_start) / (num - 1)
+                    i_up = np.argmin(np.abs(x1 - field))
+                    i_dw = np.argmin(np.abs(x2 - field))
 
-            if dy_start < dy_stop:
-                if ell_up[-1] > ell_dw[-1]:
-                    for i in range(num - 1, -1, -1):
-                        ell_up[i] -= (0.5 * i * dy_stop) / (num - 1)
-                        ell_dw[i] += (0.5 * i * dy_stop) / (num - 1)
-                else:
-                    for i in range(num - 1, -1, -1):
-                        ell_up[i] += (0.5 * i * dy_stop) / (num - 1)
-                        ell_dw[i] -= (0.5 * i * dy_stop) / (num - 1)
+                    y1_new, y2_new = compute_loop_correction(y1, y2, i_up, i_dw)
 
-            N_Y.append((col1, ell_up))
-            N_Y.append((col2, ell_dw))
+                df[cols1[1]] = y1_new
+                df[cols2[1]] = y2_new
 
-        for col, new_values in N_Y:
-            df[col] = new_values
-            logger.info(f"Loop Closure Applied to {col}.")
-
-        # Re-plot
         plot_instance.plot()
 
-        QMessageBox.information(plot_instance, "Success",
-                                f"Closure applied on File {file_index + 1}.")
+    def update_mode():
+        field_edit.setEnabled(field_radio.isChecked())
+        update_preview()
 
-    except Exception as e:
-        QMessageBox.critical(plot_instance, "Error",
-                             f"Error while closing loop:\n{e}")
+    global_radio.toggled.connect(update_mode)
+    field_radio.toggled.connect(update_mode)
+    apply_btn.clicked.connect(apply_closure)
+
+    #===============================
+    # Show window
+    #===============================
+    sub = QMdiSubWindow()
+    sub.setWidget(window)
+    sub.setWindowTitle("Cycle Closure")
+
+    app_instance.mdi_area.addSubWindow(sub)
+    sub.show()
+
+
+
+def compute_loop_correction(ell_up, ell_dw, i_up=None, i_dw=None):
+    '''
+    Apply a linear drift correction to close an hysteresis loop.
+
+    The function corrects the mismatch between the two branches of a loop
+    (`ell_up` and `ell_dw`) by applying a symmetric, point-wise correction.
+
+    Two modes are available:
+
+    1) Local correction (pivot-based)
+    ---------------------------------
+    If `i_up` and `i_dw` are provided, a local linear correction is applied.
+
+    - The correction is anchored to a pivot index (`i_up`), which defines
+      where the two branches are forced to match.
+    - The magnitude of the correction is determined by the difference
+      between the two branches at the selected indices:
+          delta = |ell_up[i_up] - ell_dw[i_dw]|
+    - A linear correction profile is applied from one end of the loop
+      (`slope`) to the pivot:
+          - zero correction at the slope
+          - maximum correction (±0.5 * delta) at the pivot
+    - The sign of the correction is determined by the relative position
+      of the two branches (i.e. which one is higher in value), ensuring
+      a physically consistent closure:
+          - the upper branch is shifted downward
+          - the lower branch is shifted upward
+
+    NOTE:
+    The pivot index is taken from `i_up`. The index `i_dw` is used only
+    to evaluate the mismatch (`delta`), not to define the correction shape.
+
+    2) Global correction
+    --------------------
+    If no indices are provided, a global linear correction is applied.
+
+    - The function compares the mismatch at the beginning and at the end
+      of the loop.
+    - The dominant mismatch is selected (either start or end).
+    - A linear correction is applied across the entire loop, gradually
+      reducing the mismatch:
+          - maximum correction at the dominant end
+          - zero correction at the opposite end
+    - The correction is applied symmetrically to the two branches.
+
+    Parameters
+    ----------
+    ell_up : numpy.ndarray
+        Values of the increasing (upper) branch.
+    ell_dw : numpy.ndarray
+        Values of the decreasing (lower) branch.
+    i_up : int, optional
+        Pivot index on the increasing branch used to anchor the local correction.
+    i_dw : int, optional
+        Index on the decreasing branch used only to evaluate the mismatch
+        at the pivot location.
+
+    Returns
+    -------
+    ell_up_corr : numpy.ndarray
+        Corrected increasing branch.
+    ell_dw_corr : numpy.ndarray
+        Corrected decreasing branch.
+    '''
+    
+    ell_up = ell_up.copy()
+    ell_dw = ell_dw.copy()
+
+    num = len(ell_up)
+
+    #=================================================
+    # Local case: if the field value is within
+    # the loop, apply a local correction
+    #=================================================
+    if i_up is not None and i_dw is not None:
+
+        v_up = ell_up[i_up]
+        v_dw = ell_dw[i_dw]
+        sign = 1 if v_up > v_dw else -1
+        delta = abs(v_up - v_dw)
+
+        if i_up < (0.5 * num):
+            slope = num - 1
+        else:
+            slope = 0
+
+
+        for i in range(num):
+            correction = 0.5 * delta * (i - slope) / (i_up - slope)
+            ell_up[i] -= correction*sign
+            ell_dw[i] += correction*sign
+
+        return ell_up, ell_dw
+
+    #=================================================
+    # Global case: apply correction on the whole loop,
+    # based on the initial and final misalignment.
+    #=================================================
+    dy_start = abs(ell_up[0] - ell_dw[0])
+    dy_stop  = abs(ell_up[-1] - ell_dw[-1])
+
+    if dy_start > dy_stop:
+        if ell_up[0] > ell_dw[0]:
+            for i in range(num):
+                delta = (0.5 * (num - 1 - i) * dy_start) / (num - 1)
+                ell_up[i] -= delta
+                ell_dw[i] += delta
+        else:
+            for i in range(num):
+                delta = (0.5 * (num - 1 - i) * dy_start) / (num - 1)
+                ell_up[i] += delta
+                ell_dw[i] -= delta
+
+    else:
+        if ell_up[-1] > ell_dw[-1]:
+            for i in range(num):
+                delta = (0.5 * i * dy_stop) / (num - 1)
+                ell_up[i] -= delta
+                ell_dw[i] += delta
+        else:
+            for i in range(num):
+                delta = (0.5 * i * dy_stop) / (num - 1)
+                ell_up[i] += delta
+                ell_dw[i] -= delta
+
+    return ell_up, ell_dw
 
 #==============================================================================================#
 # Function to invert axis                                                                      #

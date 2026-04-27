@@ -44,7 +44,7 @@ def norm_dialog(plot_instance, app_instance):
         Main application instance containing the session.
     '''
     
-    if plot_instance.figure is None:
+    if not hasattr(plot_instance, "figure") or plot_instance.figure is None:
         QMessageBox.critical(plot_instance, "Error", "No plot open!")
         return
 
@@ -109,7 +109,7 @@ def norm_dialog(plot_instance, app_instance):
     layout.addWidget(scroll_area)
 
     # === BUtton apply ===
-    def on_apply():
+    def apply():
         selected_cols     = []
         selected_file_idx = None
 
@@ -145,7 +145,8 @@ def norm_dialog(plot_instance, app_instance):
         apply_norm(plot_instance, app_instance, selected_file_idx, selected_cols)
 
     apply_button = QPushButton("Apply")
-    apply_button.clicked.connect(on_apply)
+    apply_button.setObjectName("apply_button")
+    apply_button.clicked.connect(apply)
 
     layout.addWidget(apply_button)
 
@@ -209,13 +210,14 @@ def apply_norm(plot_instance, app_instance, file_index, selected_cols):
 
         df[y1] = ell_up_normalized
         df[y2] = ell_dw_normalized
-        logger.info(f"Normalization applied to {y1} and {y2}.")
+        logger.info(f"Normalization applied to {y1}.")
+        logger.info(f"Normalization applied to {y2}.")
 
         # Re-plot
         plot_instance.plot()
 
         QMessageBox.information(plot_instance, "Success",
-            f"Normalization applied on {selected_cols[0]}, {selected_cols[1]}."
+            f"Normalization applied on File {file_index + 1}"
         )
         
     except Exception as e:
@@ -301,7 +303,7 @@ def close_loop_dialog(plot_instance, app_instance):
 
         if global_radio.isChecked():
 
-            y1_new, y2_new = compute_loop_correction(y1, y2)
+            y1_new, y2_new = apply_loop_closure(y1, y2)
 
         else:
             try:
@@ -312,7 +314,7 @@ def close_loop_dialog(plot_instance, app_instance):
             i_up = np.argmin(np.abs(x1 - field))
             i_dw = np.argmin(np.abs(x2 - field))
             
-            y1_new, y2_new = compute_loop_correction(y1, y2, i_up, i_dw)
+            y1_new, y2_new = apply_loop_closure(y1, y2, i_up, i_dw)
 
 
         preview_ax.clear()
@@ -443,12 +445,12 @@ def close_loop_dialog(plot_instance, app_instance):
                
 
                 if use_global:
-                    y1_new, y2_new = compute_loop_correction(y1, y2)
+                    y1_new, y2_new = apply_loop_closure(y1, y2)
                 else:
                     i_up = np.argmin(np.abs(x1 - field))
                     i_dw = np.argmin(np.abs(x2 - field))
 
-                    y1_new, y2_new = compute_loop_correction(y1, y2, i_up, i_dw)
+                    y1_new, y2_new = apply_loop_closure(y1, y2, i_up, i_dw)
 
                 df[cols1[1]] = y1_new
                 df[cols2[1]] = y2_new
@@ -475,7 +477,7 @@ def close_loop_dialog(plot_instance, app_instance):
 
 
 
-def compute_loop_correction(ell_up, ell_dw, i_up=None, i_dw=None):
+def apply_loop_closure(ell_up, ell_dw, i_up=None, i_dw=None):
     '''
     Apply a linear drift correction to close an hysteresis loop.
 

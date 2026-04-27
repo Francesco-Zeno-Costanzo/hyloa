@@ -22,9 +22,8 @@ import numpy as np
 import pandas as pd
 
 from unittest.mock import patch, MagicMock
-from PyQt5.QtWidgets import QApplication, QPushButton, QCheckBox
-from PyQt5.QtTest import QTest
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QWidget
 
 
@@ -37,6 +36,7 @@ def qapp():
         app = QApplication([])
     return app
 
+
 @patch("hyloa.data.processing.apply_norm")
 def test_norm_dialog_even_columns(mock_apply_norm, qapp):
     # Create a dummy DataFrame with 4 columns (2 x columns, 2 y columns)
@@ -48,9 +48,37 @@ def test_norm_dialog_even_columns(mock_apply_norm, qapp):
 
     # Dummy QWidget as parent
     plot_instance = QWidget()
+    plot_instance.figure = MagicMock()
+    plot_instance.ax = MagicMock()
+    
+    line1 = MagicMock()
+    line2 = MagicMock()
+
+    line1.get_xdata.return_value = [0, 1]
+    line1.get_ydata.return_value = [1, 2]
+    line1.get_gid.return_value = None
+    line1._cols = ("X1", "Y1")
+    line1._file_index = 0
+
+    line2.get_xdata.return_value = [0, 1]
+    line2.get_ydata.return_value = [2, 1]
+    line2.get_gid.return_value = None
+    line2._cols = ("X2", "Y2")
+    line2._file_index = 0
+
+    plot_instance.ax.lines = [line1, line2]
+    plot_instance.plot_customizations = {}
 
     # Patch QDialog.exec_ to allow dialog interaction
-    with patch("hyloa.data.processing.QDialog.exec_", side_effect=lambda self=None: _click_apply_button()):
+    def fake_exec(self):
+        for cb in self.findChildren(QCheckBox):
+            cb.setChecked(True)
+
+        btn = self.findChild(QPushButton, "apply_button")
+        assert btn is not None
+        btn.click()
+
+    with patch("hyloa.data.processing.QDialog.exec_", new=fake_exec):
         norm_dialog(plot_instance, app_instance)
 
     # Check that apply_norm was called once
@@ -65,18 +93,19 @@ def test_norm_dialog_even_columns(mock_apply_norm, qapp):
 
 
 # Helper to simulate clicking checkboxes and the apply button
-def _click_apply_button():
-    # Find all checkboxes and click them if their text starts with Y
-    for cb in QApplication.allWidgets():
-        if isinstance(cb, QCheckBox) and cb.text().startswith("Y"):
-            cb.setChecked(True)
-    
-    # Find the "Applica" button and click it
-    for btn in QApplication.allWidgets():
-        if isinstance(btn, QPushButton) and btn.text() == "Apply":
-            QTest.mouseClick(btn, Qt.LeftButton)
-            break
-    return 1 # simulate dialog accepted
+def _select_and_apply():
+    from PyQt5.QtWidgets import QApplication, QCheckBox, QPushButton
+
+    app = QApplication.instance()
+
+    for widget in app.allWidgets():
+        # select checkboxes
+        if isinstance(widget, QCheckBox):
+            widget.setChecked(True)
+
+        # Apply
+        if isinstance(widget, QPushButton) and widget.objectName() == "apply_button":
+            widget.click()
 
 
 @patch("hyloa.data.processing.QMessageBox.information")
@@ -170,6 +199,10 @@ def test_apply_loop_closure_success(mock_info):
     y_up = 0.025 + 0.015 * (1 / (1 + np.exp(-10 * (x-0.25)))) + noise + (0.003*x - 0.003)
     y_dw = 0.025 + 0.015 * (1 / (1 + np.exp( 10 * (x-0.25))))[::-1] + noise[::-1]
 
+
+    # Call the function
+    y_up, y_dw = apply_loop_closure(y_up, y_dw)
+
     # Create a sample dataframe with a simple loop structure
     df = pd.DataFrame({
         "Y1": y_up,
@@ -184,20 +217,11 @@ def test_apply_loop_closure_success(mock_info):
     # Plot instance mock
     plot_instance = MagicMock()
 
-    # Call the function
-    apply_loop_closure(plot_instance, app_instance, file_index=0, selected_cols=["Y1", "Y2"])
-
     # Ensure that values have been updated
     assert app_instance.dataframes[0]["Y1"].values[0] == pytest.approx(
            app_instance.dataframes[0]["Y2"].values[0], rel=1e-3)
 
-    # Check that the plot was called
-    plot_instance.plot.assert_called_once()
 
-    # Check if the success message was shown
-    mock_info.assert_called_once()
-    args, _ = mock_info.call_args
-    assert "Closure applied on File 1" in args[2]
 
 @patch("hyloa.data.processing.QMessageBox.information")
 def test_applay_inversion(mock_info):

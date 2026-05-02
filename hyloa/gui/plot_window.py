@@ -556,6 +556,7 @@ def plot_data(plot_window_instance, app_instance):
         Y  = []
         xn = []
         yn = []
+        f_idx = [] 
 
         for df_choice, x_var, y_var in selected_pairs:
             df_idx = int(df_choice.currentText().split(" ")[1]) - 1 
@@ -566,9 +567,14 @@ def plot_data(plot_window_instance, app_instance):
                 QMessageBox.critical(None, "Error", "You must select all column pairs!")
                 return
 
-            X.append(dataframes[df_idx][x_col].astype(float).values);xn.append(x_col)
-            Y.append(dataframes[df_idx][y_col].astype(float).values);yn.append(y_col)
+            X.append(dataframes[df_idx][x_col].astype(float).values)
+            Y.append(dataframes[df_idx][y_col].astype(float).values)
             
+            xn.append(x_col)
+            yn.append(y_col)
+            
+            f_idx.append(df_idx)
+
             logger.info(f"Plot of: {x_col} vs {y_col}")
 
         if not plot_customizations:
@@ -580,7 +586,8 @@ def plot_data(plot_window_instance, app_instance):
                 # save name of columns for later use in normalization or loop closure
                 line1._cols = (xn[i], yn[i])
                 line2._cols = (xn[i+1], yn[i+1])
-                line1._file_index = line2._file_index = df_idx
+                line1._file_index = f_idx[i]
+                line2._file_index = f_idx[i+1]
 
 
         else:
@@ -588,12 +595,11 @@ def plot_data(plot_window_instance, app_instance):
                 if i % 2 == 0:
                     line1, = ax.plot(x[1], y[1], label=f"Cycle {i // 2 + 1}")
                     line1._cols = (xn[i], yn[i])
-                    line1._file_index = df_idx
+                    line1._file_index = f_idx[i]
                 else:
                     line2, = ax.plot(x[1], y[1])
                     line2._cols = (xn[i], yn[i])
-                    line2._file_index = df_idx
-
+                    line2._file_index = f_idx[i]
 
                 try:
                     customization = plot_customizations.get(i // 2, {})

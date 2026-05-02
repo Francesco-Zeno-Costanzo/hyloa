@@ -65,6 +65,7 @@ def norm_dialog(plot_instance, app_instance):
             filtered_lines.append(line)
 
     lines = filtered_lines
+    
 
     if not lines:
         QMessageBox.critical(plot_instance, "Error", "No valid cycles in plot!")
@@ -83,7 +84,7 @@ def norm_dialog(plot_instance, app_instance):
 
         cycles.append(label)
         cycle_map[label] = idx
-
+    
     # === Dialog ===
     dialog = QDialog(plot_instance)
     dialog.setWindowTitle("Normalize Cycles")
@@ -110,22 +111,23 @@ def norm_dialog(plot_instance, app_instance):
 
     # === BUtton apply ===
     def apply():
-        selected_cols     = []
-        selected_file_idx = None
+        selected_cols      = []
+        selected_files_idx = []
 
         try:
             for label, cb in cycle_checks.items():
                 if cb.isChecked():
-                    idx = cycle_map[label]
 
+                    idx   = cycle_map[label]
                     line1 = lines[idx * 2]
                     line2 = lines[idx * 2 + 1]
 
                     cols1 = getattr(line1, "_cols", None)
                     cols2 = getattr(line2, "_cols", None)
+                    index = getattr(line1, "_file_index", None)
 
-                    if selected_file_idx is None:
-                        selected_file_idx = getattr(line1, "_file_index", None)
+                    if index:
+                        selected_files_idx.append(index)
 
                     if cols1:
                         selected_cols.append(cols1[1]) # Y column of the first branch
@@ -142,7 +144,7 @@ def norm_dialog(plot_instance, app_instance):
 
         dialog.accept()
         
-        apply_norm(plot_instance, app_instance, selected_file_idx, selected_cols)
+        apply_norm(plot_instance, app_instance, selected_files_idx, selected_cols)
 
     apply_button = QPushButton("Apply")
     apply_button.setObjectName("apply_button")
@@ -170,8 +172,8 @@ def apply_norm(plot_instance, app_instance, file_index, selected_cols):
         Instance of the plot class
     app_instance : MainApp
         Main application instance containing the session data.
-    file_index : int
-        Index of the selected DataFrame.
+    file_index : list
+        list of indices of the selected DataFrames.
     selected_cols : list
         List of columns to normalize (should be pairs).
     '''
@@ -180,49 +182,49 @@ def apply_norm(plot_instance, app_instance, file_index, selected_cols):
     logger         = app_instance.logger
 
     try:
-        df = app_instance.dataframes[file_index]
+        for idx, y1, y2 in zip(file_index, selected_cols[::2], selected_cols[1::2]):
+            df = app_instance.dataframes[idx]
+        
+            ell_up = df[y1].astype(float).values
+            ell_dw = df[y2].astype(float).values
 
-        y1, y2 = selected_cols
-       
-        ell_up = df[y1].astype(float).values
-        ell_dw = df[y2].astype(float).values
+            # Compute averages at start/end
+            aveup1 = np.mean(ell_up[:5])
+            aveup2 = np.mean(ell_up[-5:])
+            avedw1 = np.mean(ell_dw[:5])
+            avedw2 = np.mean(ell_dw[-5:])
 
-        # Compute averages at start/end
-        aveup1 = np.mean(ell_up[:5])
-        aveup2 = np.mean(ell_up[-5:])
-        avedw1 = np.mean(ell_dw[:5])
-        avedw2 = np.mean(ell_dw[-5:])
+            # Branch direction correction
+            if ((aveup1 > aveup2 and avedw1 > avedw2) or (aveup1 < aveup2 and avedw1 < avedw2)):
+                aveup1 = (aveup1 + avedw1) * 0.5
+                avedw1 = (aveup2 + avedw2) * 0.5
+            else:
+                aveup1 = (aveup1 + avedw2) * 0.5
+                avedw1 = (aveup2 + avedw1) * 0.5
 
-        # Branch direction correction
-        if ((aveup1 > aveup2 and avedw1 > avedw2) or (aveup1 < aveup2 and avedw1 < avedw2)):
-            aveup1 = (aveup1 + avedw1) * 0.5
-            avedw1 = (aveup2 + avedw2) * 0.5
-        else:
-            aveup1 = (aveup1 + avedw2) * 0.5
-            avedw1 = (aveup2 + avedw1) * 0.5
+            v_shift = (aveup1 + avedw1) * 0.5
+            v_amplitude = abs(aveup1 - avedw1) * 0.5
 
-        v_shift = (aveup1 + avedw1) * 0.5
-        v_amplitude = abs(aveup1 - avedw1) * 0.5
+            # Normalize
+            ell_up_normalized = (ell_up - v_shift) / v_amplitude
+            ell_dw_normalized = (ell_dw - v_shift) / v_amplitude
 
-        # Normalize
-        ell_up_normalized = (ell_up - v_shift) / v_amplitude
-        ell_dw_normalized = (ell_dw - v_shift) / v_amplitude
-
-        df[y1] = ell_up_normalized
-        df[y2] = ell_dw_normalized
-        logger.info(f"Normalization applied to {y1}.")
-        logger.info(f"Normalization applied to {y2}.")
-
+            df[y1] = ell_up_normalized
+            df[y2] = ell_dw_normalized
+            logger.info(f"Normalization applied to {y1}.")
+            logger.info(f"Normalization applied to {y2}.")
+        
         # Re-plot
         plot_instance.plot()
 
         QMessageBox.information(plot_instance, "Success",
-            f"Normalization applied on File {file_index + 1}"
+            f"Normalization applied on Files {[idx + 1 for idx in file_index]} and columns {selected_cols}"
         )
         
     except Exception as e:
         QMessageBox.critical(parent_widget, "Error", f"Error during normalization:\n{e}")
-
+        
+    
 
 #==============================================================================================#
 # Function to close cycles                                                                     #

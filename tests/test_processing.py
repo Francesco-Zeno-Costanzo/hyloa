@@ -58,13 +58,13 @@ def test_norm_dialog_even_columns(mock_apply_norm, qapp):
     line1.get_ydata.return_value = [1, 2]
     line1.get_gid.return_value = None
     line1._cols = ("X1", "Y1")
-    line1._file_index = 0
+    line1._file_index = [0]
 
     line2.get_xdata.return_value = [0, 1]
     line2.get_ydata.return_value = [2, 1]
     line2.get_gid.return_value = None
     line2._cols = ("X2", "Y2")
-    line2._file_index = 0
+    line2._file_index = [0]
 
     plot_instance.ax.lines = [line1, line2]
     plot_instance.plot_customizations = {}
@@ -85,7 +85,7 @@ def test_norm_dialog_even_columns(mock_apply_norm, qapp):
     assert mock_apply_norm.called
     args, _ = mock_apply_norm.call_args
 
-    assert args[2] == 0  # selected file index
+    assert args[2][0] == [0]  # selected file index
     assert args[3] == ["Y1", "Y2"]  # selected columns
 
     # I don't know but work
@@ -136,7 +136,7 @@ def test_apply_norm_applies_normalization(mock_info):
     plot_instance = MagicMock()
 
     # Apply normalization
-    apply_norm(plot_instance, app_instance, file_index=0, selected_cols=["Y1", "Y2"])
+    apply_norm(plot_instance, app_instance, file_index=[0], selected_cols=["Y1", "Y2"])
 
     # Assert that values have been updated in the dataframe
     normed_y1 = app_instance.dataframes[0]["Y1"].values
@@ -158,7 +158,7 @@ def test_apply_norm_applies_normalization(mock_info):
     mock_info.assert_called_once()
     args, _ = mock_info.call_args
    
-    assert "Normalization applied on File 1" in args[2]
+    assert "Normalization applied on Files [1] and columns ['Y1', 'Y2']" in args[2]
 
 @patch("hyloa.data.processing.QMessageBox.critical")
 def test_apply_norm_handles_exception(mock_critical):

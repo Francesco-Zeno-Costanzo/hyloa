@@ -157,9 +157,9 @@ class PlotControlWidget(QWidget):
         btn_toggle = QPushButton("Hide cycle")
         btn_toggle.clicked.connect(self.toggle_cycle_visibility)
 
-        data_layout.addWidget(btn_create)
         data_layout.addWidget(btn_add)
         data_layout.addWidget(btn_remove)
+        data_layout.addWidget(btn_create)
         data_layout.addWidget(btn_toggle)
         data_layout.addStretch()
 

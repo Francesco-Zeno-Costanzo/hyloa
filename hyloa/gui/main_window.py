@@ -29,7 +29,8 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QMdiArea, QMdiSubWindow, 
     QWidget, QVBoxLayout, QPushButton, QMessageBox, QTextEdit,
     QLabel, QDockWidget, QGroupBox, QHBoxLayout, QListWidget,
-    QDialog, QInputDialog, QScrollArea, QDesktopWidget, QListWidgetItem
+    QDialog, QInputDialog, QScrollArea, QDesktopWidget, QListWidgetItem,
+    QTabWidget
 )
 from PyQt5.QtGui import QPixmap
 
@@ -81,22 +82,24 @@ class MainApp(QMainWindow):
         self.setCentralWidget(self.mdi_area)
 
         # Attributes to manage information and configuration
-        self.dataframes           = []       # List to store loaded DataFrames
-        self.header_lines         = []       # List to store the initial lines of files
-        self.logger               = None     # Logger for the entire application
-        self.logger_path          = None     # Path to the log file
-        self.fit_results          = {}       # Dictionary to save fitting results
-        self.number_plots         = 0        # Number of all created plots
-        self.figures_map          = {}       # dict to store all figures
-        self.plot_widgets         = {}       # {int: PlotControlWidget}
-        self.plot_names           = {}       # {int: "name of the figure"}
-        self.plot_subwindows      = {}       # {plot_index: QMdiSubWindow for control panel}
-        self.figure_subwindows    = {}       # {plot_index: QMdiSubWindow for figure window}
-        self.number_worksheets    = 0        # Number of all created worksheets
-        self.worksheet_windows    = {}       # {int: WorksheetWindow}
-        self.worksheet_names      = {}       # {int: str}
-        self.worksheet_subwindows = {}       # {int: QMdiSubWindow}
-        self.worksheet_dfs        = WsData() # To handle worksheet comunication
+        self.dataframes             = []       # List to store loaded DataFrames
+        self.header_lines           = []       # List to store the initial lines of files
+        self.logger                 = None     # Logger for the entire application
+        self.logger_path            = None     # Path to the log file
+        self.fit_results            = {}       # Dictionary to save fitting results
+        self.number_plots           = 0        # Number of all created plots
+        self.figures_map            = {}       # dict to store all figures
+        self.plot_widgets           = {}       # {int: PlotControlWidget}
+        self.plot_names             = {}       # {int: "name of the figure"}
+        self.plot_subwindows        = {}       # {plot_index: QMdiSubWindow for control panel}
+        self.figure_subwindows      = {}       # {plot_index: QMdiSubWindow for figure window}
+        self.number_worksheets      = 0        # Number of all created worksheets
+        self.worksheet_windows      = {}       # {int: WorksheetWindow}
+        self.worksheet_names        = {}       # {int: str}
+        self.worksheet_subwindows   = {}       # {int: QMdiSubWindow}
+        self.worksheet_dfs          = WsData() # To handle worksheet comunication
+        self.plot_tabs              = None     # To handle the plot control tabs
+        self.plot_control_subwindow = None     # To handle the plot control subwindow
 
 
         # Interface
@@ -104,7 +107,6 @@ class MainApp(QMainWindow):
         self.log_sub   = None
 
         self.init_sidebar()
-    
 
     def init_sidebar(self):
         ''' Create sidebar with buttons
@@ -350,7 +352,29 @@ class MainApp(QMainWindow):
         self.worksheet_subwindows[ws_idx] = worksheet
         self.worksheet_windows[ws_idx]    = worksheet
         self.worksheet_names[ws_idx]      = ws_name
+    
 
+    def create_plot_tabs(self):
+        '''
+        Ensure that the plot tabs are initialized.
+        '''
+        if self.plot_tabs is not None:
+            return
+        
+        if self.plot_tabs is None:
+
+            self.plot_tabs = QTabWidget()
+            self.plot_tabs.setTabsClosable(True)
+            self.plot_tabs.setMovable(True)
+            self.plot_tabs.tabCloseRequested.connect(self.close_plot_tab)
+
+            self.plot_control_subwindow = QMdiSubWindow()
+            self.plot_control_subwindow.setWidget(self.plot_tabs)
+            self.plot_control_subwindow.setWindowTitle("Plot Controls")
+
+            self.mdi_area.addSubWindow(self.plot_control_subwindow)
+            self.plot_control_subwindow.resize(600, 400)
+            self.plot_control_subwindow.show()
 
 
     def plot(self):
@@ -373,19 +397,64 @@ class MainApp(QMainWindow):
         self.number_plots += 1
         custom_name        = text.strip()
 
+
         # Create control panel
         plot_widget = PlotControlWidget(self, self.number_plots, custom_name)
         self.plot_widgets[self.number_plots] = plot_widget
         self.plot_names[self.number_plots]   = custom_name
 
-        sub = PlotSubWindow(self, plot_widget, self.number_plots)
-        self.mdi_area.addSubWindow(sub)
-        sub.show()
-        # Save for session loading
-        self.plot_subwindows[self.number_plots] = sub
+        self.create_plot_tabs()
+        self.plot_tabs.addTab(plot_widget, custom_name)
+        self.plot_tabs.setCurrentWidget(plot_widget)
 
+        self.plot_widgets[self.number_plots] = plot_widget
+        self.plot_names[self.number_plots]   = custom_name
+    
+    def close_plot_tab(self, index):
+        ''' Function to close a plot tab
+        '''
+        widget = self.plot_tabs.widget(index)
+
+        tab_name = self.plot_tabs.tabText(index)
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm closing",
+            f"Do you really want to close '{tab_name}'?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        # Find the plot_id corresponding to this widget
+        plot_id = None
+        for k, v in self.plot_widgets.items():
+            if v == widget:
+                plot_id = k
+                break
+
+        if plot_id is not None:
+            # cleanup
+            if plot_id in self.plot_widgets:
+                del self.plot_widgets[plot_id]
+                del self.plot_names[plot_id]
+
+            if plot_id in self.figures_map:
+                del self.figures_map[plot_id]
+
+        self.plot_tabs.removeTab(index)
+        widget.deleteLater()
+
+        if self.plot_tabs.count() == 0:
+            self.plot_control_subwindow.close()
+            self.plot_tabs = None
+            self.plot_control_subwindow = None
     
     def resizeEvent(self, event):
+        ''' Function that handle the resizing of the main window to adapt the position of the shell and log panels
+        '''
         super().resizeEvent(event)
         QTimer.singleShot(0, self.position_default_panels)
 

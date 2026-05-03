@@ -29,7 +29,7 @@ from datetime import datetime
 from PyQt5.QtCore import QTimer
 
 from PyQt5.QtWidgets import (
-    QMdiSubWindow, QMessageBox, QFileDialog
+    QMessageBox, QFileDialog
 )
 
 from hyloa.utils.logging_setup import setup_logging
@@ -104,16 +104,7 @@ def save_current_session(app_instance, parent_widget=None):
             "plot_names": {
                 idx : name for idx, name in app_instance.plot_names.items()
             },
-            "control_windows_geometry": {
-                idx: {
-                    "x": sub.x(),
-                    "y": sub.y(),
-                    "width":  sub.width(),
-                    "height": sub.height(),
-                    "minimized": sub.isMinimized()
-                }
-                for idx, sub in app_instance.plot_subwindows.items()
-            },
+            "tab_order": list(app_instance.plot_widgets.keys()),
             "plot_windows_geometry": {
                 idx: {
                     "x": fig_sub.x(),
@@ -242,18 +233,11 @@ def load_previous_session(app_instance, parent_widget=None):
             widget.plot_customizations = plot_info.get("plot_customizations", {})
 
             # Create sub window for panel
-            sub = PlotSubWindow(app_instance, widget, idx)
-            app_instance.mdi_area.addSubWindow(sub)
-            sub.show()
+            app_instance.create_plot_tabs()
 
-            # Restore size and position for control panels...
-            ctrl_geom = session_data.get("control_windows_geometry", {}).get(idx)
-            if ctrl_geom:
-                sub.setGeometry(ctrl_geom["x"], ctrl_geom["y"], ctrl_geom["width"], ctrl_geom["height"])
-                if ctrl_geom.get("minimized"):
-                    sub.showMinimized()
-            
-            app_instance.plot_subwindows[idx] = sub
+            app_instance.plot_tabs.addTab(widget, plot_name)
+            app_instance.plot_widgets[idx] = widget
+            app_instance.plot_names[idx]   = plot_name
 
             widget.plot() # Force the plot
             # ... and for plot windows

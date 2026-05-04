@@ -126,7 +126,7 @@ def norm_dialog(plot_instance, app_instance):
                     cols2 = getattr(line2, "_cols", None)
                     index = getattr(line1, "_file_index", None)
 
-                    if index:
+                    if index is not None:
                         selected_files_idx.append(index)
 
                     if cols1:
@@ -184,6 +184,7 @@ def apply_norm(plot_instance, app_instance, file_index, selected_cols):
     try:
         for idx, y1, y2 in zip(file_index, selected_cols[::2], selected_cols[1::2]):
             df = app_instance.dataframes[idx]
+
         
             ell_up = df[y1].astype(float).values
             ell_dw = df[y2].astype(float).values
@@ -397,12 +398,6 @@ def close_loop_dialog(plot_instance, app_instance):
 
     right_layout.addWidget(preview_canvas)
 
-    state = {
-        "x_up": None,
-        "y_up": None,
-        "x_dw": None,
-        "y_dw": None,
-    }
 
     field_edit.textChanged.connect(update_preview)
 

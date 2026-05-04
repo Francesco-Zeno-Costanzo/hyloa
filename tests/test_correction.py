@@ -238,9 +238,6 @@ def test_apply_shift_ok(mock_lineedit,base_plot_state,mock_window,mock_fit_data)
     logger = MagicMock()
 
     apply_shift(
-        MagicMock(), MagicMock(), MagicMock(), MagicMock(),
-        MagicMock(),
-        save_file_combo,
         mock_data_sel,
         mock_lineedit,
         base_plot_state,
@@ -272,9 +269,6 @@ def test_apply_shift_invalid_value(
     logger = MagicMock()
 
     apply_shift(
-        MagicMock(), MagicMock(), MagicMock(), MagicMock(),
-        MagicMock(),
-        save_file_combo,
         mock_data_sel,
         mock_lineedit,
         base_plot_state,
@@ -305,9 +299,6 @@ def test_apply_shift_fit_raises(mock_msgbox, mock_lineedit, base_plot_state, moc
     logger = MagicMock()
 
     apply_shift(
-        MagicMock(), MagicMock(), MagicMock(), MagicMock(),
-        MagicMock(),
-        save_file_combo,
         mock_data_sel,
         mock_lineedit,
         base_plot_state,

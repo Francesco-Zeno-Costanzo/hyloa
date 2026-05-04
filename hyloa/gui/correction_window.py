@@ -870,7 +870,7 @@ def correct_hysteresis_loop(app_instance):
     )
     
     field_shift_btn.clicked.connect(lambda: apply_shift(
-            dataframes, data_sel,
+            data_sel,
             field_shift_pc_edit, plot_state, window, fit_data, args=(
                 file_combo,
                 x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,

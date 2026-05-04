@@ -283,16 +283,13 @@ def flip_data(file_combo,
 # Function to correct field                      #
 #================================================#
 
-def apply_shift(dataframes,
-                data_sel, field_shift_pc_edit, plot_state, window, fit_data, args=(),
+def apply_shift(data_sel, field_shift_pc_edit, plot_state, window, fit_data, args=(),
                 logger=None):
     '''
     Function add a field shift after the corrections
 
     Parameters
     ----------
-    dataframes : list of pd.DataFrame
-        List of dataframes containing loaded data.
     field_shift_pc_edit : QLineEdit
         Value for field shifting
     plot_state : dict
@@ -308,21 +305,16 @@ def apply_shift(dataframes,
     '''
 
     selected     = data_sel.currentText()
-        
 
     #Read data
     if selected == "Corrected":
         name_xup = "x_up_corr"
         name_xdw = "x_dw_corr"
-        name_yup = "y_up_corr"
-        name_ydw = "y_dw_corr"
-  
+
     else:
         name_xup = "x_up"
         name_xdw = "x_dw"
-        name_yup = "y_up"
-        name_ydw = "y_dw"
-
+        
     try:
 
         field_shift = float(field_shift_pc_edit.text())
@@ -331,6 +323,7 @@ def apply_shift(dataframes,
 
         try :
             fit_data(*args)
+            logger.info(f"Applied field shift of {field_shift} to data. Updated fits after shift.")
 
         except Exception as e:
             QMessageBox.critical(window, "Error", f"Error during fit:\n{e}")

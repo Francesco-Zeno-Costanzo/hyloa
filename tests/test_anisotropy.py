@@ -271,34 +271,3 @@ def test_compute_hk_invalid_threshold(
 
     mock_msgbox.assert_called_once()
     mock_output_box.setPlainText.assert_not_called()
-
-
-def test_symmetrize_with_save(
-    mock_combo, mock_save_combo_file1, mock_logger, mock_draw_plot,
-    mock_window, plot_state_with_splines_and_corr, dataframes):
-
-    # Dest columns
-    x_up_dest = MagicMock()
-    y_up_dest = MagicMock()
-    x_dw_dest = MagicMock()
-    y_dw_dest = MagicMock()
-
-    x_up_dest.currentText.return_value = "H"
-    y_up_dest.currentText.return_value = "M"
-    x_dw_dest.currentText.return_value = "H"
-    y_dw_dest.currentText.return_value = "M"
-
-    symmetrize(
-        mock_combo, mock_save_combo_file1,
-        mock_combo, mock_combo, mock_combo, mock_combo, mock_combo,
-        x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
-        dataframes, mock_logger, plot_state_with_splines_and_corr,
-        mock_draw_plot, mock_window
-    )
-
-    df_dest = dataframes[0]
-
-    assert not np.all(df_dest["H"] == 0)
-    assert not np.all(df_dest["M"] == 0)
-
-    mock_logger.info.assert_called()

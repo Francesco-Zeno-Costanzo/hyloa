@@ -284,9 +284,8 @@ def compute_Hk(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error during anisotropy field calculation:\n{e}")
 
-def symmetrize(file_combo, save_file_combo,
+def symmetrize(file_combo,
                x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
-               x_up_dest,  y_up_dest,  x_dw_dest,    y_dw_dest,
                dataframes, logger, plot_state, draw_plot,
                window):
     '''
@@ -309,9 +308,6 @@ def symmetrize(file_combo, save_file_combo,
     ----------
     file_combo : QComboBox
         Combo box used to select the source data file.
-    save_file_combo : QComboBox
-        Combo box used to select the destination file for saving the
-        symmetrized data. If set to "No save", the data are not written.
     x_up_combo : QComboBox
         Combo box selecting the X column for the up branch.
     y_up_combo : QComboBox
@@ -358,13 +354,6 @@ def symmetrize(file_combo, save_file_combo,
         x_dw_col = x_down_combo.currentText()
         y_dw_col = y_down_combo.currentText()
 
-        save_choice  = save_file_combo.currentIndex()  # 0 = No save, >0 => file index adjust
-        
-        if save_choice == 0:
-            save_idx = None
-        else:
-            # save_file_combo items: ["No save", "File 1", "File 2"...]
-            save_idx = save_choice - 1
 
         x_up, y_up = plot_state["spline_up"]
         x_dw, y_dw = plot_state["spline_dw"] 
@@ -402,18 +391,6 @@ def symmetrize(file_combo, save_file_combo,
         
         logger.info("\n".join(log_lines))
 
-        # Save corrected columns if requested
-        if save_idx is not None:
-            df_dest = dataframes[save_idx]
-
-            df_dest[x_up_dest.currentText()] = x_new_up
-            df_dest[y_up_dest.currentText()] = y_new_up
-            
-            df_dest[x_dw_dest.currentText()] = x_new_dw
-            df_dest[y_dw_dest.currentText()] = y_new_dw
-
-            logger.info("Corrected columns saved to destination file.")
-      
     
     except Exception as e:
         QMessageBox.critical(window, "Error", f"Error symmetrization:\n{e}")

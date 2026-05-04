@@ -127,6 +127,8 @@ def change_ps(plot_state, window, draw_plot, mode="cp"):
                 "e_dw"     : None,
                 "fit_hc_p" : None,
                 "fit_hc_n" : None,
+                "fit_rm_p" : None,
+                "fit_rm_n" : None,
                 "spline_up": None,
                 "spline_dw": None
             })
@@ -654,17 +656,22 @@ def fit_data(file_combo,
             e_up = plot_state["e_up"]
             e_dw = plot_state["e_dw"]
         else:
-            x_up = plot_state["x_up"]
-            y_up = plot_state["y_up"]
-            x_dw = plot_state["x_dw"]
-            y_dw = plot_state["y_dw"]
+            try :
+                x_up = plot_state["x_up"]
+                y_up = plot_state["y_up"]
+                x_dw = plot_state["x_dw"]
+                y_dw = plot_state["y_dw"]
 
-            tail = np.concatenate((y_up[0:25], y_dw[-25:], 
-                                   y_up[-25:], y_dw[0:25]))
-            dy_data_err = np.std(tail)
-            dy_err = (2*np.random.random(x_up.size) - 1) * dy_data_err
-            e_up = dy_err
-            e_dw = dy_err
+                tail = np.concatenate((y_up[0:25], y_dw[-25:], 
+                                    y_up[-25:], y_dw[0:25]))
+                dy_data_err = np.std(tail)
+                dy_err = (2*np.random.random(x_up.size) - 1) * dy_data_err
+                e_up = dy_err
+                e_dw = dy_err
+
+            except Exception as e:
+                QMessageBox.critical(window, "Error", f"Ensure of data selection:\n{e}")
+                return
         
         if e_up is None:
             QMessageBox.critical(window, "Error", f"You need to correct data first")
@@ -678,24 +685,24 @@ def fit_data(file_combo,
             g_func         = eval(func_code_hc, {"np": np, "__builtins__": {}})
         
         except Exception as e:
-            QMessageBox.critical(window, "Error", f"Invalid function for coercive fit:\n{e}")
+            QMessageBox.critical(window, "Error", f"Invalid function for fit:\n{e}")
             return
         
-        # Fit coercivity
+        # Fit 
         try:
             x_n_start = float(x_start_dw_edit.text())
             x_n_end   = float(x_end_dw_edit.text())
             x_p_start = float(x_start_up_edit.text())
             x_p_end   = float(x_end_up_edit.text())
         except Exception as e:
-            QMessageBox.critical(window, "Error", f"Invalid value for Hc range:\n{e}")
+            QMessageBox.critical(window, "Error", f"Invalid value for range:\n{e}")
             return
         
         mask_n = (x_dw >= x_n_start) & (x_dw <= x_n_end)
         mask_p = (x_up >= x_p_start) & (x_up <= x_p_end)
 
         if mask_n.sum() < 2 or mask_p.sum() < 2:
-            QMessageBox.critical(window, "Error", "Not enough points in coercive fit ranges.")
+            QMessageBox.critical(window, "Error", "Not enough points in fit ranges.")
             return
         else :
             # Perform weighted fits

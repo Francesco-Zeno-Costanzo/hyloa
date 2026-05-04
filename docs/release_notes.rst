@@ -2,6 +2,25 @@
 HYLOA Release Notes
 =========================
 
+Version 1.12.0 - 2026-05-04
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**New Features**
+
+- This release introduce a new way to close hysteresis loops; instead of considering the last point of the loop as the closing point, the user can now choose to close the loop at a specific field value.
+
+**Interface Improvements**
+
+- The hysteresis loop correction panel has been improved with a new control panel with collapsable sections to improve readability and usability. 
+
+- The hysteresis loop correction panel now also includes a new section to perform analysis on the corrected loop, such as coercive field and remanence estimation.
+
+- For the normalization and the closure of loops, the user can now choose directly from the plotted data. And for the closure, is possible to see a preview of the loop closure before applying it.
+
+Version 1.11.1 - 2026-02-15
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Minor changes due to documentation
+Add shortcut to save and run python scripts
+
 Version 1.11.0 - 2026-02-15
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This release introduces major improvements to cross-worksheet data handling,

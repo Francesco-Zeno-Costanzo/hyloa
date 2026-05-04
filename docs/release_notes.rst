@@ -2,6 +2,10 @@
 HYLOA Release Notes
 =========================
 
+Version 1.12.1 - 2026-05-04
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Fix bug in the normalization of data from the first file
+
 Version 1.12.0 - 2026-05-04
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This release introduces a new feature for the closure of hysteresis loops and several improvements to the interface of the program.

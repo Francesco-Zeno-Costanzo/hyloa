@@ -593,11 +593,11 @@ def plot_data(plot_window_instance, app_instance):
         else:
             for i, (x, y) in enumerate(zip(X, Y)):
                 if i % 2 == 0:
-                    line1, = ax.plot(x[1], y[1], label=f"Cycle {i // 2 + 1}")
+                    line1, = ax.plot(x, y, label=f"Cycle {i // 2 + 1}")
                     line1._cols = (xn[i], yn[i])
                     line1._file_index = f_idx[i]
                 else:
-                    line2, = ax.plot(x[1], y[1])
+                    line2, = ax.plot(x, y)
                     line2._cols = (xn[i], yn[i])
                     line2._file_index = f_idx[i]
 

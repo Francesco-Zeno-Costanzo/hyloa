@@ -346,6 +346,9 @@ def close_loop_dialog(plot_instance, app_instance):
     cycle_checks = {}
     cycle_map    = {}
 
+    button_group = QButtonGroup(window)
+    button_group.setExclusive(True)
+
     for i in range(0, len(lines), 2):
         idx = i // 2
 
@@ -358,6 +361,9 @@ def close_loop_dialog(plot_instance, app_instance):
 
         cycle_checks[label] = cb
         cycle_map[label]    = idx
+
+        button_group.addButton(cb)
+        
         cb.stateChanged.connect(update_preview)
 
     #===============================

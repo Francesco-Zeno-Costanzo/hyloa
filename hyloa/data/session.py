@@ -104,6 +104,9 @@ def save_current_session(app_instance, parent_widget=None):
             "plot_names": {
                 idx : name for idx, name in app_instance.plot_names.items()
             },
+            "plot_control_pos": (app_instance.plot_control_subwindow.pos().x(),
+                                 app_instance.plot_control_subwindow.pos().y()
+                                ),
             "tab_order": list(app_instance.plot_widgets.keys()),
             "plot_windows_geometry": {
                 idx: {
@@ -124,7 +127,7 @@ def save_current_session(app_instance, parent_widget=None):
             },
 
         }
-
+       
         with gzip.open(file_path, "wb") as f:
             pickle.dump(session_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -207,6 +210,7 @@ def load_previous_session(app_instance, parent_widget=None):
         app_instance.open_default_panels()
 
         # Recreate all plot's control panels
+        plot_control_pos  = session_data.get("plot_control_pos")
         plot_widgets_data = session_data.get("plot_widgets", {})
         plot_names_data   = session_data.get("plot_names",   {}) 
         
@@ -239,7 +243,11 @@ def load_previous_session(app_instance, parent_widget=None):
             app_instance.plot_widgets[idx] = widget
             app_instance.plot_names[idx]   = plot_name
 
+            if plot_control_pos and app_instance.plot_control_subwindow is not None:
+                QTimer.singleShot(0, lambda: app_instance.plot_control_subwindow.move(plot_control_pos[0], plot_control_pos[1]))
+
             widget.plot() # Force the plot
+
             # ... and for plot windows
             fig_geom = session_data.get("plot_windows_geometry", {}).get(idx)
             fig_sub  = app_instance.figure_subwindows.get(idx)

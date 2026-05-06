@@ -89,7 +89,7 @@ def load_files(app_instance):
                 with open(file_path, "r", encoding='utf-8') as f:
                     header = f.readline().strip().split("\t")
 
-            app_instance.logger.info(f"Apertura file {file_path}")
+            app_instance.logger.info(f"Opening file {file_path}")
             show_column_selection(app_instance, file_path, header, index_to_replace)
 
         except Exception as e:
@@ -164,7 +164,9 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
     # Create a dialog window
     dialog = QWidget()
     dialog.setWindowTitle(f"Select Columns: {os.path.basename(file_path)}")
-    dialog.setGeometry(100, 100, 900, 750)
+    dialog.move(100, 100)
+    dialog.setMinimumSize(900, 750)
+    dialog.adjustSize()
     main_layout = QVBoxLayout(dialog)
 
     # Instructions
@@ -338,8 +340,10 @@ def save_modified_data(app_instance, parent_widget):
     
     dialog = QDialog(parent_widget)
     dialog.setWindowTitle("Select the file to save")
-    dialog.setGeometry(100, 100, 500, 300)
-
+    dialog.move(100, 100)
+    dialog.setMinimumSize(500, 300)
+    dialog.adjustSize()
+    
     layout = QVBoxLayout(dialog)
     layout.addWidget(instructions)
     layout.addWidget(QLabel("Select the file to save:"))

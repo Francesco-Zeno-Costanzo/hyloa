@@ -448,7 +448,8 @@ class PlotSubWindow(QMdiSubWindow):
         self.plot_id      = plot_id
         self.setWidget(plot_widget)
         self.setWindowTitle(f"Control - {plot_widget.plot_name}")
-        self.resize(600, 300)
+        self.setMinimumSize(600, 300)
+        self.adjustSize()
 
     def closeEvent(self, event):
         '''
@@ -533,7 +534,8 @@ def plot_data(plot_window_instance, app_instance):
         sub = QMdiSubWindow()
         sub.setWindowTitle(f"Plot - {plot_name}")
         sub.setWidget(plot_area)
-        sub.resize(800, 600)
+        sub.setMinimumSize(800, 600)
+        sub.adjustSize()
         app_instance.mdi_area.addSubWindow(sub)
         sub.show()
         # Save for session loading
@@ -578,10 +580,12 @@ def plot_data(plot_window_instance, app_instance):
             logger.info(f"Plot of: {x_col} vs {y_col}")
 
         if not plot_customizations:
-            col = plt.cm.jet(np.linspace(0, 1, len(X)))
+            base_colors = list(plt.get_cmap("tab10").colors)
             for i in range(0, len(X), 2):
-                line1, = ax.plot(X[i],   Y[i],   color=col[i], marker=".", label=f"Cycle {i//2 + 1}")
-                line2, = ax.plot(X[i+1], Y[i+1], color=col[i], marker=".")
+                c_idx  = i // 2
+                color  = base_colors[c_idx % len(base_colors)]
+                line1, = ax.plot(X[i],   Y[i],   color=color, marker=".", label=f"Cycle {i//2 + 1}")
+                line2, = ax.plot(X[i+1], Y[i+1], color=color, marker=".")
             
                 # save name of columns for later use in normalization or loop closure
                 line1._cols = (xn[i], yn[i])
@@ -694,7 +698,8 @@ def customize_plot_style(parent_widget, plot_customizations, number_plots, figur
     # === Dialog ===
     dialog = QDialog(parent_widget)
     dialog.setWindowTitle("Customize Graphic Style")
-    dialog.setFixedSize(400, 360)
+    dialog.setMinimumSize(400, 360)
+    dialog.adjustSize()
 
     layout = QVBoxLayout(dialog)
     form_layout = QFormLayout()
@@ -786,7 +791,8 @@ def customize_plot_appearance(parent_widget):
 
     dialog = QDialog(parent_widget)
     dialog.setWindowTitle("Plot Appearance")
-    dialog.setFixedSize(350, 250)
+    dialog.setMinimumSize(350, 250)
+    dialog.adjustSize()
     layout = QFormLayout(dialog)
 
     # Font sizes
@@ -898,6 +904,8 @@ def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizatio
     # === Dialog ===
     dialog = QDialog(parent_widget)
     dialog.setWindowTitle("Show/Hide Cycles")
+    dialog.setMinimumSize(400, 300)
+    dialog.adjustSize()
 
     layout        = QVBoxLayout(dialog)
     scroll_area   = QScrollArea()
@@ -1126,6 +1134,7 @@ def open_curve_fitting_window(app_instance, plot_widget):
     sub = QMdiSubWindow()
     sub.setWidget(window)
     sub.setWindowTitle("Quick Curve Fitting")
-    sub.resize(600, 300)
+    sub.setMinimumSize(600, 300)
+    sub.adjustSize()
     app_instance.mdi_area.addSubWindow(sub)
     sub.show()

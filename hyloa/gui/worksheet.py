@@ -75,7 +75,8 @@ class WorksheetWindow(QMdiSubWindow):
         self.mdi_area = mdi_area
         self.name = name
         self.setWindowTitle(f"Worksheet - {self.name}")
-        self.resize(550, 500)
+        self.setMinimumSize(500, 500)
+        self.adjustSize()
 
         # Logger
         self.logger = logger
@@ -573,7 +574,8 @@ class WorksheetWindow(QMdiSubWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Import column from loaded data")
-        dialog.resize(500, 200)
+        dialog.setMinimumSize(500, 200)
+        dialog.adjustSize()
 
         layout = QHBoxLayout(dialog)
 
@@ -1499,7 +1501,8 @@ class WorksheetWindow(QMdiSubWindow):
         sub = QMdiSubWindow()
         sub.setWidget(window)
         sub.setWindowTitle("Quick Curve Fitting")
-        sub.resize(550, 300)
+        sub.setMinimumSize(550, 300)
+        sub.adjustSize()
         self.mdi_area.addSubWindow(sub)
         sub.show()
 

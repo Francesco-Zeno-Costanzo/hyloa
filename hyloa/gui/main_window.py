@@ -65,9 +65,9 @@ class MainApp(QMainWindow):
         self.setWindowTitle("Hysteresis Loop Analyzer - tmp session")
         
         # Set geometry with percentages of screen size
-        screen = QApplication.primaryScreen().availableGeometry()
-        width  = int(screen.width()  * 0.5)
-        height = int(screen.height() * 0.5)
+        self.screen = QApplication.primaryScreen().availableGeometry()
+        width  = int(self.screen.width()  * 0.5)
+        height = int(self.screen.height() * 0.5)
         self.resize(width,  height)
         
         # Center the window
@@ -195,18 +195,51 @@ class MainApp(QMainWindow):
         scroll_area.setWidget(scroll_content)
         container_layout.addWidget(scroll_area)
 
-        container.setFixedWidth(160)
+        
+        sidebar_width = int(self.screen.width() * 0.10)   # 10% of screen width
+        sidebar_width = max(160, min(sidebar_width, 300)) # Ensure between 160 and 300
+        container.setFixedWidth(sidebar_width)
 
         dock.setWidget(container)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
 
         
     def make_button(self, text, callback):
+        '''
+        Function to create a button with a callback, used for the sidebar
+
+        Parameters
+        ----------
+        text : str
+            The text to display on the button
+        callback : function
+            The function to call when the button is clicked
+        
+        Returns
+        -------
+        btn : QPushButton
+             The created button
+        '''
         btn = QPushButton(text)
         btn.clicked.connect(callback)
         return btn
 
     def make_group(self, title, button_info):
+        '''
+        Function to create a group of buttons with a title, used for the sidebar
+        
+        Parameters
+        ----------
+        title : str
+            The title of the group
+        button_info : list of tuples
+            A list of tuples where each tuple contains the button text and the callback function    
+        
+        Returns
+        -------
+        group : QGroupBox
+            The created group box containing the buttons
+        '''
         group = QGroupBox(title)
         layout = QVBoxLayout()
         for label, callback in button_info:
@@ -318,8 +351,10 @@ class MainApp(QMainWindow):
             text_widget.setText("\n".join(lines))
 
         sub.setWidget(text_widget)
+        sub.setMinimumSize(300, 200)
+        sub.adjustSize()
+
         self.mdi_area.addSubWindow(sub)
-        sub.resize(400, 300)
         sub.show()
 
     def save_data(self):
@@ -372,8 +407,10 @@ class MainApp(QMainWindow):
             self.plot_control_subwindow.setWidget(self.plot_tabs)
             self.plot_control_subwindow.setWindowTitle("Plot Controls")
 
+            self.plot_control_subwindow.setMinimumSize(600, 400)
+            self.plot_control_subwindow.adjustSize()
             self.mdi_area.addSubWindow(self.plot_control_subwindow)
-            self.plot_control_subwindow.resize(600, 400)
+            
             self.plot_control_subwindow.show()
 
 
@@ -468,7 +505,6 @@ class MainApp(QMainWindow):
         self.shell_sub = QMdiSubWindow()
         self.shell_sub.setWidget(self.shell_widget)
         self.shell_sub.setWindowTitle("Python Shell")
-        self.shell_sub.resize(self.width() // 2, 300)
         self.mdi_area.addSubWindow(self.shell_sub)
         self.shell_sub.show()
 
@@ -477,11 +513,10 @@ class MainApp(QMainWindow):
         self.log_sub = QMdiSubWindow()
         self.log_sub.setWidget(log_widget)
         self.log_sub.setWindowTitle("Log Output")
-        self.log_sub.resize(self.width() // 2, 300)
         self.mdi_area.addSubWindow(self.log_sub)
         self.log_sub.show()
 
-        self.position_default_panels()
+        QTimer.singleShot(0, self.position_default_panels)
     
     def position_default_panels(self):
         ''' 
@@ -498,9 +533,9 @@ class MainApp(QMainWindow):
         width        = mdi_size.width()
         height       = mdi_size.height()
         half_width   = width // 2
-        panel_height = 300
+        panel_height = max(300, height // 4)
 
-        # If too small adapt height
+        """# If too small adapt height
         if panel_height * 2 > height:
             panel_height = height // 2
 
@@ -509,7 +544,9 @@ class MainApp(QMainWindow):
 
         self.shell_sub.move(0, height - panel_height)
         self.log_sub.move(half_width, height - panel_height)
-
+        """
+        self.shell_sub.setGeometry(0, height - panel_height, half_width, panel_height)
+        self.log_sub.setGeometry(half_width, height - panel_height, half_width, panel_height)
 
     def refresh_shell_variables(self):
         ''' Function to automatically add new variables to the shell context
@@ -531,7 +568,8 @@ class MainApp(QMainWindow):
         sub = QMdiSubWindow()
         sub.setWidget(editor.window)
         sub.setWindowTitle("Editor di Script")
-        sub.resize(600, 600)
+        sub.setMinimumSize(600, 600)
+        sub.adjustSize()
         self.mdi_area.addSubWindow(sub)
         sub.show()
     

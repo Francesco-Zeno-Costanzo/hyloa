@@ -82,6 +82,10 @@ def start_logging(app_instance, parent_widget=None):
         "Log Files (*.log);;Tutti i file (*)"
     )
 
+    # Ensure .log extension
+    if log_file and not log_file.endswith('.log'):
+        log_file += '.log'
+
     if log_file:
         try:
             setup_logging(log_file)

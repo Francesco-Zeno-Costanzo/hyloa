@@ -2,6 +2,19 @@
 HYLOA Release Notes
 =========================
 
+Version 1.12.2 - 2026-05-13
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Bug Fixes**
+
+- Fix bug in plotting data with visual customisation.
+
+- Fix bug ensuring ".log" extension for log files.
+
+- Fix bug for sub-windows' size and position, now they are created,saved and restored correctly.
+
+- Now the default palette for plots is "tab10", and the colours of a loop do not change if another loop is added to the same plot.
+
 Version 1.12.1 - 2026-05-04
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Fix bug in the normalization of data from the first file

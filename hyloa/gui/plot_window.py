@@ -42,6 +42,7 @@ from hyloa.data.processing import inv_single_branch_dialog
 from hyloa.data.processing import inv_x_dialog, inv_y_dialog
 from hyloa.data.processing import norm_dialog, close_loop_dialog
 from hyloa.gui.correction_window import correct_hysteresis_loop
+from hyloa.gui.utils import FigureSubWindow
 
 #==============================================================================================#
 # Main class for managing the plot window                                                      #
@@ -420,61 +421,6 @@ class PlotControlWidget(QWidget):
         correct_hysteresis_loop(self.app_instance)
 
 
-#==============================================================================================#
-# Class to overwrite close event to remove discarded figures                                   #
-#==============================================================================================#
-
-class PlotSubWindow(QMdiSubWindow):
-    ''' 
-    Class to overwrite close event to remove discarded figures
-    Associates a plot widget with a subwindow and handles cleanup upon closing by 
-    removing internal references to the widget and its figure.
-    '''
-
-    def __init__(self, app_instance, plot_widget, plot_id):
-        '''
-        Parameters
-        ----------
-        app_instance : MainApp
-            Main application instance containing the session data.
-        plot_widget : QWidget
-            The widget containing the plot to be displayed.
-        plot_id : int
-            current plot number
-        '''
-        super().__init__()
-        self.app_instance = app_instance
-        self.plot_widget  = plot_widget
-        self.plot_id      = plot_id
-        self.setWidget(plot_widget)
-        self.setWindowTitle(f"Control - {plot_widget.plot_name}")
-        self.setMinimumSize(600, 300)
-        self.adjustSize()
-
-    def closeEvent(self, event):
-        '''
-        Handle the window close event and remove associated plot references.
-
-        Removes the control widget and its corresponding figure
-        from the application's internal mappings.
-        Logs the removal of the figure.
-
-        Parameters
-        ----------
-        event : QCloseEvent
-            The close event triggered when the window is closed.
-        '''
-        # Remove the control widget
-        if self.plot_id in self.app_instance.plot_widgets:
-            del self.app_instance.plot_widgets[self.plot_id]
-            del self.app_instance.plot_names[self.plot_id]
-
-        # Remove the associated figure
-        if self.plot_id in self.app_instance.figures_map:
-            del self.app_instance.figures_map[self.plot_id]
-            self.app_instance.logger.info(f"Figure {self.plot_id} removed from figures_map.")
-
-        event.accept()
         
 #==============================================================================================#
 # Function that creates the plot with the chosen data                                          #
@@ -531,7 +477,11 @@ def plot_data(plot_window_instance, app_instance):
         plot_window_instance.toolbar = toolbar 
 
         # Sub-window
-        sub = QMdiSubWindow()
+        sub = FigureSubWindow(
+            app_instance,
+            plot_window_instance,
+            number_plots
+        )
         sub.setWindowTitle(f"Plot - {plot_name}")
         sub.setWidget(plot_area)
         sub.setMinimumSize(800, 600)

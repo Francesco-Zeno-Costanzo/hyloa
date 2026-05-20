@@ -15,15 +15,18 @@
 # along with HYLOA. If not, see <https://www.gnu.org/licenses/>.
 
 """
-Simple collapsible section widget for PyQt5, 
-used in the settings dialog to group related settings together.
+Code for utility classes and functions used in the GUI, such as the collapsible section widget and the custom subwindow for matplotlib figures.
 """
+from PyQt5.QtWidgets import QMdiSubWindow, QMessageBox
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QToolButton
 from PyQt5.QtCore import Qt
+import matplotlib.pyplot as plt
 
 
 class CollapsibleSection(QWidget):
-    ''' A collapsible section widget for PyQt5.
+    '''
+    Simple collapsible section widget for PyQt5, 
+    used in the settings dialog to group related settings together.
     '''
     def __init__(self, title="", parent=None):
         '''
@@ -104,3 +107,54 @@ class CollapsibleSection(QWidget):
             layout (QLayout): The layout to add.
         '''
         self.content_layout.addLayout(layout)
+
+
+#==============================================================================================#
+# Class to overwrite close event to remove discarded figures                                   #
+#==============================================================================================#
+
+class FigureSubWindow(QMdiSubWindow):
+    """
+    Subwindow that contains the matplotlib figure.
+    Handles cleanup and close confirmation.
+    """
+
+    def __init__(self, app_instance, plot_widget, plot_id):
+        super().__init__()
+
+        self.app_instance = app_instance
+        self.plot_widget  = plot_widget
+        self.plot_id      = plot_id
+
+    def closeEvent(self, event):
+        '''
+        Handle the close event for the figure subwindow.
+        Asks for confirmation before closing, and if confirmed,
+        it cleans up the matplotlib figure and removes the reference
+        from the main application to allow for proper cleanup and potential recreation of the plot.
+        '''
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm closing",
+            f"Do you really want to close plot '{self.plot_widget.plot_name}'?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            event.ignore()
+            return
+
+        # Reset references so the plot can be recreated
+        self.plot_widget.figure  = None
+        self.plot_widget.ax      = None
+        self.plot_widget.canvas  = None
+        self.plot_widget.toolbar = None
+        plt.close(self.plot_widget.figure)
+
+        # Remove stored subwindow reference
+        if self.plot_id in self.app_instance.figure_subwindows:
+            del self.app_instance.figure_subwindows[self.plot_id]
+
+        event.accept()

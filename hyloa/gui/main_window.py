@@ -44,7 +44,6 @@ from hyloa.data.session import load_previous_session
 
 # Code for interface
 from hyloa.gui.log_window import LogWindow
-from hyloa.gui.plot_window import PlotSubWindow
 from hyloa.gui.script_window import ScriptEditor
 from hyloa.gui.command_window import CommandWindow
 from hyloa.gui.plot_window import PlotControlWidget

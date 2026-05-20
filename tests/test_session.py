@@ -117,12 +117,11 @@ def test_load_session_cancelled(mock_get_open, mock_warning):
 
 @patch("hyloa.data.session.QMessageBox.information")
 @patch("hyloa.data.session.PlotControlWidget")
-@patch("hyloa.data.session.PlotSubWindow")
 @patch("hyloa.data.session.pickle.load")
 @patch("builtins.open", create=True)
 @patch("hyloa.data.session.QFileDialog.getOpenFileName")
 def test_load_session_success(mock_get_open, mock_open, mock_pickle_load,
-                               mock_plotsub, mock_plotctrl, mock_info):
+                              mock_plotctrl, mock_info):
     
     mock_get_open.return_value = ("dummy_path.pkl", "")
     

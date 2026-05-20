@@ -333,7 +333,7 @@ def correct_hysteresis_loop(app_instance):
 
     preliminary_section = CollapsibleSection("Tail correction")
     left_layout.addWidget(preliminary_section)
-    preliminary_section.addWidget(QLabel("Field scaling and tail correction."))
+    preliminary_section.addWidget(QLabel("*** Field scaling and tail correction ***", alignment=Qt.AlignCenter))
 
     st_grid = QGridLayout()
     preliminary_section.addLayout(st_grid)
@@ -360,7 +360,7 @@ def correct_hysteresis_loop(app_instance):
     # Set parameters for the mag corrections        #
     #===============================================#
 
-    preliminary_section.addWidget(QLabel(" Fit for tail correction "))
+    preliminary_section.addWidget(QLabel(" Fit for tail correction: "))
 
     limits_grid = QGridLayout()
     preliminary_section.addLayout(limits_grid)
@@ -429,7 +429,8 @@ def correct_hysteresis_loop(app_instance):
     corr_btn_box.addWidget(del_od_btn, 0, 2)
 
     box_options = QGridLayout()
-    preliminary_section.addWidget(QLabel("In case of single branch:"))
+    
+    preliminary_section.addWidget(QLabel("*** In case of single branch: ***", alignment=Qt.AlignCenter))
     preliminary_section.addLayout(box_options)
     
     # Select option to duplicate a branch
@@ -446,20 +447,24 @@ def correct_hysteresis_loop(app_instance):
     # Data selection for parameter estimations      #
     #===============================================#
 
-    analysis_section = CollapsibleSection("Coercivity and remanence estimation")
-    left_layout.addWidget(analysis_section)
+    preliminary_section.addWidget(QLabel("*** Data selection for parameter estimation ***", alignment=Qt.AlignCenter))
     data_used = QGridLayout()
-    analysis_section.addLayout(data_used)
+    preliminary_section.addLayout(data_used)
     # Select option to duplicate a branch
     data_sel = QComboBox()
     data_sel.addItem("Original")
     data_sel.addItem("Corrected")
-    data_used.addWidget(QLabel("Select data for fit: "), 0, 0)
+    data_used.addWidget(QLabel("Select data to use: "), 0, 0)
     data_used.addWidget(data_sel, 0, 1)
+
 
     #===============================================#
     # Set parameters for coercivity computation     #
     #===============================================#
+
+    analysis_section = CollapsibleSection("Coercivity and remanence estimation")
+    left_layout.addWidget(analysis_section)
+    
 
     analysis_section.addWidget(QLabel("*** Fit for coercivity estimation ***", alignment=Qt.AlignCenter))
 

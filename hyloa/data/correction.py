@@ -437,14 +437,8 @@ def perform_correction(file_combo,
         except Exception:
             x_p_start, x_p_end = 1000, 4000
         
-        
+
         if not (x_n_start == x_n_end and x_p_start == x_p_end):
-            
-            # Masks for up/down tails split by sign
-            mask_n_up = (x_up >= x_n_start) & (x_up <= x_n_end)
-            mask_p_up = (x_up >= x_p_start) & (x_up <= x_p_end)
-            mask_n_dw = (x_dw >= x_n_start) & (x_dw <= x_n_end)
-            mask_p_dw = (x_dw >= x_p_start) & (x_dw <= x_p_end)
             
             #=========================================#
             # Auxiliary functions for fitting         #
@@ -474,22 +468,28 @@ def perform_correction(file_combo,
 
             #=========================================#
 
+            # Masks for up/down tails split by sign
+            mask_n_up = (x_up >= x_n_start) & (x_up <= x_n_end)
+            mask_n_dw = (x_dw >= x_n_start) & (x_dw <= x_n_end)
+            mask_p_up = (x_up >= x_p_start) & (x_up <= x_p_end)
+            mask_p_dw = (x_dw >= x_p_start) & (x_dw <= x_p_end)            
+
             # Fit linear tails (four fits)
             p_up_1, c_up_1 = curve_fit(f_func, x_up[mask_n_up], y_up[mask_n_up])
-            p_up_2, c_up_2 = curve_fit(f_func, x_up[mask_p_up], y_up[mask_p_up])
             p_dw_1, c_dw_1 = curve_fit(f_func, x_dw[mask_n_dw], y_dw[mask_n_dw])
+            p_up_2, c_up_2 = curve_fit(f_func, x_up[mask_p_up], y_up[mask_p_up])
             p_dw_2, c_dw_2 = curve_fit(f_func, x_dw[mask_p_dw], y_dw[mask_p_dw])
 
             # Parameter errors
             dp_up_1 = np.sqrt(np.diag(c_up_1))
-            dp_up_2 = np.sqrt(np.diag(c_up_2))
             dp_dw_1 = np.sqrt(np.diag(c_dw_1))
+            dp_up_2 = np.sqrt(np.diag(c_up_2))
             dp_dw_2 = np.sqrt(np.diag(c_dw_2))
 
             # Model dispersion error
             e_up_1 = s2(x_up[mask_n_up], y_up[mask_n_up], f_func, p_up_1)
-            e_up_2 = s2(x_up[mask_p_up], y_up[mask_p_up], f_func, p_up_2)
             e_dw_1 = s2(x_dw[mask_n_dw], y_dw[mask_n_dw], f_func, p_dw_1)
+            e_up_2 = s2(x_up[mask_p_up], y_up[mask_p_up], f_func, p_up_2)            
             e_dw_2 = s2(x_dw[mask_p_dw], y_dw[mask_p_dw], f_func, p_dw_2)
 
             e_up = (e_up_1 + e_up_2) * 0.5

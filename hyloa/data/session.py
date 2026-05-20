@@ -34,7 +34,6 @@ from PyQt5.QtWidgets import (
 
 from hyloa.utils.logging_setup import setup_logging
 
-from hyloa.gui.plot_window import PlotSubWindow
 from hyloa.gui.plot_window import PlotControlWidget
 from hyloa.gui.worksheet import WorksheetWindow
 

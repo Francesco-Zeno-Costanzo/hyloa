@@ -32,14 +32,13 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QComboBox, QMessageBox, QDialog, QFormLayout,
     QLineEdit, QMdiSubWindow, QTextEdit, QSizePolicy, QFrame,
-    QCheckBox, QDialogButtonBox, QMenu, QAction, QGridLayout,
+    QCheckBox, QDialogButtonBox, QGridLayout,
     QGroupBox, QStackedWidget, QButtonGroup
 
 )
 
 from hyloa.utils.err_format import format_value_error
-from hyloa.data.processing import inv_single_branch_dialog
-from hyloa.data.processing import inv_x_dialog, inv_y_dialog
+from hyloa.data.processing import inv_single_column_dialog
 from hyloa.data.processing import norm_dialog, close_loop_dialog
 from hyloa.gui.correction_window import correct_hysteresis_loop
 from hyloa.gui.utils import FigureSubWindow
@@ -198,29 +197,14 @@ class PlotControlWidget(QWidget):
         btn_fit = QPushButton("Curve Fitting")
         btn_fit.clicked.connect(self.curve_fitting)
 
-        flip_button = QPushButton("Flip data")
-        flip_menu   = QMenu(flip_button)
-
-        flip_x_action      = QAction("Flip X axis", self)
-        flip_y_action      = QAction("Flip Y axis", self)
-        flip_branch_action = QAction("Flip branch", self)
-
-        flip_x_action.triggered.connect(self.x_inversion)
-        flip_y_action.triggered.connect(self.y_inversion)
-        flip_branch_action.triggered.connect(self.revert_branch)
-
-        flip_menu.addAction(flip_x_action)
-        flip_menu.addAction(flip_y_action)
-        flip_menu.addSeparator()
-        flip_menu.addAction(flip_branch_action)
-
-        flip_button.setMenu(flip_menu)
-
+        btn_flip = QPushButton("Flip data")
+        btn_flip.clicked.connect(self.revert_col)
+        
         analysis_layout.addWidget(btn_normalize)
         analysis_layout.addWidget(btn_close)
         analysis_layout.addWidget(btn_correct)
         analysis_layout.addWidget(btn_fit)
-        analysis_layout.addWidget(flip_button)
+        analysis_layout.addWidget(btn_flip)
         analysis_layout.addStretch()
 
         # Add groups to stack
@@ -400,20 +384,10 @@ class PlotControlWidget(QWidget):
         '''
         close_loop_dialog(self, self.app_instance)
 
-    def x_inversion(self):
-        ''' Call function to invert x axis
-        '''
-        inv_x_dialog(self, self.app_instance)
-
-    def y_inversion(self):
-        ''' Call function to invert y axis
-        '''
-        inv_y_dialog(self, self.app_instance)
-
-    def revert_branch(self):
+    def revert_col(self):
         ''' Call function to revert a branch of a cycle
         '''
-        inv_single_branch_dialog(self, self.app_instance)
+        inv_single_column_dialog(self, self.app_instance)
     
     def correction(self):
         ''' Call function to correct a hysteresis loop

@@ -92,20 +92,6 @@ def test_norm_dialog_even_columns(mock_apply_norm, qapp):
     del df, app_instance, plot_instance
 
 
-# Helper to simulate clicking checkboxes and the apply button
-def _select_and_apply():
-    from PyQt5.QtWidgets import QApplication, QCheckBox, QPushButton
-
-    app = QApplication.instance()
-
-    for widget in app.allWidgets():
-        # select checkboxes
-        if isinstance(widget, QCheckBox):
-            widget.setChecked(True)
-
-        # Apply
-        if isinstance(widget, QPushButton) and widget.objectName() == "apply_button":
-            widget.click()
 
 
 @patch("hyloa.data.processing.QMessageBox.information")
@@ -221,76 +207,6 @@ def test_apply_loop_closure_success(mock_info):
     assert app_instance.dataframes[0]["Y1"].values[0] == pytest.approx(
            app_instance.dataframes[0]["Y2"].values[0], rel=1e-3)
 
-
-
-@patch("hyloa.data.processing.QMessageBox.information")
-def test_applay_inversion(mock_info):
-    # Data simulation
-    x = np.linspace(-1, 1, 200)  # Magnetic field
-    np.random.seed(69420)        # For reproducibility
-    noise = np.random.normal(0, 0.0005, size=x.shape)  # Gaussian error
-    """
-    # Creation of the two branches of the hysteresis loop
-    # The sigmoid function is used to simulate the hysteresis loop
-    # The noise is added to simulate the experimental error
-    # The last term is a linear trend to simulate a drift
-    # The -0.003 is due to the fact that the loop is always closed at one of the extreme points.
-    """
-    y_up = 0.025 + 0.015 * (1 / (1 + np.exp(-10 * (x-0.25)))) + noise + (0.003*x - 0.003)
-    y_dw = 0.025 + 0.015 * (1 / (1 + np.exp( 10 * (x-0.25))))[::-1] + noise[::-1]
-
-    # Create a sample dataframe with a simple loop structure
-    df = pd.DataFrame({
-        "X1": x,
-        "Y1": y_up,
-        "X2": x,
-        "Y2": y_dw
-    })
-
-    # Prepare the mock application instance
-    app_instance = MagicMock()
-    app_instance.logger = MagicMock()
-    app_instance.dataframes = [df.copy()]
-
-    # Plot instance mock
-    plot_instance = MagicMock()
-
-
-    # Mock combo box for column names
-    x_combo1 = MagicMock()
-    x_combo1.currentText.return_value = "X1"
-    y_combo1 = MagicMock()
-    y_combo1.currentText.return_value = "Y1"
-    x_combo2 = MagicMock()
-    x_combo2.currentText.return_value = "X2"
-    y_combo2 = MagicMock()
-    y_combo2.currentText.return_value = "Y2"
-
-    selected_pairs = [("", x_combo1, y_combo1), ("", x_combo2, y_combo2)]
-
-    # Call the function
-    apply_inversion("both", 0, selected_pairs, app_instance.dataframes, 
-                    app_instance.logger, plot_instance)
-
-    # Ensure that values have been updated
-    assert np.all(app_instance.dataframes[0]["Y1"].values == -y_up)
-    assert np.all(app_instance.dataframes[0]["Y2"].values == -y_dw)
-    assert np.all(app_instance.dataframes[0]["X1"].values == -x)
-    assert np.all(app_instance.dataframes[0]["X2"].values == -x)
-
-    # Check logger
-    app_instance.logger.info.assert_any_call("Flip x-axis -> column X1.")
-    app_instance.logger.info.assert_any_call("Flip y-axis -> column Y1.")
-    app_instance.logger.info.assert_any_call("Flip x-axis -> column X2.")
-    app_instance.logger.info.assert_any_call("Flip y-axis -> column Y2.")
-            
-    # Check that the plot was called
-    plot_instance.plot.assert_called_once()
-
-    # Check if the success message was shown
-    mock_info.assert_called_once()
-    args, _ = mock_info.call_args
-    assert "Axis flip BOTH applied on File 1" in args[2]
 
 
 @patch("hyloa.data.processing.QMessageBox.information")

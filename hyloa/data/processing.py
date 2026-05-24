@@ -672,132 +672,13 @@ def apply_loop_closure(ell_up, ell_dw, i_up=None, i_dw=None):
 
     return ell_up, ell_dw
 
-#==============================================================================================#
-# Function to invert axis                                                                      #
-#==============================================================================================#
 
-def apply_inversion(axis, file_index, selected_pairs, dataframes, logger, plot_instance):
-    '''
-    Function to invert the x or y axis of the selected file.
-
-    Parameters
-    ----------
-    axis : str
-        axis to invert, can be "x", "y" or "both"
-    file_index : int
-        Index of the selected DataFrame.
-    selected_pairs : list
-        list of columns to plot
-    dataframes : list
-        list of loaded files, each file is a pandas dataframe
-    logger : instance of logging.getLogger
-        logger of the app
-    plot_instance : QWidget
-        Widget from which this dialog is called (usually the plot panel).
-    '''
-    try:
-        df = dataframes[file_index]
-
-        for _, x_combo, y_combo in selected_pairs:
-            if axis in ("x", "both"):
-                x_col = x_combo.currentText()
-                if x_col in df.columns:
-                    df[x_col] = df[x_col].astype(float) * -1
-                    logger.info(f"Flip x-axis -> column {x_col}.")
-
-            if axis in ("y", "both"):
-                y_col = y_combo.currentText()
-                if y_col in df.columns:
-                    df[y_col] = df[y_col].astype(float) * -1
-                    logger.info(f"Flip y-axis -> column {y_col}.")
-
-        plot_instance.plot()
-
-        QMessageBox.information(plot_instance, "Success",
-                                f"Axis flip {axis.upper()} applied on File {file_index + 1}")
-
-    except Exception as e:
-        QMessageBox.critical(plot_instance, "Error",
-                             f"Error while reversing:\n{e}")
-
-def inv_x_dialog(plot_instance, app_instance):
-    '''
-    Dialog to select a file and invert the x-axis.
-
-    Parameters
-    ----------
-    plot_instance : QWidget
-        Widget from which this dialog is called (usually the plot panel).
-    app_instance : MainApp
-        Main application instance with session state.
-    '''
-    dataframes = app_instance.dataframes
-    
-    dialog = QDialog(plot_instance)
-    dialog.setWindowTitle("Flip X-Axis")
-    layout = QVBoxLayout(dialog)
-
-    layout.addWidget(QLabel("Select the file:"))
-    file_combo = QComboBox()
-    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
-    layout.addWidget(file_combo)
-
-    apply_btn = QPushButton("Apply")
-    layout.addWidget(apply_btn)
-
-    def on_apply():
-        file_index = file_combo.currentIndex()
-        apply_inversion(
-            "x", file_index, plot_instance.selected_pairs, app_instance.dataframes,
-            app_instance.logger, plot_instance
-        )
-        dialog.accept()
-
-    apply_btn.clicked.connect(on_apply)
-    dialog.exec_()
-
-
-def inv_y_dialog(plot_instance, app_instance):
-    '''
-    Dialog to select a file and invert the y-axis.
-
-    Parameters
-    ----------
-    plot_instance : QWidget
-        Widget from which this dialog is called (usually the plot panel).
-    app_instance : MainApp
-        Main application instance with session state.
-    '''
-    dataframes = app_instance.dataframes
- 
-    dialog = QDialog(plot_instance)
-    dialog.setWindowTitle("Flip Y-Axis")
-    layout = QVBoxLayout(dialog)
-
-    layout.addWidget(QLabel("Select the file:"))
-    file_combo = QComboBox()
-    file_combo.addItems([f"File {i + 1}" for i in range(len(dataframes))])
-    layout.addWidget(file_combo)
-
-    apply_btn = QPushButton("Apply")
-    layout.addWidget(apply_btn)
-
-    def on_apply():
-        file_index = file_combo.currentIndex()
-        apply_inversion(
-            "y", file_index, plot_instance.selected_pairs, app_instance.dataframes,
-            app_instance.logger, plot_instance
-        )
-        dialog.accept()
-
-    apply_btn.clicked.connect(on_apply)
-    dialog.exec_()
 
 #==============================================================================================#
-# Function to invert a single branch of the cycle                                              #
+# Function to invert a single column of the cycle                                              #
 #==============================================================================================#
 
-def inv_single_branch_dialog(parent_widget, app_instance):
+def inv_single_column_dialog(parent_widget, app_instance):
     '''
     Creates the window to select the file and columns to reverse.
 

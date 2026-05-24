@@ -114,6 +114,9 @@ def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_co
             QMessageBox.critical(window, "Error", "Spline must be applied on corrected data.")
             return
         
+        x_min = max(x_up.min(), x_dw.min())
+        x_max = min(x_up.max(), x_dw.max())
+        
         #=========================================================#
         # Up branch spline                                        #
         #=========================================================#
@@ -135,7 +138,7 @@ def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_co
             return
         
         try :
-            x_dense_up = np.linspace(x_up.min(), x_up.max(), 5000)
+            x_dense_up = np.linspace(x_min, x_max, 5000)
             y_dense_up = BSpline(*tck_up)(x_dense_up)
         except Exception as e:
             QMessageBox.critical(window, "Error", f"Error in spline conputation for up branch: {e}.")
@@ -148,6 +151,7 @@ def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_co
         # Ensure monotonic x
         idx = np.argsort(x_dw)
         x_dw, y_dw = x_dw[idx], y_dw[idx]
+
 
         # Check duplicates
         if np.any(np.diff(x_dw) == 0):
@@ -162,7 +166,7 @@ def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_co
             return
         
         try :
-            x_dense_dw = np.linspace(x_dw.min(), x_dw.max(), 5000)
+            x_dense_dw = np.linspace(x_min, x_max, 5000)
             y_dense_dw = BSpline(*tck_dw)(x_dense_dw)
         except Exception as e:
             QMessageBox.critical(window, "Error", f"Error in spline conputation for dw branch: {e}.")

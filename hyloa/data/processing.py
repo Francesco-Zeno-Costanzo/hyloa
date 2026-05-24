@@ -281,6 +281,11 @@ def close_loop_dialog(plot_instance, app_instance):
     #===============================
     # Plot preview functions
     #===============================
+
+    dragging_line = False
+    current_field = 0.0
+    field_line    = None
+
     def get_selected_cycle():
         for label, cb in cycle_checks.items():
             if cb.isChecked():
@@ -292,6 +297,7 @@ def close_loop_dialog(plot_instance, app_instance):
         return None, None
 
     def update_preview():
+        nonlocal field_line
 
         l1, l2 = get_selected_cycle()
         if l1 is None:
@@ -302,17 +308,13 @@ def close_loop_dialog(plot_instance, app_instance):
         x2 = l2.get_xdata()
         y2 = l2.get_ydata()
 
-        field = 0.0
+        field = current_field
 
         if global_radio.isChecked():
 
             y1_new, y2_new = apply_loop_closure(y1, y2)
 
         else:
-            try:
-                field = float(field_edit.text())
-            except:
-                return
 
             i_up = np.argmin(np.abs(x1 - field))
             i_dw = np.argmin(np.abs(x2 - field))
@@ -324,8 +326,10 @@ def close_loop_dialog(plot_instance, app_instance):
 
         preview_ax.plot(x1, y1, 'k-', alpha=0.3)
         preview_ax.plot(x2, y2, 'k-', alpha=0.3)
-        preview_ax.plot(field*np.ones(10), np.linspace(-1, 1, 10), '--')
-
+        
+        field_line = preview_ax.axvline(field, linestyle='--', color='blue',
+                                        linewidth=2, picker=5)
+        
         preview_ax.plot(x1, y1_new, 'r-')
         preview_ax.plot(x2, y2_new, 'r-')
 
@@ -405,10 +409,71 @@ def close_loop_dialog(plot_instance, app_instance):
     right_layout.addWidget(preview_canvas)
 
 
-    field_edit.textChanged.connect(update_preview)
+    
+    #===============================
+    # Mouse events
+    #===============================
+
+    def on_press(event):
+        nonlocal dragging_line
+
+        if global_radio.isChecked():
+            return
+
+        if event.inaxes != preview_ax:
+            return
+
+        if field_line is None:
+            return
+
+        contains, _ = field_line.contains(event)
+
+        if contains:
+            dragging_line = True
+
+
+    def on_motion(event):
+        nonlocal dragging_line
+        nonlocal current_field
+
+        if not dragging_line:
+            return
+
+        if event.inaxes != preview_ax:
+            return
+
+        current_field = event.xdata
+
+        field_edit.setText(f"{current_field:.4f}")
+
+        update_preview()
+
+
+    def on_release(event):
+        nonlocal dragging_line
+        dragging_line = False
+
+
+    preview_canvas.mpl_connect('button_press_event', on_press)
+    preview_canvas.mpl_connect('motion_notify_event', on_motion)
+    preview_canvas.mpl_connect('button_release_event', on_release)
+
+    #===============================
+
+    def on_field_text_changed():
+        nonlocal current_field
+
+        try:
+            current_field = float(field_edit.text())
+            update_preview()
+        except:
+            pass
+
+    field_edit.textChanged.connect(on_field_text_changed)
 
     for cb in cycle_checks.values():
         cb.stateChanged.connect(update_preview)
+
 
     #===============================
     # Apply closure function

@@ -634,9 +634,13 @@ def correct_hysteresis_loop(app_instance):
     sym_btn.setToolTip("Create a new loop strating form the preconstructed spline.")
     spl3_btn_box.addWidget(sym_btn, 0, 1)
 
+    del_spl_btn = QPushButton("Remove spline")
+    del_spl_btn.setToolTip("Remove spline form the plot and delete them.")
+    spl3_btn_box.addWidget(del_spl_btn, 1, 0)
+
     del_sym_btn = QPushButton("Remove sym loop")
     del_sym_btn.setToolTip("Remove new loop form the plot and delete them.")
-    spl3_btn_box.addWidget(del_sym_btn, 0, 2)
+    spl3_btn_box.addWidget(del_sym_btn, 1, 1)
 
     hk_box = QGridLayout()
     symmetrize_section.addLayout(hk_box)
@@ -899,6 +903,11 @@ def correct_hysteresis_loop(app_instance):
             x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
             dataframes, logger, plot_state, draw_plot,
             window, 
+        )
+    )
+
+    del_spl_btn.clicked.connect(lambda:change_ps(
+            plot_state, window, draw_plot, mode="spl"
         )
     )
 

@@ -110,7 +110,8 @@ def change_ps(plot_state, window, draw_plot, mode="cp"):
         Callback function responsible for redrawing the plot.
     mode : string, optional, dafult "cp"
         if mode="cp" all correction will be remove from the plot
-        id mode="od" the original data will be removed from the plot
+        if mode="od" the original data will be removed from the plot
+        if mode="spl" the splines will be removed from the plot
         if mode="sym" the symmetrized data will be removed from the plot
     '''
 
@@ -140,6 +141,14 @@ def change_ps(plot_state, window, draw_plot, mode="cp"):
                 "y_up" : None,
                 "x_dw" : None,
                 "y_dw" : None,
+            })
+            draw_plot()
+        
+        if mode == "spl":
+            plot_state.update({
+                "done_spl3": False,
+                "spline_up": None,
+                "spline_dw": None
             })
             draw_plot()
         

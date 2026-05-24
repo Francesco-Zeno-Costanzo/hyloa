@@ -375,14 +375,18 @@ def symmetrize(file_combo,
 
         x_mean = (x_up + x_dw)/2
         y_mean_l = (y_up - y_dw[::-1])/2
+        y_mean_q = (y_up + y_dw[::-1])/2
 
-        spl = InterpolatedUnivariateSpline(x_mean, y_mean_l, k=1)
+        spl_l = InterpolatedUnivariateSpline(x_mean, y_mean_l, k=1)
+        spl_q = InterpolatedUnivariateSpline(x_mean, y_mean_q, k=1)
 
-        dy_data_err = np.std(y_data_up - spl(x_data_up))
+        dy_data_err = np.std(y_data_up - spl_l(x_data_up))/np.sqrt(len(y_data_up)-1)
         dy_err      = (2*np.random.random(x_data_up.size) - 1) * dy_data_err
 
         x_new_up, x_new_dw = x_data_up, -x_data_dw 
-        y_new_up, y_new_dw = spl(x_data_up) + dy_err, -spl(x_data_dw) + dy_err
+        y_new_up, y_new_dw = spl_l(x_data_up) + dy_err, -spl_l(x_data_dw) + dy_err
+
+        y_q_up, y_q_dw = spl_q(x_data_up)+ dy_err, spl_q(x_data_dw) + dy_err
 
         plot_state.update({
             "s_data_up" : (x_new_up, y_new_up),

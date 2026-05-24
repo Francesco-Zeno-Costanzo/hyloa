@@ -26,7 +26,8 @@ import pandas as pd
 from PyQt5.QtWidgets import (
     QFileDialog, QMessageBox, QWidget, QHBoxLayout, QLabel,
     QPushButton, QCheckBox, QLineEdit, QScrollArea, QTableWidget,
-    QTableWidgetItem, QDialog, QVBoxLayout, QComboBox,QListWidget
+    QTableWidgetItem, QDialog, QVBoxLayout, QComboBox, QListWidget,
+    QSpinBox
 )
 from PyQt5.QtCore import Qt
 
@@ -179,6 +180,7 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
 
     selected_columns = {}
     custom_names     = {}
+    duplicate_counts = {}
 
     header_length = detect_header_length(file_path)
 
@@ -215,14 +217,29 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
     scroll_layout = QVBoxLayout(scroll_content)
 
     for i, col_name in enumerate(header):
+
         box = QHBoxLayout()
+
         checkbox = QCheckBox(col_name)
         checkbox.setChecked(True)
+
         selected_columns[i] = checkbox
+
         custom_names[i] = QLineEdit()
         custom_names[i].setPlaceholderText("Custom column name")
+
+        duplicate_counts[i] = QSpinBox()
+        duplicate_counts[i].setMinimum(1)
+        duplicate_counts[i].setMaximum(20)
+        duplicate_counts[i].setValue(1)
+
+        duplicate_label = QLabel("Copies")
+
         box.addWidget(checkbox)
         box.addWidget(custom_names[i])
+        box.addWidget(duplicate_label)
+        box.addWidget(duplicate_counts[i])
+
         scroll_layout.addLayout(box)
 
     scroll_content.setLayout(scroll_layout)
@@ -232,31 +249,80 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
     # Confirm button
     def submit_selection():
         try:
-            columns_to_load = [header[i] for i in range(len(header)) if selected_columns[i].isChecked()]
-            column_names = [
-                custom_names[i].text() or f"{os.path.splitext(os.path.basename(file_path))[0]}_{header[i]}"
-                for i in range(len(header)) if selected_columns[i].isChecked()
-            ]
+
+            #=========================================
+            # Build selected columns and names
+            #=========================================
+
+            columns_to_load = []
+            column_names    = []
+
+            base_filename = os.path.splitext(os.path.basename(file_path))[0]
+
+            for i in range(len(header)):
+                if not selected_columns[i].isChecked():
+                    continue
+
+                original_col = header[i]
+                base_name = (
+                    custom_names[i].text()
+                    or f"{base_filename}_{original_col}"
+                )
+
+                n_copies = duplicate_counts[i].value()
+
+                for k in range(n_copies):
+                    columns_to_load.append(original_col)
+
+                    if n_copies == 1:
+                        column_names.append(base_name)
+                    else:
+                        column_names.append(f"{base_name}_{k+1}")
+            
+            #=========================================
+            # Read source dataframe
+            #=========================================
 
             header_length = detect_header_length(file_path)
 
             if header_length >= 0:
                 df_header = pd.read_csv(file_path, sep="\t", nrows=header_length)
-                df_data   = pd.read_csv(file_path, sep="\t", usecols=columns_to_load)
-
-                df_data.columns = column_names
+                full_df   = pd.read_csv(file_path, sep="\t")
 
             elif header_length == -1:
                 df_header = header
                 data      = np.loadtxt(file_path)
-                df_data   = pd.DataFrame(data, columns=column_names)
+                full_df   = pd.DataFrame(data, columns=header)
             
+            #=========================================
+            # Build duplicated/custom dataframe
+            #=========================================
+            
+            data_dict      = {}
+            idx_name       = 0
+            col_source_map = {}
+
+            for i in range(len(header)):
+                if not selected_columns[i].isChecked():
+                    continue
+
+                original_col = header[i]
+                n_copies     = duplicate_counts[i].value()
+
+                for k in range(n_copies):
+                    new_name                 = column_names[idx_name]
+                    data_dict[new_name]      = full_df[original_col].values.copy()
+                    idx_name                += 1
+                    col_source_map[new_name] = original_col
+
+            df_data = pd.DataFrame(data_dict)
+            df_data.attrs["column_source_map"] = col_source_map  
+            df_data.attrs["filename"] = os.path.basename(file_path)
+
             if header_length >= 0 :
                 df_data = df_data.drop(list(range(header_length)))
 
             app_instance.logger.info(f"From: {file_path}, load: {columns_to_load}")
-
-            df_data.attrs["filename"] = os.path.basename(file_path)
 
             if index_to_replace is not None:
                 app_instance.dataframes[index_to_replace]   = df_data
@@ -283,7 +349,29 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
 # Functions to save modified data                                                              #
 #==============================================================================================#
 
-def save_header(app_instance, df, file_path):
+def clean_column_name(name, filename):
+    '''
+    Clean the column name by removing the filename prefix if it exists.
+
+    Parameters
+    ----------
+    name : string
+        column name to clean
+    filename : string
+        filename to remove from the column name if it is a prefix   
+    Return
+    ------
+    cleaned_name : string
+        cleaned column name without the filename prefix
+    '''
+    prefix = f"{filename}_"
+
+    if name.startswith(prefix):
+        return name[len(prefix):]
+
+    return name
+
+def save_header(app_instance, header_df, df, file_path):
     '''
     Save the header in the final text file,
     to provide compatibility in case you want to
@@ -293,6 +381,8 @@ def save_header(app_instance, df, file_path):
     ----------
     app_instance : MainApp object
         instance of MainApp from main_window.py
+    header_df : pandas dataframe
+        dataframe containing the header of the data file
     df : pandas dataframe
         dataframe containing only the header of the data file
     file_path : string
@@ -304,9 +394,10 @@ def save_header(app_instance, df, file_path):
             f.write("\t".join(df.columns) + "\n")
             
             # Writes every row of the DataFrame, ignoring NaNs
-            for _, row in df.iterrows():
-                line = "\t".join(row.astype(str).fillna("").replace("nan", "").values)
-                f.write(line.strip() + "\n")
+            if isinstance(header_df, pd.DataFrame):
+                for _, row in header_df.iterrows():
+                    line = "\t".join(row.astype(str).fillna("").replace("nan", "").values)
+                    f.write(line.strip() + "\n")
         app_instance.logger.info(f"File saved successfully in: {file_path}")
 
     except Exception as e:
@@ -401,12 +492,23 @@ def save_to_file(df_idx, app_instance, parent_widget=None):
         window to close after saving the data
     '''  
 
+
     dataframes   = app_instance.dataframes
     header_lines = app_instance.header_lines
    
     try:
         # Retrieve the selected DataFrame
         df = dataframes[df_idx]
+
+        source_name = df.attrs.get("filename")
+        print(f"Source name: {source_name}")
+
+        df = df.copy()
+        df.columns = [
+            clean_column_name(col, source_name[:-4]) # remove .txt
+            for col in df.columns
+        ]
+        print(df.columns)
        
         # Retrieve the header of the selected file
         header = header_lines[df_idx]
@@ -418,12 +520,17 @@ def save_to_file(df_idx, app_instance, parent_widget=None):
             "",
             "Text file (*.txt);;CSV (*.csv);;Tutti i file (*)"
         )
+        
+        # ensure .txt extension
+        if file_path and not file_path.lower().endswith('.txt'):
+            file_path += '.txt'
     
         if not file_path:
+            file_path = ""
             QMessageBox.warning(parent_widget, "Canceled", "Operation cancelled.")
             return
 
-        save_header(app_instance, header, file_path)
+        save_header(app_instance, header, df, file_path)
         # Save the data in the new file in text format
         with open(file_path, "a", encoding='utf-8') as f:
 

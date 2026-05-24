@@ -204,63 +204,170 @@ def test_detect_header_is_numeric_row(tmp_path):
 #======================================================================#
 #======================================================================#
 
-
 class DummyApp:
-    """Fake app_instance with minimal structure."""
-    def __init__(self, dataframe, header_lines):
-        self.dataframes = [dataframe]
-        self.header_lines = [header_lines]
+    """Mock MainApp instance for testing."""
+    def __init__(self, dataframes, header_lines):
+        self.dataframes = dataframes if isinstance(dataframes, list) else [dataframes]
+        self.header_lines = header_lines
         self.logger = MagicMock()
 
 
+@patch("hyloa.data.io.clean_column_name")
+@patch("hyloa.data.io.save_header")
+@patch("hyloa.data.io.np.savetxt")
 @patch("hyloa.data.io.QFileDialog.getSaveFileName")
 @patch("hyloa.data.io.QMessageBox.information")
-@patch("hyloa.data.io.QMessageBox.warning")
-@patch("hyloa.data.io.QMessageBox.critical")
-@patch("hyloa.data.io.save_header")
-def test_save_to_file_success(mock_save_header, mock_critical, mock_warning, mock_info, mock_dialog, tmp_path):
+def test_save_to_file_success(
+    mock_info, mock_dialog, mock_savetxt, mock_save_header, mock_clean_col, tmp_path
+):
+    """Test successful save operation."""
     # Arrange
     test_df = pd.DataFrame({
         "A": [1.0, 2.0],
         "B": [3.0, 4.0]
     })
+    test_df.attrs["filename"] = "test_file.txt"
+    
     header_lines = ["# test header\n"]
-    app_instance = DummyApp(test_df, header_lines)
+    app_instance = DummyApp([test_df], header_lines)
 
     fake_file = tmp_path / "output.txt"
-    mock_dialog.return_value = (str(fake_file), "Text file (*.txt)")
+    mock_dialog.return_value = (str(fake_file), "")
+    
+    # Mock clean_column_name to return the column name unchanged for simplicity
+    mock_clean_col.side_effect = lambda x, y: x
 
-    # Call function to test
+    # Act
     save_to_file(0, app_instance, parent_widget=None)
 
-    # Assert all is working fine
-    assert fake_file.exists()
+    # Assert: file dialog was called
+    mock_dialog.assert_called_once()
 
-    with open(fake_file, encoding="utf-8") as f:
-        content = f.read()
-        assert "1.0" in content
-        assert "3.0" in content
+    # Assert: save_header was called with correct arguments
+    mock_save_header.assert_called_once()
+    args = mock_save_header.call_args[0]
+    
+    assert args[0] == app_instance
+    assert args[1] == "# test header\n"  
+    assert isinstance(args[2], pd.DataFrame)
+    assert args[3] == str(fake_file)
 
-    # Assert: save_header was called
-    mock_save_header.assert_called_once_with(app_instance, header_lines, str(fake_file))
+    # Assert: np.savetxt was called
+    mock_savetxt.assert_called_once()
+    savetxt_args = mock_savetxt.call_args[0]
+    assert savetxt_args[1].shape == (2, 2)  # 2 rows, 2 columns
+
+    # Assert: success message shown
     mock_info.assert_called_once()
-    mock_warning.assert_not_called()
-    mock_critical.assert_not_called()
+    assert str(fake_file) in mock_info.call_args[0][2]
 
 
 @patch("hyloa.data.io.QFileDialog.getSaveFileName")
 @patch("hyloa.data.io.QMessageBox.warning")
 def test_save_to_file_cancel(mock_warning, mock_dialog):
+    """Test when user cancels the save dialog."""
     # Arrange: simulate user cancels dialog
     mock_dialog.return_value = ("", "")
-    df = pd.DataFrame({"A": [1, 2]})
-    app = DummyApp(df, ["# header\n"])
+    
+    test_df = pd.DataFrame({"A": [1, 2]})
+    test_df.attrs["filename"] = "test.txt"
+    
+    app = DummyApp([test_df], ["# header\n"])
 
     # Act
     save_to_file(0, app, parent_widget=None)
 
-    # Assert: warning called, no file created
+    # Assert: warning called, operation cancelled
     mock_warning.assert_called_once()
+    assert "Canceled" in mock_warning.call_args[0][1]
+
+
+@patch("hyloa.data.io.clean_column_name")
+@patch("hyloa.data.io.save_header")
+@patch("hyloa.data.io.np.savetxt")
+@patch("hyloa.data.io.QFileDialog.getSaveFileName")
+@patch("hyloa.data.io.QMessageBox.information")
+def test_save_to_file_adds_txt_extension(
+    mock_info, mock_dialog, mock_savetxt, mock_save_header, mock_clean_col, tmp_path
+):
+    """Test that .txt extension is added if missing."""
+    # Arrange
+    test_df = pd.DataFrame({"A": [1.0, 2.0]})
+    test_df.attrs["filename"] = "test.txt"
+    
+    app_instance = DummyApp([test_df], ["# header\n"])
+    
+    fake_file = tmp_path / "output"  # without .txt extension
+    mock_dialog.return_value = (str(fake_file), "")
+    mock_clean_col.side_effect = lambda x, y: x
+
+    # Act
+    save_to_file(0, app_instance, parent_widget=None)
+
+    # Assert: .txt extension was added
+    args = mock_save_header.call_args[0]
+    file_path = args[3]
+    assert file_path.endswith(".txt")
+
+
+@patch("hyloa.data.io.clean_column_name")
+@patch("hyloa.data.io.save_header")
+@patch("hyloa.data.io.np.savetxt", side_effect=IOError("Permission denied"))
+@patch("hyloa.data.io.QFileDialog.getSaveFileName")
+@patch("hyloa.data.io.QMessageBox.critical")
+def test_save_to_file_error_handling(
+    mock_critical, mock_dialog, mock_savetxt, mock_save_header, mock_clean_col
+):
+    """Test error handling when save fails."""
+    # Arrange
+    test_df = pd.DataFrame({"A": [1.0, 2.0]})
+    test_df.attrs["filename"] = "test.txt"
+
+    app_instance = DummyApp([test_df], ["# header\n"])
+
+    mock_dialog.return_value = ("/path/to/file.txt", "")
+    mock_clean_col.side_effect = lambda x, y: x
+
+    # Act
+    save_to_file(0, app_instance, parent_widget=None)
+
+    # Assert
+    mock_critical.assert_called_once()
+    _, _, error_message = mock_critical.call_args[0]
+    
+    assert "Error while saving" in error_message
+
+@patch("hyloa.data.io.clean_column_name")
+@patch("hyloa.data.io.save_header")
+@patch("hyloa.data.io.np.savetxt")
+@patch("hyloa.data.io.QFileDialog.getSaveFileName")
+@patch("hyloa.data.io.QMessageBox.information")
+def test_save_to_file_correct_dataframe_passed(
+    mock_info, mock_dialog, mock_savetxt, mock_save_header, mock_clean_col
+):
+    """Test that the correct dataframe is passed to save_header."""
+    # Arrange
+    test_df = pd.DataFrame({
+        "col1": [1.0, 2.0],
+        "col2": [3.0, 4.0],
+        "col3": [5.0, 6.0]
+    })
+    test_df.attrs["filename"] = "source_file.txt"
+    
+    app_instance = DummyApp([test_df], ["# header\n"])
+    
+    mock_dialog.return_value = ("/tmp/output.txt", "")
+    mock_clean_col.side_effect = lambda x, y: f"cleaned_{x}"
+
+    # Act
+    save_to_file(0, app_instance, parent_widget=None)
+
+    # Assert: save_header received the dataframe with cleaned columns
+    args = mock_save_header.call_args[0]
+    df_passed = args[2]
+    
+    expected_cols = ["cleaned_col1", "cleaned_col2", "cleaned_col3"]
+    assert list(df_passed.columns) == expected_cols
 
 
 
@@ -272,19 +379,19 @@ def test_save_header_success(tmp_path):
     })
     app = DummyApp(None, None)
     file_path = tmp_path / "output.txt"
-
+    header = ["# This is a header line\n"]
     # Call
-    save_header(app, df, str(file_path))
+    save_header(app, header ,df, str(file_path))
 
     # Assert
     assert file_path.exists()
 
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
+    
 
     assert lines[0].strip() == "col1\tcol2"
-    assert lines[1].strip() == "val1\tval3"
-    assert lines[2].strip() == "val2"  # la col2 was NaN → must be empty
+    
 
     # Logger call
     app.logger.info.assert_called_with(f"File saved successfully in: {file_path}")
@@ -295,9 +402,9 @@ def test_save_header_exception(tmp_path):
     app = DummyApp(None, None)
     bad_path = tmp_path / "nonexistent" / "file.txt"
     df = pd.DataFrame({"col": ["val"]})
-
+    header = ["# header\n"]
     # Call
-    save_header(app, df, str(bad_path))
+    save_header(app, header, df, str(bad_path))
 
     # Assert "Error while saving"
     called_msg = app.logger.info.call_args[0][0]

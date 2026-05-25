@@ -173,6 +173,7 @@ def compute_b_spline(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_co
             return 
 
         plot_state.update({
+            "smooth"    : [s_up, s_dw],
             "fit_hc_p"  : None,
             "fit_hc_n"  : None,
             "done_spl3" : True,
@@ -370,6 +371,7 @@ def symmetrize(file_combo,
             y_data_up = plot_state["y_up"]
 
         
+        s_up, s_dw = plot_state["smooth"]
 
         x_mean = (x_up + x_dw)/2
         y_mean_l = (y_up - y_dw[::-1])/2
@@ -378,8 +380,9 @@ def symmetrize(file_combo,
         spl_l = InterpolatedUnivariateSpline(x_mean, y_mean_l, k=1)
         spl_q = InterpolatedUnivariateSpline(x_mean, y_mean_q, k=1)
 
-        dy_data_err = np.std(y_data_up[0:25])# - spl_l(x_data_up))
+        dy_data_err = np.std(y_data_up[0:20]) if (s_up != 0 and s_dw != 0) else 0
         dy_err      = (2*np.random.random(x_data_up.size) - 1) * dy_data_err
+
 
         x_new_up, x_new_dw = x_data_up, -x_data_dw 
         y_new_up, y_new_dw = spl_l(x_data_up) + dy_err, -spl_l(x_data_dw) + dy_err

@@ -98,6 +98,7 @@ def correct_hysteresis_loop(app_instance):
         "flipped"   : False,     # True if the up branch has been flipped for symmetry check
         "done_corr" : False,     # True if the drift correction has been applied at least once
         "done_spl3" : False,     # True if the spline fit has been applied at least once
+        "smooth"    : [],        # values of the smoothing parameter for the spline fit (up and down branch)
         "x_up"      : None,      # X data for up branch (original data)
         "y_up"      : None,      # Y data for up branch (original data)
         "x_dw"      : None,      # X data for down branch (original data)

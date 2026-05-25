@@ -2,6 +2,29 @@
 HYLOA Release Notes
 =========================
 
+Version 1.13.0 - 2026-05-26
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This release introduces a new features for input/output data.
+
+**New Features**
+
+- Its is now possible while loading a file create several copy of a specific column. This allows to decoupling each y columns of the same file, beacasue now each 'y_data' has its own 'x_data'.
+  So now the old functions to flip 'x_data' or 'y_data' ofan entire file are deleted, and the user can choose to flip only specific columns.
+
+- In the simmetrizetion process now also the quadratic term can be computed and the data can be saved as two new columns in the same file.
+
+- For the closure of the loops, now is possible to drag the line to choose the closing point, always with a real time preview.
+
+
+**Bug Fixes**
+
+- Fix bug in plot creation after deleting the previous plot.
+
+- Fix range for the Bspline fit.
+
+- Add flexible error computation in loops simmetrization.
+
+
 Version 1.12.2 - 2026-05-13
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

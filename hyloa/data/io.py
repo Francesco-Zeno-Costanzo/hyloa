@@ -501,14 +501,12 @@ def save_to_file(df_idx, app_instance, parent_widget=None):
         df = dataframes[df_idx]
 
         source_name = df.attrs.get("filename")
-        print(f"Source name: {source_name}")
 
         df = df.copy()
         df.columns = [
             clean_column_name(col, source_name[:-4]) # remove .txt
             for col in df.columns
         ]
-        print(df.columns)
        
         # Retrieve the header of the selected file
         header = header_lines[df_idx]

@@ -30,6 +30,7 @@ from hyloa.utils.err_format import format_value_error
 
 def save_corrected_data(dataframes, save_file_combo,
                         x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
+                        save_quad_checkbox,
                         plot_state, logger, window):
     '''
     Function to save the corrected data in the selected file and columns.
@@ -48,6 +49,8 @@ def save_corrected_data(dataframes, save_file_combo,
         Column name for the destination x-values of the lower branch.
     y_dw_dest : str
         Column name for the destination y-values of the lower branch.
+    save_quad_checkbox : QCheckBox
+        Checkbox to indicate whether to save quadratic data.
     plot_state : dict
         Dictionary storing the current plotting state.
     logger : logging.Logger
@@ -83,6 +86,20 @@ def save_corrected_data(dataframes, save_file_combo,
             df_dest[y_up_dest.currentText()] = plot_state["s_data_up"][1]
             df_dest[x_dw_dest.currentText()] = plot_state["s_data_dw"][0]
             df_dest[y_dw_dest.currentText()] = plot_state["s_data_dw"][1]
+
+            if save_quad_checkbox.isChecked():
+
+                if plot_state.get("q_data_up") is not None:
+                    _, y_q_up = plot_state["q_data_up"]
+                    # extract name for rotation or ellipticity
+                    name = y_up_dest.currentText()
+                    df_dest[f"{name}_quad"] = y_q_up
+
+                if plot_state.get("q_data_dw") is not None:
+                    _, y_q_dw = plot_state["q_data_dw"]
+                    # extract name for rotation or ellipticity
+                    name = y_dw_dest.currentText()
+                    df_dest[f"{name}_quad"] = y_q_dw
 
             logger.info(f"Symmetrized data saved to file {save_idx + 1} in columns {x_up_dest.currentText()}, {y_up_dest.currentText()}, {x_dw_dest.currentText()}, {y_dw_dest.currentText()}.")
             QMessageBox.information(window, "Data Saved", f"Symmetrized data saved to file {save_idx + 1} in columns {x_up_dest.currentText()}, {y_up_dest.currentText()}, {x_dw_dest.currentText()}, {y_dw_dest.currentText()}.")
@@ -155,7 +172,9 @@ def change_ps(plot_state, window, draw_plot, mode="cp"):
         if mode == "sym":
             plot_state.update({
                 "s_data_up" : None,
-                "s_data_dw" : None
+                "s_data_dw" : None,
+                "q_data_up" : None,
+                "q_data_dw" : None,
             })
             draw_plot()
 

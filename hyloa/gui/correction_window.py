@@ -25,9 +25,11 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 
-from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,
-     QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QMessageBox,
-     QSizePolicy, QMdiSubWindow, QScrollArea, QSplitter)
+from PyQt5.QtWidgets import (
+    QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,
+    QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QMessageBox,
+    QSizePolicy, QMdiSubWindow, QScrollArea, QSplitter, QCheckBox
+)
 
 
 from PyQt5.QtCore import Qt
@@ -113,7 +115,9 @@ def correct_hysteresis_loop(app_instance):
         "spline_up" : None,      # Cubic smooth spline fit for up branch 
         "spline_dw" : None,      # Cubic smooth spline fit for down branch
         "s_data_up" : None,      # Simmetrized data for up branch (from spline)
-        "s_data_dw" : None       # Simmetrized data for down branch (from spline)
+        "s_data_dw" : None,      # Simmetrized data for down branch (from spline)
+        "q_data_up" : None,      # Quadratic part of original loop for up branch (only if simetrization is applied)
+        "q_data_dw" : None,      # Quadratic part of original loop for down branch (only if simetrization is applied)
     }
 
 
@@ -197,6 +201,9 @@ def correct_hysteresis_loop(app_instance):
             "  - s > 0 allows for smoothing and helps reduce the impact of noise.\n"
             "A reasonable value depends on the data quality and on the estimated experimental error.\n"
             "If you press the button to symmetrize the data and a file has been selected for saving, the symmetrized data will be saved.\n"
+            "If the symmetrization is applied, the quadratic part of the original loop will be estimated and can be plotted and saved as well.\n"
+            "If the chebox for saving the quadratic part is selected, the quadratic part will be saved in the same file as the symmetrized data, "
+            "in two new columns at the end of the file, with the names of the original columns plus the suffix '_quad'.\n"
             "\n"
             "• By moving the mouse over the various boxes, a tooltip appears with information relating to them."
         )
@@ -642,6 +649,18 @@ def correct_hysteresis_loop(app_instance):
     del_sym_btn.setToolTip("Remove new loop form the plot and delete them.")
     spl3_btn_box.addWidget(del_sym_btn, 1, 1)
 
+    # Add checkboxes to select if plot quadratic part and/or save it
+    plot_quad_checkbox = QCheckBox("Plot quadratic part")
+    plot_quad_checkbox.setToolTip("Plot the quadratic part of the original loop, which is estimated during the symmetrization process.\n" 
+                                  "This can be useful to evaluate the quality of the symmetrization and to estimate the contribution of the "
+                                  "quadratic component to the original loop.")
+    save_quad_checkbox = QCheckBox("Save quadratic part")
+    save_quad_checkbox.setToolTip("Save the quadratic part of the original loop, which is estimated during the symmetrization process.")
+
+    spl3_btn_box.addWidget(plot_quad_checkbox, 2, 0)
+    spl3_btn_box.addWidget(save_quad_checkbox, 2, 1)
+
+
     hk_box = QGridLayout()
     symmetrize_section.addLayout(hk_box)
 
@@ -757,6 +776,14 @@ def correct_hysteresis_loop(app_instance):
         if plot_state.get("s_data_dw") is not None:
             ax.plot(*plot_state["s_data_dw"], 'k.-', label="sym Dw")
 
+        if plot_quad_checkbox.isChecked():
+
+            if plot_state.get("q_data_up") is not None:
+                ax.plot(*plot_state["q_data_up"], 'b--', label="quadratic Up")
+                
+            if plot_state.get("q_data_dw") is not None:
+                ax.plot(*plot_state["q_data_dw"], 'b--', label="quadratic Dw")
+
         #==========================================================#
         ax.axhline(0, color='gray', linestyle='--', linewidth=1)
         ax.axvline(0, color='gray', linestyle='--', linewidth=1)
@@ -820,7 +847,7 @@ def correct_hysteresis_loop(app_instance):
     save_btn.clicked.connect(lambda: save_corrected_data(
             dataframes, save_file_combo,
             x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
-            plot_state, logger, window
+            save_quad_checkbox, plot_state, logger, window
         )
     )
     
@@ -901,7 +928,7 @@ def correct_hysteresis_loop(app_instance):
     sym_btn.clicked.connect(lambda: symmetrize(
             file_combo,
             x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
-            dataframes, logger, plot_state, draw_plot,
+            logger, plot_state, draw_plot,
             window, 
         )
     )

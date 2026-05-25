@@ -290,7 +290,7 @@ def compute_Hk(file_combo, x_up_combo, y_up_combo, x_down_combo, y_down_combo,
 
 def symmetrize(file_combo,
                x_up_combo, y_up_combo, x_down_combo, y_down_combo, data_sel,
-               dataframes, logger, plot_state, draw_plot,
+               logger, plot_state, draw_plot,
                window):
     '''
     Symmetrize a hysteresis loop using spline-interpolated up and down branches.
@@ -334,8 +334,6 @@ def symmetrize(file_combo,
     y_dw_dest : QComboBox
         Combo box selecting the destination Y column for the symmetrized
         down branch.
-    dataframes : list of pandas.DataFrame
-        List of dataframes loaded in the application.
     logger : logging.Logger
         Logger instance used to record spline computation details.
     plot_state : dict
@@ -380,7 +378,7 @@ def symmetrize(file_combo,
         spl_l = InterpolatedUnivariateSpline(x_mean, y_mean_l, k=1)
         spl_q = InterpolatedUnivariateSpline(x_mean, y_mean_q, k=1)
 
-        dy_data_err = np.std(y_data_up - spl_l(x_data_up))/np.sqrt(len(y_data_up)-1)
+        dy_data_err = np.std(y_data_up[0:25])# - spl_l(x_data_up))
         dy_err      = (2*np.random.random(x_data_up.size) - 1) * dy_data_err
 
         x_new_up, x_new_dw = x_data_up, -x_data_dw 
@@ -390,8 +388,11 @@ def symmetrize(file_combo,
 
         plot_state.update({
             "s_data_up" : (x_new_up, y_new_up),
-            "s_data_dw" : (x_new_dw, y_new_dw)
-        })
+            "s_data_dw" : (x_new_dw, y_new_dw),
+            "q_data_up" : (x_new_up, y_q_up),
+            "q_data_dw" : (x_new_dw, y_q_dw)
+            })
+        
         draw_plot()
 
 

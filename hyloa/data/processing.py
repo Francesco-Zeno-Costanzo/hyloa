@@ -514,14 +514,19 @@ def close_loop_dialog(plot_instance, app_instance):
 
                 if use_global:
                     y1_new, y2_new = apply_loop_closure(y1, y2)
+                    app_instance.logger.info(f"Loop closure applied to file {selected_file_idx + 1}, columns {cols1[1]} and {cols2[1]}.")
                 else:
                     i_up = np.argmin(np.abs(x1 - field))
                     i_dw = np.argmin(np.abs(x2 - field))
 
                     y1_new, y2_new = apply_loop_closure(y1, y2, i_up, i_dw)
+                    app_instance.logger.info(f"Loop closure applied to file {selected_file_idx + 1}, columns {cols1[1]} and {cols2[1]}.")
+                    app_instance.logger.info(f"Closure anchored at field {field:.4f}, indices {i_up} (up) and {i_dw} (down).")
 
                 df[cols1[1]] = y1_new
                 df[cols2[1]] = y2_new
+
+                
 
         plot_instance.plot()
 
@@ -532,6 +537,7 @@ def close_loop_dialog(plot_instance, app_instance):
     global_radio.toggled.connect(update_mode)
     field_radio.toggled.connect(update_mode)
     apply_btn.clicked.connect(apply_closure)
+
 
     #===============================
     # Show window

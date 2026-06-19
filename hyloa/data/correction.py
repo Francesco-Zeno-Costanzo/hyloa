@@ -683,6 +683,14 @@ def fit_data(file_combo,
             y_dw = plot_state["y_dw_corr"]
             e_up = plot_state["e_up"]
             e_dw = plot_state["e_dw"]
+
+            if e_up is None:
+                tail = np.concatenate((y_up[0:25], y_dw[-25:], 
+                                    y_up[-25:], y_dw[0:25]))
+                dy_data_err = np.std(tail)
+                dy_err = (2*np.random.random(x_up.size) - 1) * dy_data_err
+                e_up = dy_err
+                e_dw = dy_err
         else:
             try :
                 x_up = plot_state["x_up"]

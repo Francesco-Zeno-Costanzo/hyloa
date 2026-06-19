@@ -31,7 +31,7 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/Francesco-Zeno-Costanzo/hyloa"
 
-[project.scripts]
+[project.gui-scripts]
 hyloa = "hyloa.main:main"
 
 [tool.setuptools]

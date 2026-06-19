@@ -1,66 +1,96 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 
-REM === Base directory (where this .bat is) ===
-set BASE_DIR=%~dp0
+echo.
+echo =========================================
+echo            HYLOA INSTALLER
+echo =========================================
+echo.
 
-REM === Detect wheel file ===
-for /f "delims=" %%f in ('dir /b "%BASE_DIR%hyloa-*.whl" 2^>nul') do set WHEEL_FILE=%BASE_DIR%%%f
+REM -----------------------------------------
+REM Directories
+REM -----------------------------------------
 
-if not defined WHEEL_FILE (
-    echo ERROR: No wheel file found in this folder.
-    echo Place setup.bat and hyloa-xxx.whl in the same folder.
+set INSTALL_DIR=%LOCALAPPDATA%\Hyloa
+set VENV_DIR=%INSTALL_DIR%\venv
+
+mkdir "%INSTALL_DIR%" 2>nul
+
+REM -----------------------------------------
+REM Check Python and create virtual environment
+REM -----------------------------------------
+
+where python >nul 2>&1
+
+if errorlevel 1 (
+    echo Python not found.
+    echo Please install Python 3.10 or higher and try again.
     pause
     exit /b 1
 )
 
-echo Found wheel: %WHEEL_FILE%
+echo Creating virtual environment...
 
-REM === Virtual environment path ===
-set VENV_DIR=%BASE_DIR%venv
 python -m venv "%VENV_DIR%"
 
-REM === Install wheel ===
-"%VENV_DIR%\Scripts\python.exe" -m pip install --upgrade pip
-"%VENV_DIR%\Scripts\python.exe" -m pip install "%WHEEL_FILE%"
-
-REM === Locate installed package (inside venv) ===
-set SITE_PKGS=%VENV_DIR%\Lib\site-packages\hyloa
-
-REM === Icon inside the installed package ===
-set ICON_PATH=%SITE_PKGS%\resources\icon.ico
-
-REM === Script vytvořený setuptools ===
-set APP_EXE=%VENV_DIR%\Scripts\hyloa.exe
-
-IF NOT EXIST "%APP_EXE%" (
-    echo ERROR: hyloa.exe not found. Entry point missing.
+if errorlevel 1 (
+    echo Error creating virtual environment.
     pause
     exit /b 1
 )
 
-REM === Create VBS launcher (no terminal) ===
-set LAUNCH_VBS=%BASE_DIR%launch_hyloa.vbs
+echo.
+echo Updating pip...
 
-echo Set shell = CreateObject("WScript.Shell") > "%LAUNCH_VBS%"
-echo shell.Run Chr(34) ^& "%APP_EXE%" ^& Chr(34), 0 >> "%LAUNCH_VBS%"
-echo Set shell = Nothing >> "%LAUNCH_VBS%"
+"%VENV_DIR%\Scripts\python.exe" -m pip install --upgrade pip
 
-REM === Create desktop shortcut ===
-set SHORTCUT=%USERPROFILE%\Desktop\hyloa.lnk
+echo.
+echo Installing HYLOA...
 
-echo Set oWS = WScript.CreateObject("WScript.Shell") > temp.vbs
-echo Set oLink = oWS.CreateShortcut("%SHORTCUT%") >> temp.vbs
-echo oLink.TargetPath = "%LAUNCH_VBS%" >> temp.vbs
-echo oLink.IconLocation = "%ICON_PATH%" >> temp.vbs
-echo oLink.Description = "Start HYLOA" >> temp.vbs
-echo oLink.WorkingDirectory = "%BASE_DIR%" >> temp.vbs
-echo oLink.Save >> temp.vbs
+"%VENV_DIR%\Scripts\python.exe" -m pip install --upgrade hyloa
 
-cscript //nologo temp.vbs
-del temp.vbs
+if errorlevel 1 (
+    echo Error during installation.
+    pause
+    exit /b 1
+)
 
-echo ================================
+REM -----------------------------------------
+REM Paths
+REM -----------------------------------------
+
+set APP_EXE=%VENV_DIR%\Scripts\hyloa.exe
+set ICON_FILE=%~dp0hyloa.ico
+
+REM -----------------------------------------
+REM Shortcut Desktop
+REM -----------------------------------------
+
+set DESKTOP=%USERPROFILE%\Desktop
+set SHORTCUT=%DESKTOP%\HYLOA.lnk
+
+echo Set oWS = WScript.CreateObject("WScript.Shell") > "%TEMP%\create_shortcut.vbs"
+echo Set oLink = oWS.CreateShortcut("%SHORTCUT%") >> "%TEMP%\create_shortcut.vbs"
+echo oLink.TargetPath = "%APP_EXE%" >> "%TEMP%\create_shortcut.vbs"
+echo oLink.WorkingDirectory = "%INSTALL_DIR%" >> "%TEMP%\create_shortcut.vbs"
+echo oLink.IconLocation = "%ICON_FILE%" >> "%TEMP%\create_shortcut.vbs"
+echo oLink.Description = "HYLOA" >> "%TEMP%\create_shortcut.vbs"
+echo oLink.Save >> "%TEMP%\create_shortcut.vbs"
+
+cscript //nologo "%TEMP%\create_shortcut.vbs"
+del "%TEMP%\create_shortcut.vbs"
+
+echo.
+echo =========================================
 echo Installation complete!
-echo You can now run the application by double-clicking the shortcut on your Desktop.
+echo.
+echo Virtual environment:
+echo %VENV_DIR%
+echo.
+echo Executable:
+echo %APP_EXE%
+echo.
+echo Shortcut created on Desktop.
+echo =========================================
+
 pause

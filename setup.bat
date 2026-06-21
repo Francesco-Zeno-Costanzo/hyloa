@@ -47,10 +47,27 @@ echo Updating pip...
 echo.
 echo Installing HYLOA...
 
-"%VENV_DIR%\Scripts\python.exe" -m pip install --upgrade hyloa
+set BASE_DIR=%~dp0
+
+REM -----------------------------------------
+REM Detect wheel file
+REM -----------------------------------------
+
+for /f "delims=" %%f in ('dir /b "%BASE_DIR%hyloa-*.whl" 2^>nul') do set WHEEL_FILE=%BASE_DIR%%%f
+
+if not defined WHEEL_FILE (
+    echo ERROR: No wheel file found in this folder.
+    echo Place setup.bat and hyloa-xxx.whl in the same folder.
+    pause
+    exit /b 1
+)
+
+echo Found wheel: %WHEEL_FILE%
+
+"%VENV_DIR%\Scripts\python.exe" -m pip install "%WHEEL_FILE%"
 
 if errorlevel 1 (
-    echo Error during installation.
+    echo Error installing HYLOA.
     pause
     exit /b 1
 )
@@ -60,7 +77,7 @@ REM Paths
 REM -----------------------------------------
 
 set APP_EXE=%VENV_DIR%\Scripts\hyloa.exe
-set ICON_FILE=%~dp0hyloa.ico
+set ICON_FILE=%VENV_DIR%\Lib\site-packages\hyloa\resources\hyloa.ico
 
 REM -----------------------------------------
 REM Shortcut Desktop
@@ -91,6 +108,7 @@ echo Executable:
 echo %APP_EXE%
 echo.
 echo Shortcut created on Desktop.
+echo You can now run the application by double-clicking the shortcut on your Desktop.
 echo =========================================
 
 pause

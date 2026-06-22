@@ -16,6 +16,12 @@ set VENV_DIR=%INSTALL_DIR%\venv
 
 mkdir "%INSTALL_DIR%" 2>nul
 
+if exist "%VENV_DIR%" (
+    echo Existing installation found.
+    echo Removing old virtual environment...
+    rmdir /s /q "%VENV_DIR%"
+)
+
 REM -----------------------------------------
 REM Check Python and create virtual environment
 REM -----------------------------------------
@@ -77,7 +83,7 @@ REM Paths
 REM -----------------------------------------
 
 set APP_EXE=%VENV_DIR%\Scripts\hyloa.exe
-set ICON_FILE=%VENV_DIR%\Lib\site-packages\hyloa\resources\hyloa.ico
+set ICON_FILE=%VENV_DIR%\Lib\site-packages\hyloa\resources\icon.ico
 
 REM -----------------------------------------
 REM Shortcut Desktop

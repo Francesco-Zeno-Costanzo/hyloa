@@ -2,6 +2,14 @@
 HYLOA Release Notes
 =========================
 
+Version 1.13.1 - 2026-06-23
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Bug Fixes**
+
+- Fix bug in correction procedure, now even just scaling the fields is considered a correction.
+
+- Fix windows installation procedure. Now all software and the virtual environment will be stored in "C:\\Users\\<username>\\AppData" folder. There is no more a .vbs file for the desktop shortcut.
+
 Version 1.13.0 - 2026-05-26
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This release introduces a new features for input/output data.

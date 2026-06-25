@@ -25,7 +25,7 @@ import pickle
 import logging
 from datetime import datetime
 
-
+import pandas as pd
 from PyQt5.QtCore import QTimer
 
 from PyQt5.QtWidgets import (
@@ -79,11 +79,22 @@ def save_current_session(app_instance, parent_widget=None):
             "created_on":          datetime.now().isoformat(),
             "platform":            sys.platform,
 
-            "dataframes":   app_instance.dataframes,
+            # To avoid pandas dataframe serialization
+            "dataframes": [
+                {
+                    "columns": list(df.columns),
+                    "index"  : df.index.tolist(),
+                    "data"   : df.astype(str).values.tolist(),
+                    "dtypes" : {
+                        col: str(df[col].dtype) for col in df.columns
+                    }
+                }
+                for df in app_instance.dataframes
+            ],
             "header_lines": app_instance.header_lines,
-            "logger_path":  app_instance.logger_path,
+            "logger_path" : app_instance.logger_path,
             "log_filename": os.path.basename(app_instance.logger_path),
-            "fit_results":  app_instance.fit_results,
+            "fit_results" : app_instance.fit_results,
             "number_plots": app_instance.number_plots,
 
             "plot_widgets": {
@@ -170,7 +181,47 @@ def load_previous_session(app_instance, parent_widget=None):
                 session_data = pickle.load(f)
 
         # Reload attributes of main app instance
-        app_instance.dataframes     = session_data.get("dataframes", [])
+
+        saved_dfs = session_data.get("dataframes", [])
+
+        if len(saved_dfs) > 0 and isinstance(saved_dfs[0], pd.DataFrame):
+            # Legacy format: dataframes were saved directly as pandas DataFrames
+            app_instance.dataframes = saved_dfs
+        
+        else:
+            # New format: dataframes are saved as dictionaries
+            app_instance.dataframes = []
+
+            for saved_df in saved_dfs:
+
+                df = pd.DataFrame(
+                    saved_df["data"],
+                    columns=saved_df["columns"],
+                    index=saved_df["index"]
+                )
+
+                for col, dtype in saved_df["dtypes"].items():
+
+                    try:
+
+                        if dtype.startswith("float"):
+                            df[col] = pd.to_numeric(df[col])
+
+                        elif dtype.startswith("int"):
+                            df[col] = pd.to_numeric(df[col])
+
+                        elif "datetime" in dtype:
+                            df[col] = pd.to_datetime(df[col])
+
+                        else:
+                            df[col] = df[col].astype(dtype)
+
+                    except Exception:
+                        pass
+
+                app_instance.dataframes.append(df)
+        
+
         app_instance.header_lines   = session_data.get("header_lines", [])
         app_instance.fit_results    = session_data.get("fit_results", {})
         app_instance.number_plots   = session_data.get("number_plots", 0)
@@ -294,7 +345,6 @@ def load_previous_session(app_instance, parent_widget=None):
             
         QMessageBox.information(parent_widget, "Session Loaded",
                                 f"Session loaded from file:\n{file_path}")
-
     except Exception as e:
         QMessageBox.critical(parent_widget, "Error",
                              f"Error while loading session:\n{e}")

@@ -18,8 +18,8 @@
 test for load and save session
 """
 
-import pickle
 import pytest
+import pandas as pd
 from unittest.mock import patch, MagicMock
 
 from hyloa.data.session import save_current_session
@@ -31,7 +31,15 @@ def fake_app_instance():
     """
     app              = MagicMock()
     app.logger       = "dummy_logger"
-    app.dataframes   = {"df1": "data"}
+    app.dataframes = [
+        pd.DataFrame(
+            {
+                "A": [1, 2],
+                "B": [3.5, 4.5],
+                "C": ["a", "b"],
+            }
+        )
+    ]
     app.header_lines = ["#header"]
     app.logger_path  = "/path/to/log.txt"
     app.fit_results  = {"fit": "results"}
@@ -87,8 +95,13 @@ def test_save_successful(tmp_path, fake_app_instance):
 
         save_current_session(fake_app_instance)
 
-        assert test_file.exists()
         dump_mock.assert_called_once()
+
+        args, kwargs = dump_mock.call_args
+        session = args[0]
+
+        assert "dataframes" in session
+
         info_mock.assert_called_once()
 
 
@@ -127,7 +140,17 @@ def test_load_session_success(mock_get_open, mock_open, mock_pickle_load,
     
     
     fake_session = {
-        "dataframes": ["df1", "df2"],
+        "dataframes": [
+            {
+                "columns": ["A","B"],
+                "index": [0,1],
+                "data": [[1,2],[3,4]],
+                "dtypes": {
+                    "A":"int64",
+                    "B":"int64"
+                }
+            }
+        ],
         "header_lines": ["h1"],
         "fit_results": {"result": 42},
         "number_plots": 2,
@@ -155,7 +178,14 @@ def test_load_session_success(mock_get_open, mock_open, mock_pickle_load,
     mock_open.assert_called_with("dummy_path.pkl", "rb")
 
 
-    assert fake_app.dataframes == ["df1", "df2"]
+    assert len(fake_app.dataframes) == 1
+
+    assert fake_app.dataframes[0].equals(
+        pd.DataFrame({
+            "A":[1,3],
+            "B":[2,4]
+        })
+    )
     assert fake_app.header_lines == ["h1"]
     assert fake_app.fit_results == {"result": 42}
     assert fake_app.number_plots == 2

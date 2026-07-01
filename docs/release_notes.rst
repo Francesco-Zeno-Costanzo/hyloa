@@ -2,6 +2,12 @@
 HYLOA Release Notes
 =========================
 
+Version 1.13.2 - 2026-07-01
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Bug Fixes**
+
+- Remove pandas dataframe serialization from the session file. Now data are stored in a dictionary. During the loading of a session file, the data are converted to pandas dataframe. This allows to avoid problems with different versions of pandas.
+
 Version 1.13.1 - 2026-06-23
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Bug Fixes**

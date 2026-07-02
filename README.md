@@ -35,14 +35,14 @@ HYsteresis LOop Analyzer is a Python package that allows you to **load, analyze 
 HYLOA is distributed both with **pip** and with **a wheel (.whl)** through GitHub Releases.  
 The recommended installation method is different between Linux and Windows, but in both cases it is possible
 to use either method. The wheel installation allows to choose the version, and is recommended for Windows users,
-bacuse it include a simple installer script which is the **setup.bat** file;
+because it includes a simple installer script which is the **setup.bat** file;
 while the pip installation allows you to get the latest version directly from PyPI.
 
 ---
 
 ## Linux
 
-Obviously is recomended to do this in a **virtual environment** to avoid conflicts with other packages.
+Obviously it is recomended to do this in a **virtual environment** to avoid conflicts with other packages.
 ```bash
 python -m venv .venv
 source .venv/bin/activate 

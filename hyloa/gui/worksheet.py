@@ -48,8 +48,8 @@ from matplotlib.container import ErrorbarContainer
 from matplotlib.legend_handler import HandlerErrorbar
 from matplotlib import colors as mcolors, markers, lines as mlines
 
-
 from hyloa.data.io import detect_header_length
+from hyloa.utils.df_serial import DataFrameSerializer
 from hyloa.utils.err_format import format_value_error
 from hyloa.gui.worksheet_utils import ColumnSelectionDialog, ColumnMathDialog
 
@@ -1542,9 +1542,12 @@ class WorksheetWindow(QMdiSubWindow):
         for pid, info in self.plot_customization.items():
             customizations_serializable[pid] = info.get("customizations", {})
 
+        df = self.to_dataframe()
+        serialized_df = DataFrameSerializer.serialize(df)
+
         return {
             "name":           self.name,
-            "data":           self.to_dataframe(),
+            "data":           serialized_df,
             "geometry":       ws_geom,
             "plots":          self.plots,
             "customizations": customizations_serializable
@@ -1554,11 +1557,24 @@ class WorksheetWindow(QMdiSubWindow):
     def from_session_data(self, data_dict):
         ''' Function to restore the worksheet from saved session data.
         '''
-        df = data_dict.get("data")
+        data = data_dict.get("data")
+        if isinstance(data, pd.DataFrame):
+            # Legacy format: direct DataFrame
+            df = data
+    
+        elif isinstance(data, dict) and "columns" in data:
+            # New format: serialized representation
+            df = DataFrameSerializer.deserialize(data)
+        else:
+            df = None
+        
         if df is not None:
             self.table.setRowCount(len(df))
             self.table.setColumnCount(len(df.columns))
             self.table.setHorizontalHeaderLabels([str(c) for c in df.columns])
+
+            rows_to_remove = []
+            
             for r in range(len(df)):
                 # Counter to check an empty row
                 count = 0
@@ -1572,7 +1588,11 @@ class WorksheetWindow(QMdiSubWindow):
                     self.table.setItem(r, c, item)
                 if count == len(df.columns):
                     # All empty, remove the row
-                    self.table.removeRow(r)
+                    rows_to_remove.append(r)
+
+            # Remove empty rows in reverse order to avoid index issues
+            for r in reversed(rows_to_remove):
+                self.table.removeRow(r)
 
         # Sync with central data model BEFORE recreating plots
         if self.app_instance and hasattr(self.app_instance, "worksheet_dfs"):

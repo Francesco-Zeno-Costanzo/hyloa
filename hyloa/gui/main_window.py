@@ -698,6 +698,9 @@ class MainApp(QMainWindow):
                 win.showNormal()
 
             win.raise_()
+            width  = int(self.screen.width()  * 0.5)
+            height = int(self.screen.height() * 0.5)
+            win.move(self.screen.center().x() - width // 2, self.screen.center().y() - height // 2)
             dialog.accept()
 
         # ---------------- CONNECTIONS ----------------

@@ -10,6 +10,7 @@ Submodules
    hyloa.utils.logging_setup
    hyloa.utils.err_format
    hyloa.utils.check_version
+   hyloa.utils.df_serial
 
 Module contents
 ---------------

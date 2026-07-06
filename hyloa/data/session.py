@@ -25,7 +25,9 @@ import pickle
 import logging
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
+
 from PyQt5.QtCore import QTimer
 
 from PyQt5.QtWidgets import (
@@ -33,6 +35,7 @@ from PyQt5.QtWidgets import (
 )
 
 from hyloa.utils.logging_setup import setup_logging
+from hyloa.utils.df_serial import DataFrameSerializer
 
 from hyloa.gui.plot_window import PlotControlWidget
 from hyloa.gui.worksheet import WorksheetWindow
@@ -70,28 +73,31 @@ def save_current_session(app_instance, parent_widget=None):
 
 
     try:
+
+        # Serialize all dataframes and header lines to ensure cross-platform compatibility
+        serialized_dataframes = [
+            DataFrameSerializer.serialize(df) for df in app_instance.dataframes
+        ]
+        serialized_header_lines = [
+            DataFrameSerializer.serialize(df) for df in app_instance.header_lines
+        ]
+
         # Build the dictionary for saving data 
         session_data = {
 
-            "__hyloa__":           True,
-            "file_format_version": 1,
-            "app_version":         getattr(app_instance, "version", "unknown"),
-            "created_on":          datetime.now().isoformat(),
-            "platform":            sys.platform,
+            "__hyloa__":            True,
+            "file_format_version":  2,
+            "serialization_format": "simple dict, json-compatible",
+            "app_version":           getattr(app_instance, "version", "unknown"),
+            "created_on":            datetime.now().isoformat(),
+            "python_version":        f"{sys.version_info.major}.{sys.version_info.minor}",
+            "numpy_version":         np.__version__,
+            "pandas_version":        pd.__version__,
+            "platform":              sys.platform,
 
             # To avoid pandas dataframe serialization
-            "dataframes": [
-                {
-                    "columns": list(df.columns),
-                    "index"  : df.index.tolist(),
-                    "data"   : df.astype(str).values.tolist(),
-                    "dtypes" : {
-                        col: str(df[col].dtype) for col in df.columns
-                    }
-                }
-                for df in app_instance.dataframes
-            ],
-            "header_lines": app_instance.header_lines,
+            "dataframes"  : serialized_dataframes,
+            "header_lines": serialized_header_lines,
             "logger_path" : app_instance.logger_path,
             "log_filename": os.path.basename(app_instance.logger_path),
             "fit_results" : app_instance.fit_results,
@@ -181,48 +187,39 @@ def load_previous_session(app_instance, parent_widget=None):
                 session_data = pickle.load(f)
 
         # Reload attributes of main app instance
-
         saved_dfs = session_data.get("dataframes", [])
+        app_instance.dataframes = []
 
-        if len(saved_dfs) > 0 and isinstance(saved_dfs[0], pd.DataFrame):
-            # Legacy format: dataframes were saved directly as pandas DataFrames
-            app_instance.dataframes = saved_dfs
+        for saved_df in saved_dfs:
+            # Handle both old (direct DataFrame) and new (serialized dict) formats
+            if isinstance(saved_df, pd.DataFrame):
+                # Legacy format: direct pickle of DataFrame
+                df = saved_df
+            elif isinstance(saved_df, dict) and "columns" in saved_df:
+                # New format: use DataFrameSerializer
+                df = DataFrameSerializer.deserialize(saved_df)
+            else:
+                continue
+            
+            app_instance.dataframes.append(df)
+
+        # ===== LOAD HEADER LINES =====
+        saved_header_lines = session_data.get("header_lines", [])
+        app_instance.header_lines = []
+
+        for saved_hl in saved_header_lines:
+            # Handle both old (direct DataFrame) and new (serialized dict) formats
+            if isinstance(saved_hl, pd.DataFrame):
+                # Legacy format: direct pickle of DataFrame
+                hl_df = saved_hl
+            elif isinstance(saved_hl, dict) and "columns" in saved_hl:
+                # New format: use DataFrameSerializer
+                hl_df = DataFrameSerializer.deserialize(saved_hl)
+            else:
+                continue
+            
+            app_instance.header_lines.append(hl_df)
         
-        else:
-            # New format: dataframes are saved as dictionaries
-            app_instance.dataframes = []
-
-            for saved_df in saved_dfs:
-
-                df = pd.DataFrame(
-                    saved_df["data"],
-                    columns=saved_df["columns"],
-                    index=saved_df["index"]
-                )
-
-                for col, dtype in saved_df["dtypes"].items():
-
-                    try:
-
-                        if dtype.startswith("float"):
-                            df[col] = pd.to_numeric(df[col])
-
-                        elif dtype.startswith("int"):
-                            df[col] = pd.to_numeric(df[col])
-
-                        elif "datetime" in dtype:
-                            df[col] = pd.to_datetime(df[col])
-
-                        else:
-                            df[col] = df[col].astype(dtype)
-
-                    except Exception:
-                        pass
-
-                app_instance.dataframes.append(df)
-        
-
-        app_instance.header_lines   = session_data.get("header_lines", [])
         app_instance.fit_results    = session_data.get("fit_results", {})
         app_instance.number_plots   = session_data.get("number_plots", 0)
 
@@ -308,6 +305,7 @@ def load_previous_session(app_instance, parent_widget=None):
 
         # --- restore worksheets  ---
         worksheet_data = session_data.get("worksheets", {})
+        
         for idx_key, ws_info in worksheet_data.items():
             try:
                 idx = int(idx_key)
@@ -317,14 +315,11 @@ def load_previous_session(app_instance, parent_widget=None):
             ws_name = ws_info.get("name", f"Worksheet {idx}")
 
             # Create worksheet instance with name
-            ws = WorksheetWindow(app_instance.mdi_area, parent=app_instance.mdi_area, name=ws_name,
+            ws = WorksheetWindow(app_instance.mdi_area, name=ws_name,
                                 logger=app_instance.logger, app_instance=app_instance)
 
             # Add to mdi area BEFORE restoring content (important!)
             app_instance.mdi_area.addSubWindow(ws)
-
-            # Restore content & plots; from_session_data will set geometry and schedule show
-            ws.from_session_data(ws_info.get("content", {}))
 
             # Save references in app_instance
             app_instance.worksheet_windows[idx]    = ws
@@ -333,7 +328,10 @@ def load_previous_session(app_instance, parent_widget=None):
 
             if isinstance(idx, int) and idx > app_instance.number_worksheets:
                 app_instance.number_worksheets = idx + 1
-
+            
+            # Restore content & plots; from_session_data will set geometry and schedule show
+            ws.from_session_data(ws_info.get("content", {}))
+            
             # Ensure it's visible (from_session_data schedules showNormal/showMinimized)
             QTimer.singleShot(0, lambda w=ws: w.show())
 
@@ -345,6 +343,17 @@ def load_previous_session(app_instance, parent_widget=None):
             
         QMessageBox.information(parent_widget, "Session Loaded",
                                 f"Session loaded from file:\n{file_path}")
-    except Exception as e:
-        QMessageBox.critical(parent_widget, "Error",
-                             f"Error while loading session:\n{e}")
+    #except Exception as e:
+    #    QMessageBox.critical(parent_widget, "Error",
+    #                         f"Error while loading session:\n{e}")
+
+    except Exception:
+        import traceback
+        err = traceback.format_exc()
+        print(err)
+
+        QMessageBox.critical(
+            parent_widget,
+            "Error",
+            f"Error while loading session:\n\n{err}"
+        )

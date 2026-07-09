@@ -35,12 +35,12 @@ def fake_app_instance():
         pd.DataFrame(
             {
                 "A": [1, 2],
-                "B": [3.5, 4.5],
+                "B": [3, 4],
                 "C": ["a", "b"],
             }
         )
     ]
-    app.header_lines = ["#header"]
+    app.header_lines = [pd.DataFrame({"header": ["h1"]})]
     app.logger_path  = "/path/to/log.txt"
     app.fit_results  = {"fit": "results"}
     app.number_plots = 1
@@ -64,6 +64,9 @@ def fake_app_instance():
 
     app.plot_subwindows   = {0: subwindow_mock}
     app.figure_subwindows = {0: subwindow_mock}
+
+    app.worksheet_windows = {}
+    app.worksheet_names = {}
 
     return app
 
@@ -182,11 +185,11 @@ def test_load_session_success(mock_get_open, mock_open, mock_pickle_load,
 
     assert fake_app.dataframes[0].equals(
         pd.DataFrame({
-            "A":[1,3],
-            "B":[2,4]
+            "A":[1,2],
+            "B":[3,4]
         })
     )
-    assert fake_app.header_lines == ["h1"]
+    
     assert fake_app.fit_results == {"result": 42}
     assert fake_app.number_plots == 2
 

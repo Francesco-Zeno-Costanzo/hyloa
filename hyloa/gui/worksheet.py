@@ -75,7 +75,10 @@ class WorksheetWindow(QMdiSubWindow):
         self.mdi_area = mdi_area
         self.name = name
         self.setWindowTitle(f"Worksheet - {self.name}")
-        self.setMinimumSize(500, 500)
+        screen_geom = QApplication.screenAt(self.mdi_area.frameGeometry().center()).availableGeometry()
+        min_width   = int(screen_geom.width()  * 0.3)   # 30% 
+        min_height  = int(screen_geom.height() * 0.3)   # 30% 
+        self.setMinimumSize(max(400, min_width), max(400, min_height))
         self.adjustSize()
 
         # Logger
@@ -1093,7 +1096,8 @@ class WorksheetWindow(QMdiSubWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Customize Plot Style")
-        dialog.setFixedSize(420, 360)
+        dialog.setMinimumSize(420, 360)
+        dialog.adjustSize()
 
         layout      = QVBoxLayout(dialog)
         form_layout = QFormLayout()
@@ -1215,7 +1219,8 @@ class WorksheetWindow(QMdiSubWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Plot Appearance")
-        dialog.setFixedSize(400, 280)
+        dialog.setMinimumSize(400, 280)
+        dialog.adjustSize()
         layout = QFormLayout(dialog)
 
         # Select plot

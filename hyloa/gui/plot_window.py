@@ -458,7 +458,7 @@ def plot_data(plot_window_instance, app_instance):
         )
         sub.setWindowTitle(f"Plot - {plot_name}")
         sub.setWidget(plot_area)
-        sub.setMinimumSize(800, 600)
+        sub.setMinimumSize(200, 200)
         sub.adjustSize()
         app_instance.mdi_area.addSubWindow(sub)
         sub.show()
@@ -828,7 +828,7 @@ def cycle_visibility(parent_widget, number_plots, figures_map, plot_customizatio
     # === Dialog ===
     dialog = QDialog(parent_widget)
     dialog.setWindowTitle("Show/Hide Cycles")
-    dialog.setMinimumSize(400, 300)
+    dialog.setMinimumSize(300, 200)
     dialog.adjustSize()
 
     layout        = QVBoxLayout(dialog)

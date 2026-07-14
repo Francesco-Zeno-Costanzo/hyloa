@@ -282,7 +282,7 @@ class MainApp(QMainWindow):
             "#=========#\n"
             " Session \n "
             "#=========#\n"
-            "Is possible to use “Save Session” to store the full state: data, plots, layout, fits, etc. the data will be written in a .pkl file.\n"
+            "Is possible to use “Save Session” to store the full state: data, plots, layout, fits, etc. the data will be written in a .hyloa file.\n"
             "A previous session can be restored with the “Load Session” button. \n"
             "At the same time, the button list of windows can be used to visualize a list of all windows open "
             "in the current session, also with a preview. This is useful when u have a large number of windows and/or some windows are minimized. \n\n"
@@ -406,7 +406,9 @@ class MainApp(QMainWindow):
             self.plot_control_subwindow.setWidget(self.plot_tabs)
             self.plot_control_subwindow.setWindowTitle("Plot Controls")
 
-            self.plot_control_subwindow.setMinimumSize(600, 400)
+            min_width   = int(self.screen.width()  * 0.3)   # 30% 
+            min_height  = int(self.screen.height() * 0.3)   # 30% 
+            self.plot_control_subwindow.setMinimumSize(max(600, min_width), max(400, min_height))
             self.plot_control_subwindow.adjustSize()
             self.mdi_area.addSubWindow(self.plot_control_subwindow)
             
@@ -532,18 +534,9 @@ class MainApp(QMainWindow):
         width        = mdi_size.width()
         height       = mdi_size.height()
         half_width   = width // 2
-        panel_height = max(300, height // 4)
+        panel_height = int(height * 0.25)#max(300, height // 4)
 
-        """# If too small adapt height
-        if panel_height * 2 > height:
-            panel_height = height // 2
-
-        self.shell_sub.resize(half_width, panel_height)
-        self.log_sub.resize(half_width, panel_height)
-
-        self.shell_sub.move(0, height - panel_height)
-        self.log_sub.move(half_width, height - panel_height)
-        """
+        
         self.shell_sub.setGeometry(0, height - panel_height, half_width, panel_height)
         self.log_sub.setGeometry(half_width, height - panel_height, half_width, panel_height)
 
@@ -567,7 +560,7 @@ class MainApp(QMainWindow):
         sub = QMdiSubWindow()
         sub.setWidget(editor.window)
         sub.setWindowTitle("Editor di Script")
-        sub.setMinimumSize(600, 600)
+        sub.setMinimumSize(max(600, self.screen.width() * 0.3), max(600, self.screen.height() * 0.3))
         sub.adjustSize()
         self.mdi_area.addSubWindow(sub)
         sub.show()

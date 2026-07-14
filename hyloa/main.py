@@ -18,7 +18,7 @@
 """
 Entry point for HYLOA application.
 """
-
+import os
 import sys
 import time 
 from importlib import resources
@@ -29,6 +29,11 @@ from PyQt5.QtCore import Qt, QTimer
 
 # Duration to show the splash screen at minimum
 MIN_SPLASH_TIME = 3.0  # Seconds
+
+# High DPI scaling attributes for better appearance on high-resolution displays
+os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
 
 class Splash(QWidget):

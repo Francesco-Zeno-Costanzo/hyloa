@@ -328,10 +328,12 @@ def show_column_selection(app_instance, file_path, header, index_to_replace=None
                 app_instance.dataframes[index_to_replace]   = df_data
                 app_instance.header_lines[index_to_replace] = df_header
                 app_instance.logger.info(f"File '{file_path}' overwrite in position {index_to_replace}")
+                app_instance.dataframes_changed.emit()  # Emit the signal to notify that dataframes have changed
             else:
                 app_instance.dataframes.append(df_data)
                 app_instance.header_lines.append(df_header)
                 app_instance.logger.info(f"File '{file_path}' added")
+                app_instance.dataframes_changed.emit()  # Emit the signal to notify that dataframes have changed
 
             QMessageBox.information(dialog, "Success", f"Data loaded form {file_path}!")
             app_instance.refresh_shell_variables()

@@ -24,7 +24,7 @@ the analysis. From here the calls to the other functions branch out.
 
 from importlib import resources
 import matplotlib.pyplot as plt
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QMdiArea, QMdiSubWindow, 
     QWidget, QVBoxLayout, QPushButton, QMessageBox, QTextEdit,
@@ -58,6 +58,10 @@ class MainApp(QMainWindow):
     '''
     Class to handle the main window
     '''
+
+    # Signal to notify when dataframes change
+    dataframes_changed = pyqtSignal()
+    
     def __init__(self):
 
         super().__init__()
@@ -99,7 +103,6 @@ class MainApp(QMainWindow):
         self.worksheet_dfs          = WsData() # To handle worksheet comunication
         self.plot_tabs              = None     # To handle the plot control tabs
         self.plot_control_subwindow = None     # To handle the plot control subwindow
-
 
         # Interface
         self.shell_sub = None
@@ -691,9 +694,7 @@ class MainApp(QMainWindow):
                 win.showNormal()
 
             win.raise_()
-            width  = int(self.screen.width()  * 0.5)
-            height = int(self.screen.height() * 0.5)
-            win.move(self.screen.center().x() - width // 2, self.screen.center().y() - height // 2)
+            win.move(0, 0)
             dialog.accept()
 
         # ---------------- CONNECTIONS ----------------

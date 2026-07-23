@@ -91,7 +91,7 @@ def correct_hysteresis_loop(app_instance):
     app_instance : MainApp
         The main application instance containing dataframes and logger.
     '''
-    dataframes  = app_instance.dataframes
+    
     logger      = app_instance.logger
 
     plot_state = {
@@ -122,7 +122,7 @@ def correct_hysteresis_loop(app_instance):
     }
 
 
-    if not dataframes:
+    if not app_instance.dataframes:
         QMessageBox.critical(app_instance, "Error", "No data loaded!")
         return
 
@@ -240,7 +240,7 @@ def correct_hysteresis_loop(app_instance):
     left_layout.addWidget(load_section)
     load_section.addWidget(QLabel("Select data file (source):"))
     file_combo = QComboBox()
-    file_combo.addItems([f"File {i+1}" for i in range(len(dataframes))])
+    file_combo.addItems([f"File {i+1}" for i in range(len(app_instance.dataframes))])
     file_combo.setToolTip("File from which load data")
     
     load_section.addWidget(file_combo)
@@ -266,7 +266,7 @@ def correct_hysteresis_loop(app_instance):
         ''' Update the column selection combos based on the selected source file.
         '''
         idx  = file_combo.currentIndex()
-        cols = [c for c in list(dataframes[idx].columns) if str(c) != '']
+        cols = [c for c in list(app_instance.dataframes[idx].columns) if str(c) != '']
 
         for combo in (x_up_combo, y_up_combo, x_down_combo, y_down_combo):
             # Block signals to avoid too rapid changes
@@ -289,7 +289,7 @@ def correct_hysteresis_loop(app_instance):
     save_section.addWidget(QLabel("Optional: file to save corrected data (use same order):"))
     save_file_combo = QComboBox()
     save_file_combo.addItem("No save")
-    save_file_combo.addItems([f"File {i+1}" for i in range(len(dataframes))])
+    save_file_combo.addItems([f"File {i+1}" for i in range(len(app_instance.dataframes))])
     save_file_combo.setToolTip("File to store data. Suggest to use duplicate file to create it.")
     save_section.addWidget(save_file_combo)
 
@@ -327,13 +327,64 @@ def correct_hysteresis_loop(app_instance):
             return
 
         dest_idx = save_choice - 1  
-        cols = list(dataframes[dest_idx].columns)
+        cols = list(app_instance.dataframes[dest_idx].columns)
 
         for combo in (x_up_dest, y_up_dest, x_dw_dest, y_dw_dest):
             combo.clear()
             combo.addItems(cols)
 
     save_file_combo.currentIndexChanged.connect(update_dest_columns)
+
+    #===============================================#
+    # Function to update combo box at sigal emission#
+    #===============================================#
+
+    def update_file_combos():
+    
+        # Store the current indices of the source and destination file combos
+        src_idx = file_combo.currentIndex()
+        xup_idx = x_up_combo.currentIndex()
+        xdw_idx = x_down_combo.currentIndex()
+        yup_idx = y_up_combo.currentIndex()
+        ydw_idx = y_down_combo.currentIndex()
+
+        dst_idx = save_file_combo.currentIndex()
+
+        # Block signals to prevent triggering the update functions while modifying the combo boxes
+        file_combo.blockSignals(True)
+        x_up_combo.blockSignals(True)
+        y_up_combo.blockSignals(True)
+        x_down_combo.blockSignals(True)
+        y_down_combo.blockSignals(True)
+
+        save_file_combo.blockSignals(True)
+
+        # Update source file combo
+        file_combo.clear()
+        file_combo.addItems([f"File {i+1}" for i in range(len(app_instance.dataframes))])
+
+        # Update destination file combo
+        save_file_combo.clear()
+        save_file_combo.addItem("No save")
+        save_file_combo.addItems([f"File {i+1}" for i in range(len(app_instance.dataframes))])
+
+        # Restore the selection if possible
+        if src_idx < file_combo.count():
+            file_combo.setCurrentIndex(src_idx)
+            x_up_combo.setCurrentIndex(xup_idx)
+            y_up_combo.setCurrentIndex(yup_idx)
+            x_down_combo.setCurrentIndex(xdw_idx)
+            y_down_combo.setCurrentIndex(ydw_idx)
+
+
+        if dst_idx < save_file_combo.count():
+            save_file_combo.setCurrentIndex(dst_idx)
+
+        file_combo.blockSignals(False)
+        save_file_combo.blockSignals(False)
+
+        # Update also the columns
+        update_dest_columns()
 
     #===============================================#
     # Set parameters for the field corrections      #
@@ -806,7 +857,7 @@ def correct_hysteresis_loop(app_instance):
         ''' Get initial data for preview plot
         '''
         idx = file_combo.currentIndex()
-        df  = dataframes[idx]
+        df  = app_instance.dataframes[idx]
 
         x_up = df[x_up_combo.currentText()].astype(float).values
         y_up = df[y_up_combo.currentText()].astype(float).values
@@ -846,7 +897,7 @@ def correct_hysteresis_loop(app_instance):
     #================================================#
 
     save_btn.clicked.connect(lambda: save_corrected_data(
-            dataframes, save_file_combo,
+            app_instance.dataframes, save_file_combo,
             x_up_dest, y_up_dest, x_dw_dest, y_dw_dest,
             save_quad_checkbox, plot_state, logger, window
         )
@@ -860,7 +911,7 @@ def correct_hysteresis_loop(app_instance):
             x_start_n_edit, x_end_n_edit, x_start_p_edit, x_end_p_edit,
             tail_params_edit, tail_function_edit,
             smooth_up_edit, smooth_dw_edit,
-            dataframes, logger, plot_state, draw_plot,
+            app_instance.dataframes, logger, plot_state, draw_plot,
             window, 
         )
     )
@@ -955,6 +1006,9 @@ def correct_hysteresis_loop(app_instance):
     sub.setWidget(window)
     sub.setWindowTitle("Loop Correction")
     sub.resize(window.sizeHint())
+
+    # Connect the signal to update the file combos when dataframes change
+    app_instance.dataframes_changed.connect(update_file_combos)
 
     app_instance.mdi_area.addSubWindow(sub)
     sub.show()

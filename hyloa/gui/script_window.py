@@ -116,12 +116,44 @@ class ScriptEditor(QPlainTextEdit):
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
+    
         for idx, df in enumerate(self.app_instance.dataframes):
+
+            # Find columns that have been modified in the shell's local variables
+            modified_columns = {}
+
             for column in df.columns:
                 if column in shell.local_vars:
-                    modified_array = shell.local_vars[column]
+
+                    modified_array = np.asarray(shell.local_vars[column])
+
                     if not np.array_equal(df[column].values, modified_array):
-                        df[column] = modified_array
+                        modified_columns[column] = modified_array
+
+            if not modified_columns:
+                continue
+
+            # Find the maximum length among the modified columns
+            new_length = max(
+                len(array)
+                for array in modified_columns.values()
+            )
+
+            # Resize the DataFrame if necessary
+            if new_length > len(df):
+                df = df.reindex(range(new_length))
+
+            # Update the modified columns in the DataFrame
+            for column, modified_array in modified_columns.items():
+
+                if len(modified_array) == len(df):
+                    df[column] = modified_array
+
+                else:
+                    # Update only the overlapping part of the column
+                    df.loc[df.index[:len(modified_array)], column] = modified_array
+
+            self.app_instance.dataframes[idx] = df
 
         output = output_capture.getvalue()
 

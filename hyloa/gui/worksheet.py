@@ -1221,32 +1221,103 @@ class WorksheetWindow(QMdiSubWindow):
         dialog.setWindowTitle("Plot Appearance")
         dialog.setMinimumSize(400, 280)
         dialog.adjustSize()
-        layout = QFormLayout(dialog)
 
-        # Select plot
-        layout.addRow(QLabel("Select plot:"))
         plot_combo = QComboBox()
         for pid, info in self.figure.items():
             sub_title = info["sub"].windowTitle()
             plot_combo.addItem(f"Plot {pid}: {sub_title}", pid)
-        layout.addRow(plot_combo)
+        
+        fig = self.figure[plot_combo.currentData()]["figure"]
+        ax  = self.figure[plot_combo.currentData()]["ax"]
+
+        # Window dimensions
+        current_width, current_height = fig.get_size_inches()
+        current_dpi = fig.dpi
+    
+        # From inches to centimeters
+        current_width  *= 2.54
+        current_height *= 2.54
+    
+        width_edit  = QLineEdit(f"{current_width:.2f}")
+        height_edit = QLineEdit(f"{current_height:.2f}")
+        dpi_edit    = QLineEdit(f"{current_dpi:.0f}")
+
+        # Title and axis labels
+        title_edit  = QLineEdit(ax.get_title() if ax.title else "")
+        xlabel_edit = QLineEdit(ax.get_xlabel())
+        ylabel_edit = QLineEdit(ax.get_ylabel())
 
         # Font sizes
-        label_fontsize_edit  = QLineEdit("14")
-        tick_fontsize_edit   = QLineEdit("10")
-        legend_fontsize_edit = QLineEdit("10")
+        label_fontsize_edit  = QLineEdit(str(ax.xaxis.label.get_size()))
+        tick_fontsize_edit   = QLineEdit(str(ax.xaxis.get_ticklabels()[0].get_size()) if ax.xaxis.get_ticklabels() else "10")
+        legend_fontsize_edit = QLineEdit(str(ax.get_legend().get_texts()[0].get_size()) if ax.get_legend() and ax.get_legend().get_texts() else "10")
+        title_fontsize_edit  = QLineEdit(str(ax.title.get_size()) if ax.title else "10")
 
+        # Axes limits and tick label and spacing adjustments
+        xlim_edit = QLineEdit(f"{ax.get_xlim()[0]:.2f}, {ax.get_xlim()[1]:.2f}")
+        ylim_edit = QLineEdit(f"{ax.get_ylim()[0]:.2f}, {ax.get_ylim()[1]:.2f}")
+        xtick_spacing_edit = QLineEdit("")
+        ytick_spacing_edit = QLineEdit("")
+        
+        
         # Minor ticks (safe)
         minor_ticks_checkbox = QCheckBox("Show minor ticks")
-        minor_ticks_checkbox.setChecked(True)
+        minor_ticks_checkbox.setChecked(any(tick.tick1line.get_visible() for tick in ax.xaxis.get_minor_ticks()))
+        
+        # Main dialog layout
+        main_layout = QVBoxLayout(dialog)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(10)
 
-        layout.addRow("Axis label fontsize:", label_fontsize_edit)
-        layout.addRow("Tick label fontsize:", tick_fontsize_edit)
-        layout.addRow("Legend fontsize:",     legend_fontsize_edit)
-        layout.addRow(minor_ticks_checkbox)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        layout.addWidget(buttons)
+        # Select plot
+        plot_group  = QGroupBox("Plot selection")
+        plot_layout = QFormLayout(plot_group)
+        plot_layout.setSpacing(6)
+        plot_layout.addRow("Select plot:", plot_combo)
+        main_layout.addWidget(plot_group)
+        
+    
+        text_group  = QGroupBox("Text and Labels")
+        text_layout = QFormLayout(text_group)
+        text_layout.setSpacing(10)
+    
+        text_layout.addRow("Title:",        title_edit)
+        text_layout.addRow("X-axis label:", xlabel_edit)
+        text_layout.addRow("Y-axis label:", ylabel_edit)
+        main_layout.addWidget(text_group)
+    
+        font_group  = QGroupBox("Font sizes")
+        font_layout = QFormLayout(font_group)
+        font_layout.setSpacing(6)
+        font_layout.addRow("Axis labels (pt):", label_fontsize_edit)
+        font_layout.addRow("Tick labels (pt):", tick_fontsize_edit)
+        font_layout.addRow("Legend (pt):", legend_fontsize_edit)
+        font_layout.addRow("Title (pt):", title_fontsize_edit)
+        main_layout.addWidget(font_group)
+    
+        axes_group  = QGroupBox("Axes")
+        axes_layout = QFormLayout(axes_group)
+        axes_layout.setSpacing(6)
+        axes_layout.addRow("X-axis limits:", xlim_edit)
+        axes_layout.addRow("Y-axis limits:", ylim_edit)
+        axes_layout.addRow("X-axis tick spacing:", xtick_spacing_edit)
+        axes_layout.addRow("Y-axis tick spacing:", ytick_spacing_edit)
+        main_layout.addWidget(axes_group)
+    
+        size_group  = QGroupBox("Figure size")
+        size_layout = QFormLayout(size_group)
+        size_layout.setSpacing(6)
+        size_layout.addRow("Width (cm):", width_edit)
+        size_layout.addRow("Height (cm):", height_edit)
+        size_layout.addRow("DPI:", dpi_edit)
+        main_layout.addWidget(size_group)
+    
+        main_layout.addWidget(minor_ticks_checkbox)
+    
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        main_layout.addWidget(buttons)        
 
         def apply_changes():
             try:
@@ -1255,13 +1326,38 @@ class WorksheetWindow(QMdiSubWindow):
                     QMessageBox.warning(dialog, "Error", "Selected plot not found!")
                     return
 
-                fig_info = self.figure[pid]
-                ax = fig_info["ax"]
+                fig    = self.figure[pid]["figure"]
+                ax     = self.figure[pid]["ax"]
                 canvas = self.plot_customization[pid]["canvas"]
 
-                label_fs  = float(label_fontsize_edit.text())
-                tick_fs   = float(tick_fontsize_edit.text())
-                legend_fs = float(legend_fontsize_edit.text())
+                width  = float(width_edit.text()) / 2.54  # Convert cm to inches
+                height = float(height_edit.text()) / 2.54 # Convert cm to inches
+                dpi    = float(dpi_edit.text())
+            
+                # Resize figure
+                fig.set_size_inches(width, height)
+                fig.set_dpi(dpi)
+
+                label_fs      = float(label_fontsize_edit.text())
+                tick_fs       = float(tick_fontsize_edit.text())
+                legend_fs     = float(legend_fontsize_edit.text())
+                title_fs      = float(title_fontsize_edit.text())
+                xlim_values   = [float(val.strip()) for val in xlim_edit.text().split(",")]
+                ylim_values   = [float(val.strip()) for val in ylim_edit.text().split(",")]
+                xtick_spacing = float(xtick_spacing_edit.text()) if xtick_spacing_edit.text() else 0
+                ytick_spacing = float(ytick_spacing_edit.text()) if ytick_spacing_edit.text() else 0
+
+                ax.set_title(title_edit.text())
+                ax.set_xlabel(xlabel_edit.text())
+                ax.set_ylabel(ylabel_edit.text())
+                ax.set_xlim(xlim_values)
+                ax.set_ylim(ylim_values)
+
+                if xtick_spacing > 0:
+                    ax.set_xticks(np.linspace(xlim_values[0], xlim_values[1], int((xlim_values[1] - xlim_values[0]) / xtick_spacing) + 1))
+                if ytick_spacing > 0:
+                    ax.set_yticks(np.linspace(ylim_values[0], ylim_values[1], int((ylim_values[1] - ylim_values[0]) / ytick_spacing) + 1))
+    
 
                 # --- Axis labels ---
                 ax.xaxis.label.set_fontsize(label_fs)
@@ -1277,14 +1373,49 @@ class WorksheetWindow(QMdiSubWindow):
                     for text in leg.get_texts():
                         text.set_fontsize(legend_fs)
 
+                # --- Title ---
+                if ax.title:
+                    ax.title.set_fontsize(title_fs)
+
                 # --- Minor ticks ---
                 if minor_ticks_checkbox.isChecked():
                     ax.minorticks_on()
                 else:
                     ax.minorticks_off()
 
-                canvas.draw_idle()
-                dialog.accept()
+                window = self.figure[pid]["sub"]
+                
+                if window is not None:
+    
+    
+                    width_px  = int(round(width  * dpi))
+                    height_px = int(round(height * dpi))
+    
+                    # Fix the canvas size to the new dimensions
+                    canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+                    canvas.setFixedSize(width_px, height_px)
+    
+                    # Adjust the sub-window size to fit the new canvas size
+                    window.adjustSize()
+    
+                    # Use QTimer to release the canvas size policy after the event loop has processed the resize
+                    def release_canvas():
+                        canvas.setSizePolicy(
+                            QSizePolicy.Expanding,
+                            QSizePolicy.Expanding
+                        )
+                        canvas.setMinimumSize(0, 0)
+                        canvas.setMaximumSize(16777215, 16777215)
+                        canvas.updateGeometry()
+    
+                        canvas.draw_idle()
+                        dialog.accept()
+    
+                    QTimer.singleShot(0, release_canvas)
+                
+                else: 
+                    canvas.draw_idle()
+                    dialog.accept()
 
             except Exception as e:
                 QMessageBox.critical(dialog, "Error", f"Error applying appearance settings:\n{e}")

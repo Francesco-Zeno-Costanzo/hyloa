@@ -2,6 +2,21 @@
 HYLOA Release Notes
 =========================
 
+Version 1.14.0 - 2026-10-09
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**New Features**
+- The plot appearance customisation menu has been expanded for both plots and worksheets; you can now modify labels, font sizes, axis scales, tick marks, and their spacing, and set chart dimensions and DPI.
+
+- In the loop correction panel, the file selection fields (for saving data after correction) now update automatically when a new file is loaded, eliminating the need to close and reopen the panel.
+
+- Column lengths can now be modified via script. Data can be saved back to the original DataFrame; unmodified columns remain unchanged, with `NaN` values filling the empty cells.
+
+- When saving a session, all DataFrame data is now stored in a dictionary rather than a pandas DataFrame. This avoids data serialisation issues caused by differing pandas versions. Upon loading the session, the data is restored into pandas DataFrames.
+
+- Automatic scaling for window sizes and screen DPI has been added to ensure proper display across screens with varying resolutions.
+
+
+
 Version 1.13.2 - 2026-07-01
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Bug Fixes**
